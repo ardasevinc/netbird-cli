@@ -93,6 +93,7 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.AddCommand(dnsCommand(state, stdout))
 	root.AddCommand(identityProvidersCommand(state, stdout))
 	root.AddCommand(postureChecksCommand(state, stdout))
+	root.AddCommand(eventsCommand(state, stdout))
 	return root
 }
 
