@@ -24,6 +24,8 @@ nb posture-checks list --json
 nb events --json
 nb setup-keys list --json
 nb locations countries --json
+nb networks resources list <network-id> --json
+nb networks routers list <network-id> --json
 nb users tokens list <user-id> --json
 ```
 

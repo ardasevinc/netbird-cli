@@ -22,6 +22,9 @@ go run ./cmd/nb users list --json
 go run ./cmd/nb users invites --json
 go run ./cmd/nb routes list --json
 go run ./cmd/nb networks list --json
+go run ./cmd/nb networks resources list <network-id> --json
+go run ./cmd/nb networks routers list <network-id> --json
+go run ./cmd/nb networks routers list-all --json
 go run ./cmd/nb dns nameservers list --json
 go run ./cmd/nb dns settings --json
 go run ./cmd/nb dns zones list --json
