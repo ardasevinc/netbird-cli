@@ -745,18 +745,18 @@
       "verification": ""
     },
     {
-      "id": "get.api.locations.countries",
+      "id": "locations.countries",
       "method": "GET",
       "path": "/api/locations/countries",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "get.api.locations.countries.country.cities",
+      "id": "locations.cities",
       "method": "GET",
       "path": "/api/locations/countries/{country}/cities",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "identity_providers.list",
