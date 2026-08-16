@@ -42,12 +42,13 @@ func capabilitiesCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				"version":         discovery.Version,
 				"instance":        discovery.Instance,
 				"user":            discovery.User,
+				"identity_status": discovery.IdentityStatus,
 				"completeness":    "complete",
 			}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/capabilities-result", "ok": true, "operation": "capabilities", "data": data})
 			}
-			_, err = fmt.Fprintf(stdout, "profile: %s\nserver version: %s\nsetup required: %t\naccount id: %s\n", state.profileName, discovery.Version.ManagementCurrentVersion, discovery.Instance.SetupRequired, profile.AccountID)
+			_, err = fmt.Fprintf(stdout, "profile: %s\nserver version: %s\nsetup required: %t\naccount id: %s\nidentity status: %s\n", state.profileName, discovery.Version.ManagementCurrentVersion, discovery.Instance.SetupRequired, profile.AccountID, discovery.IdentityStatus)
 			if discovery.User != nil {
 				_, err = fmt.Fprintf(stdout, "user: %s <%s> (%s)\n", discovery.User.Name, discovery.User.Email, discovery.User.Role)
 			}

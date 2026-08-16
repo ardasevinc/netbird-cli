@@ -41,6 +41,36 @@ func TestDiscoverUsesReadOnlyEndpoints(t *testing.T) {
 	}
 }
 
+func TestDiscoverKeepsServiceAccountCapabilitiesWhenIdentityIsForbidden(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %s", r.Method)
+		}
+		switch r.URL.Path {
+		case "/api/instance/version":
+			_ = json.NewEncoder(w).Encode(Version{ManagementCurrentVersion: "0.77.0"})
+		case "/api/instance":
+			_ = json.NewEncoder(w).Encode(Instance{SetupRequired: false})
+		case "/api/users/current":
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, Token: "service-token", HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := NewClient(client).Discover(context.Background(), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IdentityStatus != "unavailable" || result.User != nil || result.Version.ManagementCurrentVersion != "0.77.0" {
+		t.Fatalf("unexpected service discovery: %+v", result)
+	}
+}
+
 func TestListGroupsUsesBoundedRead(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/groups" || r.Method != http.MethodGet {

@@ -2,7 +2,9 @@ package netbird
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/ardasevinc/netbird-cli/internal/transport"
 )
@@ -82,9 +84,10 @@ type AccountOnboarding struct {
 }
 
 type Discovery struct {
-	Version  Version  `json:"version"`
-	Instance Instance `json:"instance"`
-	User     *User    `json:"user,omitempty"`
+	Version        Version  `json:"version"`
+	Instance       Instance `json:"instance"`
+	User           *User    `json:"user,omitempty"`
+	IdentityStatus string   `json:"identity_status"`
 }
 
 type Client struct {
@@ -98,7 +101,7 @@ func NewClient(transportClient *transport.Client) *Client {
 func (c *Client) ServerIdentity() string { return c.transport.Origin() }
 
 func (c *Client) Discover(ctx context.Context, authenticated bool) (Discovery, error) {
-	var result Discovery
+	result := Discovery{IdentityStatus: "not_requested"}
 	if err := c.transport.GetJSON(ctx, "/api/instance/version", &result.Version); err != nil {
 		return Discovery{}, fmt.Errorf("discover server version: %w", err)
 	}
@@ -106,8 +109,14 @@ func (c *Client) Discover(ctx context.Context, authenticated bool) (Discovery, e
 		return Discovery{}, fmt.Errorf("discover instance status: %w", err)
 	}
 	if authenticated {
+		result.IdentityStatus = "available"
 		var user User
-		if err := c.transport.GetJSON(ctx, "/api/users/current", &user); err != nil {
+		if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/users/current", nil, &user); err != nil {
+			var requestErr *transport.RequestError
+			if errors.As(err, &requestErr) && requestErr.StatusCode == http.StatusForbidden {
+				result.IdentityStatus = "unavailable"
+				return result, nil
+			}
 			return Discovery{}, fmt.Errorf("discover current user: %w", err)
 		}
 		result.User = &user
