@@ -1,0 +1,13 @@
+{
+  "schema": "nb/v1/coverage-manifest",
+  "source_baseline": "not-yet-pinned",
+  "support_window": ["current", "previous-minor", "two-minors-back"],
+  "operations": [],
+  "summary": {
+    "implemented": 0,
+    "contract_verified": 0,
+    "disposable_verified": 0,
+    "live_verified": 0,
+    "unverified_live": 0
+  }
+}

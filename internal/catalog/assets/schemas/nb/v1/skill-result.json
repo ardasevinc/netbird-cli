@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/skill-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/skill-result"},
+    "ok": {"const": true},
+    "operation": {"const": "skills.get"},
+    "data": {"type": "object", "required": ["id", "content"], "properties": {"id": {"type": "string"}, "content": {"type": "string"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

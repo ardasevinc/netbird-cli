@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/error",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "error"],
+  "properties": {
+    "schema": {"const": "nb/v1/error"},
+    "ok": {"const": false},
+    "operation": {"type": "string"},
+    "error": {"type": "object", "required": ["code", "class", "message"], "properties": {"code": {"type": "string"}, "class": {"type": "string"}, "message": {"type": "string"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

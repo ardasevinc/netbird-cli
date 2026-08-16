@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/schema-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/schema-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "schema.list"},
+    "data": {"type": "object", "required": ["schemas"], "properties": {"schemas": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}
