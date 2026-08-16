@@ -18,6 +18,7 @@ type commandState struct {
 	json        bool
 	configPath  string
 	profileName string
+	statePath   string
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info version.Info) int {
@@ -55,15 +56,32 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
-	root.PersistentFlags().BoolVar(&state.json, "json", false, "emit one machine-readable JSON document")
-	root.PersistentFlags().StringVar(&state.configPath, "config", config.DefaultPath(), "path to the TOML configuration")
-	root.PersistentFlags().StringVar(&state.profileName, "profile", "default", "named profile to use")
+	root.PersistentFlags().BoolVar(&state.json, "json", state.json, "emit one machine-readable JSON document")
+	configPath := state.configPath
+	if configPath == "" {
+		configPath = config.DefaultPath()
+	}
+	state.configPath = configPath
+	profileName := state.profileName
+	if profileName == "" {
+		profileName = "default"
+	}
+	state.profileName = profileName
+	statePath := state.statePath
+	if statePath == "" {
+		statePath = config.DefaultStatePath()
+	}
+	state.statePath = statePath
+	root.PersistentFlags().StringVar(&state.configPath, "config", configPath, "path to the TOML configuration")
+	root.PersistentFlags().StringVar(&state.profileName, "profile", profileName, "named profile to use")
+	root.PersistentFlags().StringVar(&state.statePath, "state", statePath, "path to the local mutation ledger")
 	root.AddCommand(versionCommand(state, stdout, info))
 	root.AddCommand(schemaCommand(state, stdout))
 	root.AddCommand(skillsCommand(state, stdout))
 	root.AddCommand(coverageCommand(state, stdout))
 	root.AddCommand(profileCommand(state, stdout))
 	root.AddCommand(capabilitiesCommand(state, stdout))
+	root.AddCommand(stageCommand(state, stdout))
 	return root
 }
 

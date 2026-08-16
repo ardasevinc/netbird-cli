@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/stage-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/stage-result"},
+    "ok": {"const": true},
+    "operation": {"enum": ["stage.create", "stage.show", "stage.cancel"]},
+    "data": {"type": "object", "required": ["stage_id", "revision"], "properties": {"stage_id": {"type": "string"}, "revision": {"type": "integer", "minimum": 1}}, "additionalProperties": true}
+  },
+  "additionalProperties": false
+}
