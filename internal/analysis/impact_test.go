@@ -55,6 +55,16 @@ func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	}
 }
 
+func TestRouteDeleteImpactIsConservative(t *testing.T) {
+	report, err := RouteDeleteImpact([]byte(`{"id":"r1","description":"route","enabled":true,"network":"10.0.0.0/24"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "route_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactBlocksRoutingChanges(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"route","enabled":true,"metric":10,"groups":["g1"]}`),

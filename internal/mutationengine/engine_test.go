@@ -88,6 +88,9 @@ func (f *fakeRemote) DeletePolicy(_ context.Context, _ string) (json.RawMessage,
 }
 
 func (f *fakeRemote) GetRouteRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.routeBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
 	return append(json.RawMessage(nil), f.routeBefore...), nil
 }
 
@@ -98,6 +101,15 @@ func (f *fakeRemote) UpdateRoute(_ context.Context, _ string, _ json.RawMessage)
 	}
 	f.routeBefore = append(json.RawMessage(nil), f.routeAfter...)
 	return f.routeBefore, nil
+}
+
+func (f *fakeRemote) DeleteRoute(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.routeBefore = nil
+	return nil, nil
 }
 
 func (f *fakeRemote) GetPeerRaw(_ context.Context, _ string) (json.RawMessage, error) {
@@ -389,6 +401,39 @@ func TestApplyDispatchesRouteUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected route result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesRouteDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"r1","description":"route","enabled":true,"network":"10.0.0.0/24"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "routes.delete",
+		Request:        json.RawMessage(`{"id":"r1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"route_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a route can change network reachability; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"route_delete_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.route_delete", Severity: "blocking", Message: "deleting the route may alter reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", routeBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected route delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

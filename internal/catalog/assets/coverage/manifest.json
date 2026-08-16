@@ -1464,11 +1464,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.routes.routeId",
+      "id": "routes.delete",
       "method": "DELETE",
       "path": "/api/routes/{routeId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "routes.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 107,
+    "implemented": 108,
     "classified": 0,
-    "discovered": 129,
-    "contract_verified": 98,
+    "discovered": 128,
+    "contract_verified": 99,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

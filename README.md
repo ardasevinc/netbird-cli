@@ -102,6 +102,8 @@ acknowledgement, and is confirmed only when a post-delete policy read returns
 404.
 Group deletion is staged under the same contract, with blocking
 `impact.group_delete` acknowledgement and a required 404 absence read-back.
+Route deletion is staged with blocking `impact.route_delete` acknowledgement
+and the same required absence proof.
 
 ## Development
 

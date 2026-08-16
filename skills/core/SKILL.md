@@ -60,3 +60,4 @@ Peer access or connectivity changes are also blocking findings.
 Network topology changes are also blocking findings.
 Policy deletion is blocking and requires read-back confirmation of absence.
 Group deletion is blocking and requires the same absence proof.
+Route deletion is blocking and requires the same absence proof.

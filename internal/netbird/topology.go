@@ -143,6 +143,18 @@ func (c *Client) UpdateRoute(ctx context.Context, id string, request json.RawMes
 	return result, nil
 }
 
+func (c *Client) DeleteRoute(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := topologyPath("routes", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete route %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListNetworks(ctx context.Context) ([]Network, error) {
 	var result []networkWire
 	if err := c.transport.GetJSON(ctx, "/api/networks", &result); err != nil {

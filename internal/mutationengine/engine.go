@@ -26,6 +26,7 @@ type Remote interface {
 	DeletePolicy(context.Context, string) (json.RawMessage, error)
 	GetRouteRaw(context.Context, string) (json.RawMessage, error)
 	UpdateRoute(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteRoute(context.Context, string) (json.RawMessage, error)
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
@@ -147,7 +148,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
-	if stage.Operation == "policies.delete" || stage.Operation == "groups.delete" {
+	if isDeleteOperation(stage.Operation) {
 		if err := confirmDeleted(ctx, remote, stage.Operation, request.ID); err != nil && !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
@@ -179,6 +180,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetPolicyRaw(ctx, id)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, id)
+	case "routes.delete":
+		return remote.GetRouteRaw(ctx, id)
 	case "peers.update":
 		return remote.GetPeerRaw(ctx, id)
 	case "networks.update":
@@ -200,6 +203,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.DeletePolicy(ctx, id)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, id, request)
+	case "routes.delete":
+		return remote.DeleteRoute(ctx, id)
 	case "peers.update":
 		return remote.UpdatePeer(ctx, id, request)
 	case "networks.update":
@@ -221,6 +226,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PolicyDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
+	case "routes.delete":
+		return analysis.RouteDeleteImpact(before)
 	case "peers.update":
 		return analysis.PeerUpdateImpact(before, intendedAfter)
 	case "networks.update":
@@ -241,6 +248,10 @@ func confirmDeleted(ctx context.Context, remote Remote, operation, id string) er
 func isNotFound(err error) bool {
 	var status interface{ StatusCodeState() int }
 	return errors.As(err, &status) && status.StatusCodeState() == 404
+}
+
+func isDeleteOperation(operation string) bool {
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {
