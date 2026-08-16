@@ -12,12 +12,14 @@ import (
 )
 
 type fakeRemote struct {
-	identity  string
-	account   string
-	before    json.RawMessage
-	after     json.RawMessage
-	updateErr error
-	updates   int
+	identity     string
+	account      string
+	before       json.RawMessage
+	after        json.RawMessage
+	policyBefore json.RawMessage
+	policyAfter  json.RawMessage
+	updateErr    error
+	updates      int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -40,6 +42,19 @@ func (f *fakeRemote) UpdateGroup(_ context.Context, _ string, _ json.RawMessage)
 	}
 	f.before = append(json.RawMessage(nil), f.after...)
 	return f.before, nil
+}
+
+func (f *fakeRemote) GetPolicyRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	return append(json.RawMessage(nil), f.policyBefore...), nil
+}
+
+func (f *fakeRemote) UpdatePolicy(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.policyBefore = append(json.RawMessage(nil), f.policyAfter...)
+	return f.policyBefore, nil
 }
 
 func stageForTest(t *testing.T, store *ledger.Store, before, after string) ledger.Stage {
@@ -173,5 +188,38 @@ func TestApplyRefusesChangedImpactEvidence(t *testing.T) {
 	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1"})
 	if err == nil || result.AttemptID != "" || remote.updates != 0 {
 		t.Fatalf("changed impact was not refused before dispatch: result=%+v err=%v updates=%d", result, err, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPolicyUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"p1","name":"old","rules":[]}`
+	after := `{"id":"p1","name":"new","rules":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "policies.update",
+		Request:        json.RawMessage(`{"id":"p1","name":"new","rules":[]}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"metadata_only","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["policy metadata changed without changing policy rules"],"completeness":{"state":"complete","reason":null}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", policyBefore: []byte(before), policyAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected policy result: %+v updates=%d", result, remote.updates)
 	}
 }

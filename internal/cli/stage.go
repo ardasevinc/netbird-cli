@@ -58,8 +58,15 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			}
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
-			if plan.Operation == "groups.update" {
-				report, err := analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
+			switch plan.Operation {
+			case "groups.update", "policies.update":
+				var report analysis.ImpactReport
+				var err error
+				if plan.Operation == "groups.update" {
+					report, err = analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
+				} else {
+					report, err = analysis.PolicyUpdateImpact(plan.Before, plan.IntendedAfter)
+				}
 				if err != nil {
 					return fail(2, err)
 				}
@@ -67,8 +74,18 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				if err != nil {
 					return fail(1, fmt.Errorf("encode mutation impact: %w", err))
 				}
-				if report.Classification == "unknown" && !hasFinding(findings, "impact.unknown") {
-					findings = append(findings, ledger.Finding{Code: "impact.unknown", Severity: "blocking", Message: "the proposed group change may affect reachability, but its impact cannot be calculated"})
+				findingCode := ""
+				findingMessage := ""
+				switch {
+				case plan.Operation == "groups.update" && report.Classification == "unknown":
+					findingCode = "impact.unknown"
+					findingMessage = "the proposed group change may affect reachability, but its impact cannot be calculated"
+				case plan.Operation == "policies.update" && report.Classification == "policy_rule_change":
+					findingCode = "impact.policy_rule_change"
+					findingMessage = "the proposed policy rule change may alter reachability and requires exact acknowledgement"
+				}
+				if findingCode != "" && !hasFinding(findings, findingCode) {
+					findings = append(findings, ledger.Finding{Code: findingCode, Severity: "blocking", Message: findingMessage})
 				}
 			}
 			definition, err := operations.Lookup(plan.Operation)

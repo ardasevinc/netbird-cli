@@ -21,3 +21,13 @@ func TestGroupUpdateImpactRefusesToOverclaimUnsupportedChanges(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestPolicyUpdateImpactMarksRuleChangesAsPotentialReachabilityChange(t *testing.T) {
+	report, err := PolicyUpdateImpact([]byte(`{"name":"p","rules":[{"id":"r1","action":"accept"}]}`), []byte(`{"name":"p","rules":[{"id":"r1","action":"drop"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "policy_rule_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

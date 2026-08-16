@@ -42,3 +42,21 @@ func TestGetJSONRejectsOversizedBody(t *testing.T) {
 		t.Fatal("expected oversized response to fail")
 	}
 }
+
+func TestRequestPreservesEscapedPathSegments(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/api/policies/policy%2Fone" {
+			t.Errorf("escaped path = %q", r.URL.EscapedPath())
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]bool
+	if err := client.GetJSON(context.Background(), "/api/policies/policy%2Fone", &result); err != nil {
+		t.Fatal(err)
+	}
+}

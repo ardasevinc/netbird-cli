@@ -170,6 +170,10 @@ func (c *Client) requestURL(path string) (*url.URL, error) {
 	}
 	u := *c.baseURL
 	u.Path = strings.TrimRight(c.baseURL.Path, "/") + relative.Path
+	u.RawPath = strings.TrimRight(c.baseURL.EscapedPath(), "/") + relative.EscapedPath()
+	if u.RawPath == u.Path {
+		u.RawPath = ""
+	}
 	u.RawQuery = relative.RawQuery
 	return &u, nil
 }

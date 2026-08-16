@@ -1310,11 +1310,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.policies.policyId",
+      "id": "policies.update",
       "method": "PUT",
       "path": "/api/policies/{policyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "posture_checks.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 101,
+    "implemented": 102,
     "classified": 0,
-    "discovered": 135,
-    "contract_verified": 92,
+    "discovered": 134,
+    "contract_verified": 93,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

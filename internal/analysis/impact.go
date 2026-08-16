@@ -20,6 +20,37 @@ type ImpactReport struct {
 	Completeness      map[string]any `json:"completeness"`
 }
 
+func PolicyUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode policy impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode policy impact intended state: %w", err)
+	}
+	rulesChanged := !sameJSONValue(beforeObject["rules"], afterObject["rules"])
+	if !rulesChanged {
+		return ImpactReport{
+			Classification:    "metadata_only",
+			Reachability:      "unchanged",
+			AffectedPeers:     []string{},
+			AffectedResources: []string{},
+			Confidence:        "high",
+			Evidence:          []string{"policy metadata changed without changing policy rules"},
+			Completeness:      map[string]any{"state": "complete", "reason": nil},
+		}, nil
+	}
+	return ImpactReport{
+		Classification:    "policy_rule_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"policy rules changed; affected peers and resources require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "policy_rule_change_requires_topology"},
+	}, nil
+}
+
 func GroupUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

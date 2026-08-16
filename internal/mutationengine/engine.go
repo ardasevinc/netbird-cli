@@ -19,6 +19,8 @@ type Remote interface {
 	AccountScope(context.Context, string) error
 	GetGroup(context.Context, string) (json.RawMessage, error)
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
+	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -90,7 +92,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(stage.Request, &request); err != nil || request.ID == "" {
-		return result, &ApplyError{Result: result, Err: errors.New("groups.update stage request requires a group id")}
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
 	for _, finding := range stage.Findings {
@@ -99,25 +101,25 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := mutation.ValidateAcknowledgements(findings, input.Acknowledgements, input.AckAllBlocking); err != nil {
 		return result, &ApplyError{Result: result, Err: err}
 	}
-	liveBefore, err := remote.GetGroup(ctx, request.ID)
+	liveBefore, err := readPreimage(ctx, remote, stage.Operation, request.ID)
 	if err != nil {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read group preimage: %w", err)}
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read %s preimage: %w", stage.Operation, err)}
 	}
 	preimage, err := mutation.ClassifyPreimage(stage.Before, liveBefore, stage.IntendedAfter)
 	if err != nil {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("classify group preimage: %w", err)}
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s preimage: %w", stage.Operation, err)}
 	}
 	if preimage == mutation.PreimageDrifted {
-		return result, &ApplyError{Result: result, Err: errors.New("staged group preimage drifted; create a new revision")}
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
 	}
-	impact, err := analysis.GroupUpdateImpact(liveBefore, stage.IntendedAfter)
+	impact, err := mutationImpact(stage.Operation, liveBefore, stage.IntendedAfter)
 	if err != nil {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("recompute group mutation impact: %w", err)}
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("recompute %s mutation impact: %w", stage.Operation, err)}
 	}
 	if len(stage.Impact) != 0 && string(stage.Impact) != "{}" {
 		liveImpact, err := json.Marshal(impact)
 		if err != nil {
-			return result, &ApplyError{Result: result, Err: fmt.Errorf("encode group mutation impact: %w", err)}
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("encode %s mutation impact: %w", stage.Operation, err)}
 		}
 		equal, err := mutation.Equivalent(stage.Impact, liveImpact)
 		if err != nil || !equal {
@@ -132,11 +134,11 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if preimage == mutation.PreimageAlreadySatisfied {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
-	if _, err := remote.UpdateGroup(ctx, request.ID, stage.Request); err != nil {
+	if _, err := dispatch(ctx, remote, stage.Operation, request.ID, stage.Request); err != nil {
 		state := classifyDispatchError(err)
-		return finish(ctx, store, result, state, "group update did not produce a confirmed success")
+		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
-	liveAfter, err := remote.GetGroup(ctx, request.ID)
+	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request.ID)
 	if err != nil {
 		return finish(ctx, store, result, mutation.Unknown, "update may have applied, but read-back was inconclusive")
 	}
@@ -148,6 +150,39 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return finish(ctx, store, result, mutation.Partial, "remote state differs from intended state after update")
 	}
 	return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote state matches intended state")
+}
+
+func readPreimage(ctx context.Context, remote Remote, operation, id string) (json.RawMessage, error) {
+	switch operation {
+	case "groups.update":
+		return remote.GetGroup(ctx, id)
+	case "policies.update":
+		return remote.GetPolicyRaw(ctx, id)
+	default:
+		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
+	}
+}
+
+func dispatch(ctx context.Context, remote Remote, operation, id string, request json.RawMessage) (json.RawMessage, error) {
+	switch operation {
+	case "groups.update":
+		return remote.UpdateGroup(ctx, id, request)
+	case "policies.update":
+		return remote.UpdatePolicy(ctx, id, request)
+	default:
+		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
+	}
+}
+
+func mutationImpact(operation string, before, intendedAfter json.RawMessage) (analysis.ImpactReport, error) {
+	switch operation {
+	case "groups.update":
+		return analysis.GroupUpdateImpact(before, intendedAfter)
+	case "policies.update":
+		return analysis.PolicyUpdateImpact(before, intendedAfter)
+	default:
+		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
+	}
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

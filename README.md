@@ -84,6 +84,10 @@ or secret material even when returned by the management API.
 Group stages persist deterministic mutation-impact evidence. Metadata-only group
 changes are marked reachability-neutral; unsupported state changes are marked
 unknown and become blocking until the exact impact finding is acknowledged.
+Policy stages use the same preimage and read-back contract. Metadata-only policy
+changes are reachability-neutral; rule changes emit a blocking
+`impact.policy_rule_change` finding because exact affected peers and resources
+require live topology analysis.
 
 ## Development
 

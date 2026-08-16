@@ -36,6 +36,7 @@ nb peers ingress-ports list <peer-id> --json
 nb peers accessible <peer-id> --json
 nb analyze reachability <peer-id> --json
 nb users tokens list <user-id> --json
+nb stage create --from-json
 ```
 
 Inventory commands are bounded reads. User and invite results intentionally omit
@@ -53,4 +54,5 @@ NetBird changes belong under `nb stage`; do not invent a direct-write command.
 Inspect the stage, acknowledge the exact findings, and apply an exact
 `<stage-id>@<revision>` only after the caller's authority policy permits it.
 Inspect the stage impact evidence as part of that review. Metadata-only group
-changes are reachability-neutral; unknown impact is a blocking finding.
+changes and policy metadata changes are reachability-neutral; unknown group
+impact and policy rule changes are blocking findings.
