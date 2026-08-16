@@ -138,6 +138,18 @@ func (c *Client) GetNetworkRouterRaw(ctx context.Context, networkID, routerID st
 	return result, nil
 }
 
+func (c *Client) UpdateNetworkRouter(ctx context.Context, networkID, routerID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "routers", routerID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update router %q for network %q: %w", routerID, networkID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) DeleteNetworkRouter(ctx context.Context, networkID, routerID string) (json.RawMessage, error) {
 	path, err := networkChildPath(networkID, "routers", routerID)
 	if err != nil {

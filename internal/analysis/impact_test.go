@@ -205,3 +205,16 @@ func TestNetworkRouterDeleteImpactIsConservative(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestNetworkRouterUpdateImpactBlocksReachabilityChanges(t *testing.T) {
+	report, err := NetworkRouterUpdateImpact(
+		[]byte(`{"id":"rt1","enabled":true,"masquerade":true,"metric":10,"peer":"p1","peer_groups":["g1"]}`),
+		[]byte(`{"id":"rt1","enabled":false,"masquerade":true,"metric":10,"peer":"p1","peer_groups":["g1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_router_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

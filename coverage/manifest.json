@@ -1159,8 +1159,8 @@
       "id": "put.api.networks.networkId.routers.routerId",
       "method": "PUT",
       "path": "/api/networks/{networkId}/routers/{routerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 113,
+    "implemented": 114,
     "classified": 0,
-    "discovered": 123,
-    "contract_verified": 104,
+    "discovered": 122,
+    "contract_verified": 105,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -110,6 +110,8 @@ as neutral; address, enablement, or group changes emit the blocking
 Network router deletion is staged with blocking
 `impact.network_router_delete` acknowledgement and the same required 404
 absence proof.
+Network router updates are always treated as topology changes and require the
+blocking `impact.network_router_change` acknowledgement.
 Policy deletion is also staged, requires the blocking `impact.policy_delete`
 acknowledgement, and is confirmed only when a post-delete policy read returns
 404.

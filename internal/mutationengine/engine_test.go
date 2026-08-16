@@ -27,6 +27,7 @@ type fakeRemote struct {
 	resourceBefore json.RawMessage
 	resourceAfter  json.RawMessage
 	routerBefore   json.RawMessage
+	routerAfter    json.RawMessage
 	updateErr      error
 	updates        int
 }
@@ -195,6 +196,15 @@ func (f *fakeRemote) GetNetworkRouterRaw(_ context.Context, _, _ string) (json.R
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.routerBefore...), nil
+}
+
+func (f *fakeRemote) UpdateNetworkRouter(_ context.Context, _, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.routerBefore = append(json.RawMessage(nil), f.routerAfter...)
+	return f.routerBefore, nil
 }
 
 func (f *fakeRemote) DeleteNetworkRouter(_ context.Context, _, _ string) (json.RawMessage, error) {
@@ -733,5 +743,39 @@ func TestApplyDispatchesNetworkRouterDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network router delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkRouterUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"rt1","enabled":true,"masquerade":true,"metric":10,"peer":"p1","peer_groups":["g1"]}`
+	after := `{"id":"rt1","enabled":false,"masquerade":true,"metric":10,"peer":"p1","peer_groups":["g1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.routers.update",
+		Request:        json.RawMessage(`{"network_id":"n1","id":"rt1","enabled":false}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"network_router_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["network router update changes reachability fields: [enabled]; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"network_router_change_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.network_router_change", Severity: "blocking", Message: "the proposed network router change may alter reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", routerBefore: []byte(before), routerAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network router update result: %+v updates=%d", result, remote.updates)
 	}
 }
