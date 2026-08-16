@@ -12,7 +12,7 @@
       "method": "GET",
       "path": "/api/accounts",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "delete.api.accounts.accountId",
@@ -411,7 +411,7 @@
       "method": "GET",
       "path": "/api/groups",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "post.api.groups",
@@ -516,14 +516,14 @@
       "method": "GET",
       "path": "/api/instance",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "instance.version",
       "method": "GET",
       "path": "/api/instance/version",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "get.api.integrations.azure_idp",
@@ -1167,7 +1167,7 @@
       "method": "GET",
       "path": "/api/peers",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "get.api.peers.edr.bypassed",
@@ -1202,7 +1202,7 @@
       "method": "GET",
       "path": "/api/peers/{peerId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "put.api.peers.peerId",
@@ -1216,7 +1216,7 @@
       "method": "GET",
       "path": "/api/peers/{peerId}/accessible-peers",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "peers.ingress.ports.list",
@@ -1286,7 +1286,7 @@
       "method": "GET",
       "path": "/api/policies",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "post.api.policies",
@@ -1531,7 +1531,7 @@
       "method": "GET",
       "path": "/api/users",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "live_verified"
     },
     {
       "id": "post.api.users",
@@ -1664,9 +1664,9 @@
     "implemented": 45,
     "classified": 0,
     "discovered": 191,
-    "contract_verified": 45,
+    "contract_verified": 36,
     "disposable_verified": 0,
-    "live_verified": 0,
+    "live_verified": 9,
     "unverified_live": 0
   }
 }
