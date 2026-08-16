@@ -24,12 +24,13 @@ nb posture-checks list --json
 nb events --json
 nb setup-keys list --json
 nb locations countries --json
+nb users tokens list <user-id> --json
 ```
 
 Inventory commands are bounded reads. User and invite results intentionally omit
-passwords and invite tokens, and setup-key inventory intentionally omits the
-upstream setup-key secret. These values are never part of the stable `nb` output
-contract.
+passwords and invite tokens, setup-key inventory omits the upstream setup-key
+secret, and user-token inventory omits token values. These values are never part
+of the stable `nb` output contract.
 
 Request `--json` explicitly when consuming output as an agent. Consequential
 NetBird changes belong under `nb stage`; do not invent a direct-write command.
