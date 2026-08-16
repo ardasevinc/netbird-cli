@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/peers-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/peers-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "peers.list"},
+    "data": {
+      "type": "object",
+      "required": ["peers", "completeness"],
+      "properties": {
+        "peers": {"type": "array", "items": {"$ref": "#/$defs/peer"}},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "peer": {"type": "object", "required": ["id", "name", "hostname", "ip", "os", "version", "connected", "ephemeral", "login_expired", "approval_required", "groups", "created_at", "last_seen"], "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "hostname": {"type": "string"}, "ip": {"type": "string"}, "ipv6": {"type": ["string", "null"]}, "os": {"type": "string"}, "version": {"type": "string"}, "connected": {"type": "boolean"}, "ephemeral": {"type": "boolean"}, "login_expired": {"type": "boolean"}, "approval_required": {"type": "boolean"}, "accessible_peers_count": {"type": "integer"}, "groups": {"type": "array"}, "created_at": {"type": "string"}, "last_seen": {"type": "string"}}, "additionalProperties": false},
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

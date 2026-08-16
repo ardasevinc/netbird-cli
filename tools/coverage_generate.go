@@ -83,6 +83,7 @@ func main() {
 	for i := range ops {
 		ops[i].ID = ownedID(ops[i].Method, ops[i].Path)
 	}
+	applyReviewedOverrides(ops)
 	if err := refreshManifest(*manifestPath, ops, *tag); err != nil {
 		fail("refresh manifest: %v", err)
 	}
@@ -93,6 +94,20 @@ func main() {
 	}
 	if err := writeJSON(*inventoryPath, inv); err != nil {
 		fail("write inventory: %v", err)
+	}
+}
+
+func applyReviewedOverrides(ops []operation) {
+	reviewed := map[string]operation{
+		"GET /api/peers":          {ID: "peers.list", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/peers/{peerId}": {ID: "peers.get", Implementation: "implemented", Verification: "contract_verified"},
+	}
+	for i, item := range ops {
+		if override, ok := reviewed[item.Method+" "+item.Path]; ok {
+			override.Method = item.Method
+			override.Path = item.Path
+			ops[i] = override
+		}
 	}
 }
 
@@ -156,6 +171,11 @@ func refreshManifest(path string, discovered []operation, tag string) error {
 		if !ok {
 			current = item
 			current.Implementation = "discovered"
+		}
+		if item.Implementation != "" && item.Implementation != "discovered" && current.Implementation == "discovered" {
+			current.ID = item.ID
+			current.Implementation = item.Implementation
+			current.Verification = item.Verification
 		}
 		if current.ID == "" {
 			current.ID = item.ID

@@ -206,18 +206,18 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers",
+      "id": "peers.list",
       "method": "GET",
       "path": "/api/peers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "get.api.peers.peerId",
+      "id": "peers.get",
       "method": "GET",
       "path": "/api/peers/{peerId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.peers.peerId",

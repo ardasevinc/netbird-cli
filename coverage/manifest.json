@@ -1163,11 +1163,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers",
+      "id": "peers.list",
       "method": "GET",
       "path": "/api/peers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.peers.edr.bypassed",
@@ -1198,11 +1198,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId",
+      "id": "peers.get",
       "method": "GET",
       "path": "/api/peers/{peerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.peers.peerId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 6,
+    "implemented": 8,
     "classified": 0,
-    "discovered": 230,
-    "contract_verified": 6,
+    "discovered": 228,
+    "contract_verified": 8,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0
