@@ -101,11 +101,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.users.userId.tokens",
+      "id": "users.tokens.list",
       "method": "GET",
       "path": "/api/users/{userId}/tokens",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.users.userId.tokens",
@@ -115,11 +115,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.users.userId.tokens.tokenId",
+      "id": "users.tokens.get",
       "method": "GET",
       "path": "/api/users/{userId}/tokens/{tokenId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.users.userId.tokens.tokenId",

@@ -40,6 +40,7 @@ func usersCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	}
 	list.Flags().StringVar(&serviceUser, "service-user", "", "filter by service user: true or false")
 	command.AddCommand(list)
+	command.AddCommand(userTokensCommand(state, stdout))
 	command.AddCommand(&cobra.Command{
 		Use:   "invites",
 		Short: "list pending user invites without secret tokens",

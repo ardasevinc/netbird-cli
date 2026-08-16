@@ -41,6 +41,8 @@ var definitions = map[string]Definition{
 	"setup_keys.get":          {Name: "setup_keys.get", Method: "GET", Path: "/api/setup-keys/{keyId}", Mutation: ReadOnly},
 	"locations.countries":     {Name: "locations.countries", Method: "GET", Path: "/api/locations/countries", Mutation: ReadOnly},
 	"locations.cities":        {Name: "locations.cities", Method: "GET", Path: "/api/locations/countries/{country}/cities", Mutation: ReadOnly},
+	"users.tokens.list":       {Name: "users.tokens.list", Method: "GET", Path: "/api/users/{userId}/tokens", Mutation: ReadOnly},
+	"users.tokens.get":        {Name: "users.tokens.get", Method: "GET", Path: "/api/users/{userId}/tokens/{tokenId}", Mutation: ReadOnly},
 	"networks.list":           {Name: "networks.list", Method: "GET", Path: "/api/networks", Mutation: ReadOnly},
 	"networks.get":            {Name: "networks.get", Method: "GET", Path: "/api/networks/{networkId}", Mutation: ReadOnly},
 	"routes.list":             {Name: "routes.list", Method: "GET", Path: "/api/routes", Mutation: ReadOnly},
