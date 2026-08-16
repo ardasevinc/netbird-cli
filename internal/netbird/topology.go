@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -116,6 +117,30 @@ func (c *Client) GetRoute(ctx context.Context, id string) (Route, error) {
 		return Route{}, fmt.Errorf("get route %q: %w", id, err)
 	}
 	return result.normalized(), nil
+}
+
+func (c *Client) GetRouteRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := topologyPath("routes", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get route %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateRoute(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := topologyPath("routes", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update route %q: %w", id, err)
+	}
+	return result, nil
 }
 
 func (c *Client) ListNetworks(ctx context.Context) ([]Network, error) {

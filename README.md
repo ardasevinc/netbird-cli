@@ -88,6 +88,9 @@ Policy stages use the same preimage and read-back contract. Metadata-only policy
 changes are reachability-neutral; rule changes emit a blocking
 `impact.policy_rule_change` finding because exact affected peers and resources
 require live topology analysis.
+Route stages use the same contract. Description-only edits are reachability-
+neutral; changes to enabled state, network, peer groups, metrics, or other
+routing fields emit the blocking `impact.route_change` finding.
 
 ## Development
 

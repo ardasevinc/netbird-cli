@@ -55,4 +55,4 @@ Inspect the stage, acknowledge the exact findings, and apply an exact
 `<stage-id>@<revision>` only after the caller's authority policy permits it.
 Inspect the stage impact evidence as part of that review. Metadata-only group
 changes and policy metadata changes are reachability-neutral; unknown group
-impact and policy rule changes are blocking findings.
+impact, policy rule changes, and route behavior changes are blocking findings.

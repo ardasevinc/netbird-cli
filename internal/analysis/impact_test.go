@@ -31,3 +31,29 @@ func TestPolicyUpdateImpactMarksRuleChangesAsPotentialReachabilityChange(t *test
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
+	report, err := RouteUpdateImpact(
+		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),
+		[]byte(`{"id":"r1","description":"new","enabled":true,"metric":10,"groups":["g1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "metadata_only" || report.Reachability != "unchanged" || report.Confidence != "high" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestRouteUpdateImpactBlocksRoutingChanges(t *testing.T) {
+	report, err := RouteUpdateImpact(
+		[]byte(`{"id":"r1","description":"route","enabled":true,"metric":10,"groups":["g1"]}`),
+		[]byte(`{"id":"r1","description":"route","enabled":false,"metric":10,"groups":["g1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "route_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

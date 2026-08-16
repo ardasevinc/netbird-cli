@@ -18,6 +18,8 @@ type fakeRemote struct {
 	after        json.RawMessage
 	policyBefore json.RawMessage
 	policyAfter  json.RawMessage
+	routeBefore  json.RawMessage
+	routeAfter   json.RawMessage
 	updateErr    error
 	updates      int
 }
@@ -55,6 +57,19 @@ func (f *fakeRemote) UpdatePolicy(_ context.Context, _ string, _ json.RawMessage
 	}
 	f.policyBefore = append(json.RawMessage(nil), f.policyAfter...)
 	return f.policyBefore, nil
+}
+
+func (f *fakeRemote) GetRouteRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	return append(json.RawMessage(nil), f.routeBefore...), nil
+}
+
+func (f *fakeRemote) UpdateRoute(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.routeBefore = append(json.RawMessage(nil), f.routeAfter...)
+	return f.routeBefore, nil
 }
 
 func stageForTest(t *testing.T, store *ledger.Store, before, after string) ledger.Stage {
@@ -221,5 +236,38 @@ func TestApplyDispatchesPolicyUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected policy result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesRouteUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`
+	after := `{"id":"r1","description":"new","enabled":true,"metric":10,"groups":["g1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "routes.update",
+		Request:        json.RawMessage(`{"id":"r1","description":"new","enabled":true,"metric":10,"groups":["g1"]}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"metadata_only","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["route description changed without changing routing behavior"],"completeness":{"state":"complete","reason":null}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", routeBefore: []byte(before), routeAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected route result: %+v updates=%d", result, remote.updates)
 	}
 }

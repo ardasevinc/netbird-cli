@@ -72,6 +72,7 @@ var definitions = map[string]Definition{
 	"policies.list":             {Name: "policies.list", Method: "GET", Path: "/api/policies", Mutation: ReadOnly},
 	"policies.get":              {Name: "policies.get", Method: "GET", Path: "/api/policies/{policyId}", Mutation: ReadOnly},
 	"policies.update":           {Name: "policies.update", Method: "PUT", Path: "/api/policies/{policyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"routes.update":             {Name: "routes.update", Method: "PUT", Path: "/api/routes/{routeId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 }
 
 func Lookup(name string) (Definition, error) {

@@ -1478,11 +1478,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.routes.routeId",
+      "id": "routes.update",
       "method": "PUT",
       "path": "/api/routes/{routeId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.setup",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 102,
+    "implemented": 103,
     "classified": 0,
-    "discovered": 134,
-    "contract_verified": 93,
+    "discovered": 133,
+    "contract_verified": 94,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

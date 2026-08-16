@@ -51,6 +51,37 @@ func PolicyUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode route impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode route impact intended state: %w", err)
+	}
+	changed := changedKeys(beforeObject, afterObject)
+	if len(changed) == 0 || (len(changed) == 1 && changed[0] == "description") {
+		return ImpactReport{
+			Classification:    "metadata_only",
+			Reachability:      "unchanged",
+			AffectedPeers:     []string{},
+			AffectedResources: []string{},
+			Confidence:        "high",
+			Evidence:          []string{"route description changed without changing routing behavior"},
+			Completeness:      map[string]any{"state": "complete", "reason": nil},
+		}, nil
+	}
+	return ImpactReport{
+		Classification:    "route_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{fmt.Sprintf("route update changes routing fields: %v; affected peers and resources require live topology analysis", changed)},
+		Completeness:      map[string]any{"state": "unknown", "reason": "route_change_requires_topology"},
+	}, nil
+}
+
 func GroupUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

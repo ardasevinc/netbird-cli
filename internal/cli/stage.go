@@ -59,13 +59,16 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "policies.update":
+			case "groups.update", "policies.update", "routes.update":
 				var report analysis.ImpactReport
 				var err error
-				if plan.Operation == "groups.update" {
+				switch plan.Operation {
+				case "groups.update":
 					report, err = analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
-				} else {
+				case "policies.update":
 					report, err = analysis.PolicyUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "routes.update":
+					report, err = analysis.RouteUpdateImpact(plan.Before, plan.IntendedAfter)
 				}
 				if err != nil {
 					return fail(2, err)
@@ -83,6 +86,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "policies.update" && report.Classification == "policy_rule_change":
 					findingCode = "impact.policy_rule_change"
 					findingMessage = "the proposed policy rule change may alter reachability and requires exact acknowledgement"
+				case plan.Operation == "routes.update" && report.Classification == "route_change":
+					findingCode = "impact.route_change"
+					findingMessage = "the proposed route change may alter reachability and requires exact acknowledgement"
 				}
 				if findingCode != "" && !hasFinding(findings, findingCode) {
 					findings = append(findings, ledger.Finding{Code: findingCode, Severity: "blocking", Message: findingMessage})

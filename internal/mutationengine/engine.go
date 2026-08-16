@@ -21,6 +21,8 @@ type Remote interface {
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetRouteRaw(context.Context, string) (json.RawMessage, error)
+	UpdateRoute(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -158,6 +160,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetGroup(ctx, id)
 	case "policies.update":
 		return remote.GetPolicyRaw(ctx, id)
+	case "routes.update":
+		return remote.GetRouteRaw(ctx, id)
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
@@ -169,6 +173,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.UpdateGroup(ctx, id, request)
 	case "policies.update":
 		return remote.UpdatePolicy(ctx, id, request)
+	case "routes.update":
+		return remote.UpdateRoute(ctx, id, request)
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
@@ -180,6 +186,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.GroupUpdateImpact(before, intendedAfter)
 	case "policies.update":
 		return analysis.PolicyUpdateImpact(before, intendedAfter)
+	case "routes.update":
+		return analysis.RouteUpdateImpact(before, intendedAfter)
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}

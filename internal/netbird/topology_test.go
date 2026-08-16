@@ -51,3 +51,32 @@ func TestListAndGetTopologyReadsNormalizeOptionalFields(t *testing.T) {
 		t.Fatalf("network=%+v err=%v", network, err)
 	}
 }
+
+func TestUpdateRouteUsesPUTAndReturnsRawDocument(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/routes/route-1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["description"] != "updated" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "route-1", "description": "updated", "enabled": true, "metric": 10, "groups": []string{"g1"}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := NewClient(client).UpdateRoute(context.Background(), "route-1", json.RawMessage(`{"description":"updated"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response map[string]any
+	if err := json.Unmarshal(result, &response); err != nil || response["description"] != "updated" {
+		t.Fatalf("unexpected result: %s err=%v", result, err)
+	}
+}
