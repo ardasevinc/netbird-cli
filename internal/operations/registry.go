@@ -37,6 +37,8 @@ var definitions = map[string]Definition{
 	"posture_checks.list":     {Name: "posture_checks.list", Method: "GET", Path: "/api/posture-checks", Mutation: ReadOnly},
 	"posture_checks.get":      {Name: "posture_checks.get", Method: "GET", Path: "/api/posture-checks/{postureCheckId}", Mutation: ReadOnly},
 	"events.audit":            {Name: "events.audit", Method: "GET", Path: "/api/events/audit", Mutation: ReadOnly},
+	"setup_keys.list":         {Name: "setup_keys.list", Method: "GET", Path: "/api/setup-keys", Mutation: ReadOnly},
+	"setup_keys.get":          {Name: "setup_keys.get", Method: "GET", Path: "/api/setup-keys/{keyId}", Mutation: ReadOnly},
 	"networks.list":           {Name: "networks.list", Method: "GET", Path: "/api/networks", Mutation: ReadOnly},
 	"networks.get":            {Name: "networks.get", Method: "GET", Path: "/api/networks/{networkId}", Mutation: ReadOnly},
 	"routes.list":             {Name: "routes.list", Method: "GET", Path: "/api/routes", Mutation: ReadOnly},

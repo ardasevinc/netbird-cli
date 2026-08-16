@@ -318,11 +318,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.setup_keys",
+      "id": "setup_keys.list",
       "method": "GET",
       "path": "/api/setup-keys",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.setup_keys",
@@ -332,11 +332,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.setup_keys.keyId",
+      "id": "setup_keys.get",
       "method": "GET",
       "path": "/api/setup-keys/{keyId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.setup_keys.keyId",
