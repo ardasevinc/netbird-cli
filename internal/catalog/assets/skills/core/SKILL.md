@@ -14,6 +14,7 @@ nb skills get core
 nb schema list
 nb capabilities --json
 nb version --jsonl
+nb api get get.api.reverse_proxies.services --json
 nb accounts list --json
 nb users list --json
 nb users invites --json

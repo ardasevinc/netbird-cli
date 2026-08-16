@@ -100,6 +100,14 @@ func NewClient(transportClient *transport.Client) *Client {
 
 func (c *Client) ServerIdentity() string { return c.transport.Origin() }
 
+func (c *Client) GetRaw(ctx context.Context, path string) ([]byte, error) {
+	response, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get %s: %w", path, err)
+	}
+	return response.Body, nil
+}
+
 func (c *Client) Discover(ctx context.Context, authenticated bool) (Discovery, error) {
 	result := Discovery{IdentityStatus: "not_requested"}
 	if err := c.transport.GetJSON(ctx, "/api/instance/version", &result.Version); err != nil {

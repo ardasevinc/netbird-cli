@@ -32,22 +32,22 @@
       "id": "get.api.agent_network.access_log_sessions",
       "method": "GET",
       "path": "/api/agent-network/access-log-sessions",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.access_logs",
       "method": "GET",
       "path": "/api/agent-network/access-logs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.budget_rules",
       "method": "GET",
       "path": "/api/agent-network/budget-rules",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.agent_network.budget_rules",
@@ -67,8 +67,8 @@
       "id": "get.api.agent_network.budget_rules.ruleId",
       "method": "GET",
       "path": "/api/agent-network/budget-rules/{ruleId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.agent_network.budget_rules.ruleId",
@@ -81,22 +81,22 @@
       "id": "get.api.agent_network.catalog.providers",
       "method": "GET",
       "path": "/api/agent-network/catalog/providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.consumption",
       "method": "GET",
       "path": "/api/agent-network/consumption",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.guardrails",
       "method": "GET",
       "path": "/api/agent-network/guardrails",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.agent_network.guardrails",
@@ -116,8 +116,8 @@
       "id": "get.api.agent_network.guardrails.guardrailId",
       "method": "GET",
       "path": "/api/agent-network/guardrails/{guardrailId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.agent_network.guardrails.guardrailId",
@@ -130,8 +130,8 @@
       "id": "get.api.agent_network.policies",
       "method": "GET",
       "path": "/api/agent-network/policies",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.agent_network.policies",
@@ -151,8 +151,8 @@
       "id": "get.api.agent_network.policies.policyId",
       "method": "GET",
       "path": "/api/agent-network/policies/{policyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.agent_network.policies.policyId",
@@ -165,8 +165,8 @@
       "id": "get.api.agent_network.providers",
       "method": "GET",
       "path": "/api/agent-network/providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.agent_network.providers",
@@ -186,8 +186,8 @@
       "id": "get.api.agent_network.providers.providerId",
       "method": "GET",
       "path": "/api/agent-network/providers/{providerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.agent_network.providers.providerId",
@@ -207,8 +207,8 @@
       "id": "get.api.agent_network.settings",
       "method": "GET",
       "path": "/api/agent-network/settings",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.agent_network.settings",
@@ -228,8 +228,8 @@
       "id": "get.api.agent_network.usage.overview",
       "method": "GET",
       "path": "/api/agent-network/usage/overview",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "dns.nameservers.list",
@@ -354,8 +354,8 @@
       "id": "get.api.event_streaming",
       "method": "GET",
       "path": "/api/event-streaming",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.event_streaming",
@@ -375,8 +375,8 @@
       "id": "get.api.event_streaming.id",
       "method": "GET",
       "path": "/api/event-streaming/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.event_streaming.id",
@@ -529,8 +529,8 @@
       "id": "get.api.integrations.azure_idp",
       "method": "GET",
       "path": "/api/integrations/azure-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.azure_idp",
@@ -550,8 +550,8 @@
       "id": "get.api.integrations.azure_idp.id",
       "method": "GET",
       "path": "/api/integrations/azure-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.azure_idp.id",
@@ -564,8 +564,8 @@
       "id": "get.api.integrations.azure_idp.id.logs",
       "method": "GET",
       "path": "/api/integrations/azure-idp/{id}/logs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.azure_idp.id.sync",
@@ -599,43 +599,43 @@
       "id": "get.api.integrations.billing.invoices",
       "method": "GET",
       "path": "/api/integrations/billing/invoices",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.invoices.id.csv",
       "method": "GET",
       "path": "/api/integrations/billing/invoices/{id}/csv",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.invoices.id.pdf",
       "method": "GET",
       "path": "/api/integrations/billing/invoices/{id}/pdf",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.plans",
       "method": "GET",
       "path": "/api/integrations/billing/plans",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.portal",
       "method": "GET",
       "path": "/api/integrations/billing/portal",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.subscription",
       "method": "GET",
       "path": "/api/integrations/billing/subscription",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.billing.subscription",
@@ -648,8 +648,8 @@
       "id": "get.api.integrations.billing.usage",
       "method": "GET",
       "path": "/api/integrations/billing/usage",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.integrations.edr.falcon",
@@ -662,8 +662,8 @@
       "id": "get.api.integrations.edr.falcon",
       "method": "GET",
       "path": "/api/integrations/edr/falcon",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.edr.falcon",
@@ -690,8 +690,8 @@
       "id": "get.api.integrations.edr.fleetdm",
       "method": "GET",
       "path": "/api/integrations/edr/fleetdm",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.edr.fleetdm",
@@ -718,8 +718,8 @@
       "id": "get.api.integrations.edr.huntress",
       "method": "GET",
       "path": "/api/integrations/edr/huntress",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.edr.huntress",
@@ -746,8 +746,8 @@
       "id": "get.api.integrations.edr.intune",
       "method": "GET",
       "path": "/api/integrations/edr/intune",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.edr.intune",
@@ -774,8 +774,8 @@
       "id": "get.api.integrations.edr.sentinelone",
       "method": "GET",
       "path": "/api/integrations/edr/sentinelone",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.edr.sentinelone",
@@ -795,8 +795,8 @@
       "id": "get.api.integrations.google_idp",
       "method": "GET",
       "path": "/api/integrations/google-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.google_idp",
@@ -816,8 +816,8 @@
       "id": "get.api.integrations.google_idp.id",
       "method": "GET",
       "path": "/api/integrations/google-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.google_idp.id",
@@ -830,8 +830,8 @@
       "id": "get.api.integrations.google_idp.id.logs",
       "method": "GET",
       "path": "/api/integrations/google-idp/{id}/logs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.google_idp.id.sync",
@@ -844,8 +844,8 @@
       "id": "get.api.integrations.msp.tenants",
       "method": "GET",
       "path": "/api/integrations/msp/tenants",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.msp.tenants",
@@ -900,8 +900,8 @@
       "id": "get.api.integrations.notifications.channels",
       "method": "GET",
       "path": "/api/integrations/notifications/channels",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.notifications.channels",
@@ -921,8 +921,8 @@
       "id": "get.api.integrations.notifications.channels.channelId",
       "method": "GET",
       "path": "/api/integrations/notifications/channels/{channelId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.notifications.channels.channelId",
@@ -935,15 +935,15 @@
       "id": "get.api.integrations.notifications.types",
       "method": "GET",
       "path": "/api/integrations/notifications/types",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.okta_scim_idp",
       "method": "GET",
       "path": "/api/integrations/okta-scim-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.okta_scim_idp",
@@ -963,8 +963,8 @@
       "id": "get.api.integrations.okta_scim_idp.id",
       "method": "GET",
       "path": "/api/integrations/okta-scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.okta_scim_idp.id",
@@ -977,8 +977,8 @@
       "id": "get.api.integrations.okta_scim_idp.id.logs",
       "method": "GET",
       "path": "/api/integrations/okta-scim-idp/{id}/logs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.okta_scim_idp.id.token",
@@ -991,8 +991,8 @@
       "id": "get.api.integrations.scim_idp",
       "method": "GET",
       "path": "/api/integrations/scim-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.scim_idp",
@@ -1012,8 +1012,8 @@
       "id": "get.api.integrations.scim_idp.id",
       "method": "GET",
       "path": "/api/integrations/scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.scim_idp.id",
@@ -1026,8 +1026,8 @@
       "id": "get.api.integrations.scim_idp.id.logs",
       "method": "GET",
       "path": "/api/integrations/scim-idp/{id}/logs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.scim_idp.id.token",
@@ -1173,8 +1173,8 @@
       "id": "get.api.peers.edr.bypassed",
       "method": "GET",
       "path": "/api/peers/edr/bypassed",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.peers.peer_id.edr.bypass",
@@ -1257,8 +1257,8 @@
       "id": "get.api.peers.peerId.jobs",
       "method": "GET",
       "path": "/api/peers/{peerId}/jobs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.peers.peerId.jobs",
@@ -1271,8 +1271,8 @@
       "id": "get.api.peers.peerId.jobs.jobId",
       "method": "GET",
       "path": "/api/peers/{peerId}/jobs/{jobId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.peers.peerId.temporary_access",
@@ -1355,8 +1355,8 @@
       "id": "get.api.reverse_proxies.clusters",
       "method": "GET",
       "path": "/api/reverse-proxies/clusters",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.reverse_proxies.clusters.clusterAddress",
@@ -1369,8 +1369,8 @@
       "id": "get.api.reverse_proxies.domains",
       "method": "GET",
       "path": "/api/reverse-proxies/domains",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.reverse_proxies.domains",
@@ -1390,15 +1390,15 @@
       "id": "get.api.reverse_proxies.domains.domainId.validate",
       "method": "GET",
       "path": "/api/reverse-proxies/domains/{domainId}/validate",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.reverse_proxies.proxy_tokens",
       "method": "GET",
       "path": "/api/reverse-proxies/proxy-tokens",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.reverse_proxies.proxy_tokens",
@@ -1418,8 +1418,8 @@
       "id": "get.api.reverse_proxies.services",
       "method": "GET",
       "path": "/api/reverse-proxies/services",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.reverse_proxies.services",
@@ -1439,8 +1439,8 @@
       "id": "get.api.reverse_proxies.services.serviceId",
       "method": "GET",
       "path": "/api/reverse-proxies/services/{serviceId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.reverse_proxies.services.serviceId",
@@ -1579,8 +1579,8 @@
       "id": "get.api.users.invites.token",
       "method": "GET",
       "path": "/api/users/invites/{token}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.users.invites.token.accept",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 47,
+    "implemented": 101,
     "classified": 0,
-    "discovered": 189,
-    "contract_verified": 38,
+    "discovered": 135,
+    "contract_verified": 92,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

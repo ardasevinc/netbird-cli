@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/raw-get-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/raw-get-result"},
+    "ok": {"const": true},
+    "operation": {"const": "api.get"},
+    "data": {
+      "type": "object",
+      "required": ["operation_id", "path", "payload", "completeness"],
+      "properties": {
+        "operation_id": {"type": "string"},
+        "path": {"type": "string"},
+        "payload": {},
+        "completeness": {
+          "type": "object",
+          "required": ["state", "reason"],
+          "properties": {"state": {"const": "unknown"}, "reason": {"const": "raw_endpoint"}},
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

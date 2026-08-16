@@ -16,6 +16,7 @@ go run ./cmd/nb version --jsonl
 go run ./cmd/nb schema list
 go run ./cmd/nb skills list
 go run ./cmd/nb coverage
+go run ./cmd/nb api get get.api.reverse_proxies.services --json
 go run ./cmd/nb groups list --json
 go run ./cmd/nb groups get <group-id> --json
 go run ./cmd/nb accounts list --json
@@ -66,6 +67,11 @@ not infer data-plane certainty from policy shape alone.
 The network-traffic and proxy event commands expose one server page at a time.
 Their JSON responses retain the server pagination totals and mark the result
 `partial` until the requested page reaches the final page.
+
+The manifest-backed `api get` command covers obscure or edition-specific GET
+operations without inventing unsafe write dispatch. It accepts the manifest
+operation ID, path values in template order, and repeatable `--query key=value`
+filters. Its raw payload is explicitly labelled with unknown completeness.
 
 Consequential changes are created as immutable local stages. `apply` accepts
 only an exact stage ID and revision, rechecks the live preimage, journals the

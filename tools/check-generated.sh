@@ -12,4 +12,13 @@ for source in "$asset_root"/*.json; do
   cmp -s "$source" "$public" || { echo "stale generated schema: $public" >&2; exit 1; }
 done
 
-echo "generated schemas are current"
+skill_asset_root="$repo_root/internal/catalog/assets/skills"
+skill_public_root="$repo_root/skills"
+while IFS= read -r -d '' source; do
+  relative="${source#"$skill_asset_root/"}"
+  public="$skill_public_root/$relative"
+  test -f "$public" || { echo "missing generated skill: $public" >&2; exit 1; }
+  cmp -s "$source" "$public" || { echo "stale generated skill: $public" >&2; exit 1; }
+done < <(find "$skill_asset_root" -type f -name 'SKILL.md' -print0)
+
+echo "generated schemas and skills are current"
