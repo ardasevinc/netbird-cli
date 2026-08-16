@@ -32,6 +32,8 @@ var definitions = map[string]Definition{
 	"groups.update":    {Name: "groups.update", Method: "PUT", Path: "/api/groups/{groupId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.list":       {Name: "peers.list", Method: "GET", Path: "/api/peers", Mutation: ReadOnly},
 	"peers.get":        {Name: "peers.get", Method: "GET", Path: "/api/peers/{peerId}", Mutation: ReadOnly},
+	"policies.list":    {Name: "policies.list", Method: "GET", Path: "/api/policies", Mutation: ReadOnly},
+	"policies.get":     {Name: "policies.get", Method: "GET", Path: "/api/policies/{policyId}", Mutation: ReadOnly},
 }
 
 func Lookup(name string) (Definition, error) {

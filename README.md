@@ -19,6 +19,8 @@ go run ./cmd/nb groups list --json
 go run ./cmd/nb groups get <group-id> --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
+go run ./cmd/nb policies list --json
+go run ./cmd/nb policies get <policy-id> --json
 go run ./cmd/nb stage create --from-json
 go run ./cmd/nb apply <stage-id>@<revision>
 ```

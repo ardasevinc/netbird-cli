@@ -1282,11 +1282,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.policies",
+      "id": "policies.list",
       "method": "GET",
       "path": "/api/policies",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.policies",
@@ -1303,11 +1303,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.policies.policyId",
+      "id": "policies.get",
       "method": "GET",
       "path": "/api/policies/{policyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.policies.policyId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 8,
+    "implemented": 10,
     "classified": 0,
-    "discovered": 228,
-    "contract_verified": 8,
+    "discovered": 226,
+    "contract_verified": 10,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

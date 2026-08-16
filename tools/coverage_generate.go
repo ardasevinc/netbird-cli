@@ -99,8 +99,10 @@ func main() {
 
 func applyReviewedOverrides(ops []operation) {
 	reviewed := map[string]operation{
-		"GET /api/peers":          {ID: "peers.list", Implementation: "implemented", Verification: "contract_verified"},
-		"GET /api/peers/{peerId}": {ID: "peers.get", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/peers":               {ID: "peers.list", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/peers/{peerId}":      {ID: "peers.get", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/policies":            {ID: "policies.list", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/policies/{policyId}": {ID: "policies.get", Implementation: "implemented", Verification: "contract_verified"},
 	}
 	for i, item := range ops {
 		if override, ok := reviewed[item.Method+" "+item.Path]; ok {

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/policies-get-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/policies-get-result"},
+    "ok": {"const": true},
+    "operation": {"const": "policies.get"},
+    "data": {"type": "object", "required": ["policy", "completeness"], "properties": {"policy": {"$ref": "#/$defs/policy"}, "completeness": {"$ref": "#/$defs/completeness"}}, "additionalProperties": false}
+  },
+  "$defs": {
+    "policy": {"type": "object", "required": ["name", "enabled", "rules", "source_posture_checks"], "properties": {"id": {"type": ["string", "null"]}, "name": {"type": "string"}, "description": {"type": ["string", "null"]}, "enabled": {"type": "boolean"}, "rules": {"type": "array"}, "source_posture_checks": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

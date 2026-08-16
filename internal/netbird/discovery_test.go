@@ -90,3 +90,33 @@ func TestListAndGetPeersNormalizeReadOnlyResponses(t *testing.T) {
 		t.Fatalf("peer=%+v err=%v", peer, err)
 	}
 }
+
+func TestListAndGetPoliciesUseReadOnlyEndpoints(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		switch r.URL.Path {
+		case "/api/policies":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "policy-1", "name": "allow-ssh", "enabled": true, "rules": []any{}, "source_posture_checks": []string{}}})
+		case "/api/policies/policy-1":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "policy-1", "name": "allow-ssh", "enabled": true, "rules": []any{}, "source_posture_checks": []string{}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := NewClient(client)
+	policies, err := adapter.ListPolicies(context.Background())
+	if err != nil || len(policies) != 1 || policies[0].Name != "allow-ssh" {
+		t.Fatalf("policies=%+v err=%v", policies, err)
+	}
+	policy, err := adapter.GetPolicy(context.Background(), "policy-1")
+	if err != nil || policy.ID == nil || *policy.ID != "policy-1" {
+		t.Fatalf("policy=%+v err=%v", policy, err)
+	}
+}

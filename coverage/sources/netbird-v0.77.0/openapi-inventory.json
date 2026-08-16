@@ -388,11 +388,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.policies",
+      "id": "policies.list",
       "method": "GET",
       "path": "/api/policies",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.policies",
@@ -402,11 +402,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.policies.policyId",
+      "id": "policies.get",
       "method": "GET",
       "path": "/api/policies/{policyId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.policies.policyId",
