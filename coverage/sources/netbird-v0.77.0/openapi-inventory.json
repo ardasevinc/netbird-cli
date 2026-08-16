@@ -493,11 +493,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.resources",
+      "id": "networks.resources.list",
       "method": "GET",
       "path": "/api/networks/{networkId}/resources",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.networks.networkId.resources",
@@ -507,11 +507,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.resources.resourceId",
+      "id": "networks.resources.get",
       "method": "GET",
       "path": "/api/networks/{networkId}/resources/{resourceId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.networks.networkId.resources.resourceId",
@@ -528,11 +528,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.routers",
+      "id": "networks.routers.list",
       "method": "GET",
       "path": "/api/networks/{networkId}/routers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.networks.networkId.routers",
@@ -542,11 +542,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.routers.routerId",
+      "id": "networks.routers.get",
       "method": "GET",
       "path": "/api/networks/{networkId}/routers/{routerId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.networks.networkId.routers.routerId",
@@ -563,11 +563,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.routers",
+      "id": "networks.routers.list_all",
       "method": "GET",
       "path": "/api/networks/routers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "dns.nameservers.list",

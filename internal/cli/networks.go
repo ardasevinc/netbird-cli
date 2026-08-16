@@ -9,6 +9,7 @@ import (
 
 func networksCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	command := &cobra.Command{Use: "networks", Short: "inspect NetBird routed networks"}
+	command.AddCommand(networkResourcesCommand(state, stdout), networkRoutersCommand(state, stdout))
 	command.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "list networks with bounded completeness semantics",

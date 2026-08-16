@@ -1065,11 +1065,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.routers",
+      "id": "networks.routers.list_all",
       "method": "GET",
       "path": "/api/networks/routers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.networks.networkId",
@@ -1093,11 +1093,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.resources",
+      "id": "networks.resources.list",
       "method": "GET",
       "path": "/api/networks/{networkId}/resources",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.networks.networkId.resources",
@@ -1114,11 +1114,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.resources.resourceId",
+      "id": "networks.resources.get",
       "method": "GET",
       "path": "/api/networks/{networkId}/resources/{resourceId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.networks.networkId.resources.resourceId",
@@ -1128,11 +1128,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.routers",
+      "id": "networks.routers.list",
       "method": "GET",
       "path": "/api/networks/{networkId}/routers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.networks.networkId.routers",
@@ -1149,11 +1149,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId.routers.routerId",
+      "id": "networks.routers.get",
       "method": "GET",
       "path": "/api/networks/{networkId}/routers/{routerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.networks.networkId.routers.routerId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 33,
+    "implemented": 38,
     "classified": 0,
-    "discovered": 203,
-    "contract_verified": 33,
+    "discovered": 198,
+    "contract_verified": 38,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0
