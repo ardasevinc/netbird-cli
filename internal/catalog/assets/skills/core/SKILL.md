@@ -13,6 +13,7 @@ nb skills list
 nb skills get core
 nb schema list
 nb capabilities --json
+nb version --jsonl
 nb accounts list --json
 nb users list --json
 nb users invites --json

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,17 +17,25 @@ import (
 
 type commandState struct {
 	json        bool
+	jsonl       bool
 	configPath  string
 	profileName string
 	statePath   string
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info version.Info) int {
-	state := &commandState{}
-	root := newRoot(state, stdout, stderr, info)
+	state := &commandState{json: wantsJSON(args) || wantsJSONL(args), jsonl: wantsJSONL(args)}
+	commandStdout := stdout
+	var streamOutput bytes.Buffer
+	if state.jsonl {
+		commandStdout = &streamOutput
+	}
+	root := newRoot(state, commandStdout, stderr, info)
 	root.SetArgs(args)
 	if err := root.ExecuteContext(ctx); err != nil {
-		if state.json {
+		if state.jsonl {
+			_ = writeJSONLFailure(stdout, "cli", err)
+		} else if state.json {
 			_ = writeJSON(stdout, map[string]any{
 				"schema":    "nb/v1/error",
 				"ok":        false,
@@ -44,7 +53,31 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info 
 		}
 		return int(exit.InvalidInput)
 	}
+	if state.jsonl {
+		if err := writeJSONL(stdout, streamOutput.Bytes()); err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return int(exit.Internal)
+		}
+	}
 	return 0
+}
+
+func wantsJSON(args []string) bool {
+	for _, arg := range args {
+		if arg == "--json" || arg == "--json=true" {
+			return true
+		}
+	}
+	return false
+}
+
+func wantsJSONL(args []string) bool {
+	for _, arg := range args {
+		if arg == "--jsonl" || arg == "--jsonl=true" {
+			return true
+		}
+	}
+	return false
 }
 
 func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *cobra.Command {
@@ -57,6 +90,7 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	root.PersistentFlags().BoolVar(&state.json, "json", state.json, "emit one machine-readable JSON document")
+	root.PersistentFlags().BoolVar(&state.jsonl, "jsonl", state.jsonl, "emit a bounded machine-readable JSONL stream")
 	configPath := state.configPath
 	if configPath == "" {
 		configPath = config.DefaultPath()
@@ -224,6 +258,70 @@ func writeJSON(w io.Writer, value any) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(value)
+}
+
+const streamSchema = "nb/v1/stream-event"
+
+func writeJSONL(w io.Writer, document []byte) error {
+	var envelope struct {
+		Operation string          `json:"operation"`
+		Data      json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(document, &envelope); err != nil {
+		return fmt.Errorf("decode finite JSON result for JSONL: %w", err)
+	}
+	var value any
+	if err := json.Unmarshal(envelope.Data, &value); err != nil {
+		return fmt.Errorf("decode finite result data for JSONL: %w", err)
+	}
+
+	items, completeness := streamItems(value)
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	for _, item := range items {
+		if err := encoder.Encode(map[string]any{"schema": streamSchema, "type": "record", "operation": envelope.Operation, "data": item}); err != nil {
+			return err
+		}
+	}
+	return encoder.Encode(map[string]any{
+		"schema":    streamSchema,
+		"type":      "complete",
+		"operation": envelope.Operation,
+		"data": map[string]any{
+			"count":        len(items),
+			"completeness": completeness,
+		},
+	})
+}
+
+func writeJSONLFailure(w io.Writer, operation string, err error) error {
+	return writeJSON(w, map[string]any{
+		"schema":    streamSchema,
+		"type":      "error",
+		"operation": operation,
+		"error": map[string]any{
+			"code":    "invalid_input",
+			"class":   "input",
+			"message": err.Error(),
+		},
+	})
+}
+
+func streamItems(value any) ([]any, any) {
+	completeness := any(map[string]any{"state": "complete", "reason": nil})
+	object, ok := value.(map[string]any)
+	if !ok {
+		return []any{value}, completeness
+	}
+	if current, ok := object["completeness"]; ok {
+		completeness = current
+	}
+	for _, key := range []string{"items", "records", "events", "groups", "peers", "policies", "users", "accounts", "routes", "networks", "zones", "logs", "schemas", "skills", "operations"} {
+		if collection, ok := object[key].([]any); ok {
+			return collection, completeness
+		}
+	}
+	return []any{value}, completeness
 }
 
 type commandFailure struct {

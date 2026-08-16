@@ -40,3 +40,56 @@ func TestExecuteSchemaList(t *testing.T) {
 		t.Fatal("schema list was empty")
 	}
 }
+
+func TestExecuteVersionJSONL(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), []string{"--jsonl", "version"}, &stdout, &stderr, version.Info{Version: "1.2.3", Commit: "abc", Date: "now"})
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("code=%d stderr=%q", code, stderr.String())
+	}
+	lines := bytes.Split(bytes.TrimSpace(stdout.Bytes()), []byte("\n"))
+	if len(lines) != 2 {
+		t.Fatalf("expected record and complete lines, got %d: %s", len(lines), stdout.String())
+	}
+	var record struct {
+		Schema    string `json:"schema"`
+		Type      string `json:"type"`
+		Operation string `json:"operation"`
+		Data      struct {
+			Version string `json:"version"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(lines[0], &record); err != nil {
+		t.Fatal(err)
+	}
+	var complete struct {
+		Type string `json:"type"`
+		Data struct {
+			Count int `json:"count"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(lines[1], &complete); err != nil {
+		t.Fatal(err)
+	}
+	if record.Schema != streamSchema || record.Type != "record" || record.Operation != "version" || record.Data.Version != "1.2.3" || complete.Type != "complete" || complete.Data.Count != 1 {
+		t.Fatalf("unexpected JSONL: %s", stdout.String())
+	}
+}
+
+func TestExecuteJSONLErrorStream(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := Execute(context.Background(), []string{"--jsonl", "does-not-exist"}, &stdout, &stderr, version.Current())
+	if code == 0 || stderr.Len() == 0 {
+		t.Fatalf("expected invalid input, code=%d stderr=%q", code, stderr.String())
+	}
+	var event struct {
+		Schema string `json:"schema"`
+		Type   string `json:"type"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Schema != streamSchema || event.Type != "error" {
+		t.Fatalf("unexpected JSONL error: %s", stdout.String())
+	}
+}

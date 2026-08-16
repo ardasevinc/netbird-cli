@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/stream-event",
+  "type": "object",
+  "required": ["schema", "type", "operation"],
+  "properties": {
+    "schema": {"const": "nb/v1/stream-event"},
+    "type": {"enum": ["record", "warning", "heartbeat", "complete", "error"]},
+    "operation": {"type": "string"},
+    "data": {},
+    "error": {"type": "object"}
+  },
+  "additionalProperties": false
+}

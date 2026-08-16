@@ -12,6 +12,7 @@ vertical slices land.
 
 ```sh
 go run ./cmd/nb version
+go run ./cmd/nb version --jsonl
 go run ./cmd/nb schema list
 go run ./cmd/nb skills list
 go run ./cmd/nb coverage
@@ -51,6 +52,11 @@ go run ./cmd/nb apply <stage-id>@<revision>
 
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
+
+Use `--jsonl` for a bounded stream: each line is an independent
+`nb/v1/stream-event` record, and successful finite commands end with exactly
+one `complete` line. `--json` and `--jsonl` are explicit output modes, never
+TTY heuristics.
 
 Reachability analysis reports server-reported accessible peers first, then
 policy-group intersections as explanatory evidence. Any reachable peer without
