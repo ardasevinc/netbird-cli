@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ardasevinc/netbird-cli/internal/analysis"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
@@ -19,6 +20,7 @@ type Remote interface {
 	AccountScope(context.Context, string) error
 	GetGroup(context.Context, string) (json.RawMessage, error)
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteGroup(context.Context, string) (json.RawMessage, error)
 	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePolicy(context.Context, string) (json.RawMessage, error)
@@ -145,11 +147,11 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
-	if stage.Operation == "policies.delete" {
+	if stage.Operation == "policies.delete" || stage.Operation == "groups.delete" {
 		if err := confirmDeleted(ctx, remote, stage.Operation, request.ID); err != nil && !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
-		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote policy is absent after delete")
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote "+strings.TrimSuffix(stage.Operation, ".delete")+" is absent after delete")
 	}
 	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request.ID)
 	if err != nil {
@@ -168,6 +170,8 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 func readPreimage(ctx context.Context, remote Remote, operation, id string) (json.RawMessage, error) {
 	switch operation {
 	case "groups.update":
+		return remote.GetGroup(ctx, id)
+	case "groups.delete":
 		return remote.GetGroup(ctx, id)
 	case "policies.update":
 		return remote.GetPolicyRaw(ctx, id)
@@ -188,6 +192,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 	switch operation {
 	case "groups.update":
 		return remote.UpdateGroup(ctx, id, request)
+	case "groups.delete":
+		return remote.DeleteGroup(ctx, id)
 	case "policies.update":
 		return remote.UpdatePolicy(ctx, id, request)
 	case "policies.delete":
@@ -207,6 +213,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 	switch operation {
 	case "groups.update":
 		return analysis.GroupUpdateImpact(before, intendedAfter)
+	case "groups.delete":
+		return analysis.GroupDeleteImpact(before)
 	case "policies.update":
 		return analysis.PolicyUpdateImpact(before, intendedAfter)
 	case "policies.delete":

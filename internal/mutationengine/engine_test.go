@@ -38,6 +38,9 @@ func (f *fakeRemote) AccountScope(_ context.Context, account string) error {
 }
 
 func (f *fakeRemote) GetGroup(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
 	return append(json.RawMessage(nil), f.before...), nil
 }
 
@@ -48,6 +51,15 @@ func (f *fakeRemote) UpdateGroup(_ context.Context, _ string, _ json.RawMessage)
 	}
 	f.before = append(json.RawMessage(nil), f.after...)
 	return f.before, nil
+}
+
+func (f *fakeRemote) DeleteGroup(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.before = nil
+	return nil, nil
 }
 
 func (f *fakeRemote) GetPolicyRaw(_ context.Context, _ string) (json.RawMessage, error) {
@@ -151,6 +163,39 @@ func TestApplyJournalsAndConfirmsReadBack(t *testing.T) {
 	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
 	if err != nil || receipt.State != string(mutation.ConfirmedSuccess) {
 		t.Fatalf("receipt=%+v err=%v", receipt, err)
+	}
+}
+
+func TestApplyDispatchesGroupDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"g1","name":"group","peers_count":2,"resources_count":1}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "groups.delete",
+		Request:        json.RawMessage(`{"id":"g1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"group_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a group can change policy membership and peer access; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"group_delete_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.group_delete", Severity: "blocking", Message: "deleting the group may alter policy membership and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", before: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected group delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

@@ -59,12 +59,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "policies.update", "policies.delete", "routes.update", "peers.update", "networks.update":
+			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "peers.update", "networks.update":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
 				case "groups.update":
 					report, err = analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "groups.delete":
+					report, err = analysis.GroupDeleteImpact(plan.Before)
 				case "policies.update":
 					report, err = analysis.PolicyUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "policies.delete":
@@ -89,6 +91,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "groups.update" && report.Classification == "unknown":
 					findingCode = "impact.unknown"
 					findingMessage = "the proposed group change may affect reachability, but its impact cannot be calculated"
+				case plan.Operation == "groups.delete" && report.Classification == "group_delete":
+					findingCode = "impact.group_delete"
+					findingMessage = "deleting the group may alter policy membership and requires exact acknowledgement"
 				case plan.Operation == "policies.update" && report.Classification == "policy_rule_change":
 					findingCode = "impact.policy_rule_change"
 					findingMessage = "the proposed policy rule change may alter reachability and requires exact acknowledgement"

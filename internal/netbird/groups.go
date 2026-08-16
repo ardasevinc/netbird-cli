@@ -53,6 +53,18 @@ func (c *Client) UpdateGroup(ctx context.Context, id string, request json.RawMes
 	return result, nil
 }
 
+func (c *Client) DeleteGroup(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := groupPath(id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete group %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func groupPath(id string) (string, error) {
 	if strings.TrimSpace(id) == "" {
 		return "", fmt.Errorf("group id is required")

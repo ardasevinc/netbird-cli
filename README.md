@@ -100,6 +100,8 @@ changes to attached policies, resources, or routers emit the blocking
 Policy deletion is also staged, requires the blocking `impact.policy_delete`
 acknowledgement, and is confirmed only when a post-delete policy read returns
 404.
+Group deletion is staged under the same contract, with blocking
+`impact.group_delete` acknowledgement and a required 404 absence read-back.
 
 ## Development
 

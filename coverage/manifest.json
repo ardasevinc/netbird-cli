@@ -421,11 +421,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.groups.groupId",
+      "id": "groups.delete",
       "method": "DELETE",
       "path": "/api/groups/{groupId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "groups.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 106,
+    "implemented": 107,
     "classified": 0,
-    "discovered": 130,
-    "contract_verified": 97,
+    "discovered": 129,
+    "contract_verified": 98,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

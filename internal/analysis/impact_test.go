@@ -81,6 +81,16 @@ func TestPeerUpdateImpactMarksNameOnlyChangeAsNeutral(t *testing.T) {
 	}
 }
 
+func TestGroupDeleteImpactIsConservative(t *testing.T) {
+	report, err := GroupDeleteImpact([]byte(`{"id":"g1","name":"group","peers_count":2,"resources_count":1}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "group_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestPeerUpdateImpactBlocksAccessChanges(t *testing.T) {
 	report, err := PeerUpdateImpact(
 		[]byte(`{"id":"p1","name":"peer","approval_required":false,"connected":true}`),

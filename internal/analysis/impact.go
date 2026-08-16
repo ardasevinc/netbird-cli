@@ -199,6 +199,22 @@ func GroupUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func GroupDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode group delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "group_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting a group can change policy membership and peer access; affected peers and resources require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "group_delete_requires_topology"},
+	}, nil
+}
+
 func changedKeys(before, after map[string]any) []string {
 	keys := make(map[string]struct{}, len(before)+len(after))
 	for key := range before {
