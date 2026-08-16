@@ -34,6 +34,8 @@ type Remote interface {
 	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetwork(context.Context, string) (json.RawMessage, error)
 	GetNetworkResourceRaw(context.Context, string, string) (json.RawMessage, error)
+	ListNetworkResourcesRaw(context.Context, string) (json.RawMessage, error)
+	CreateNetworkResource(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	UpdateNetworkResource(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetworkResource(context.Context, string, string) (json.RawMessage, error)
 	GetNetworkRouterRaw(context.Context, string, string) (json.RawMessage, error)
@@ -112,10 +114,10 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || request.ID == "" {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation)) {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
-	if (stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
+	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
@@ -129,12 +131,30 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err != nil {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read %s preimage: %w", stage.Operation, err)}
 	}
-	preimage, err := mutation.ClassifyPreimage(stage.Before, liveBefore, stage.IntendedAfter)
-	if err != nil {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s preimage: %w", stage.Operation, err)}
-	}
-	if preimage == mutation.PreimageDrifted {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
+	preimage := mutation.PreimageMatches
+	if isCreateOperation(stage.Operation) {
+		equal, err := mutation.Equivalent(stage.Before, liveBefore)
+		if err != nil {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s collection preimage: %w", stage.Operation, err)}
+		}
+		if !equal {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
+		}
+		already, err := collectionContainsIntent(liveBefore, stage.IntendedAfter)
+		if err != nil {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("check %s existing state: %w", stage.Operation, err)}
+		}
+		if already {
+			preimage = mutation.PreimageAlreadySatisfied
+		}
+	} else {
+		preimage, err = mutation.ClassifyPreimage(stage.Before, liveBefore, stage.IntendedAfter)
+		if err != nil {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s preimage: %w", stage.Operation, err)}
+		}
+		if preimage == mutation.PreimageDrifted {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
+		}
 	}
 	impact, err := mutationImpact(stage.Operation, liveBefore, stage.IntendedAfter)
 	if err != nil {
@@ -158,9 +178,32 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if preimage == mutation.PreimageAlreadySatisfied {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
-	if _, err := dispatch(ctx, remote, stage.Operation, request, stage.Request); err != nil {
+	dispatchResult, err := dispatch(ctx, remote, stage.Operation, request, stage.Request)
+	if err != nil {
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
+	}
+	if isCreateOperation(stage.Operation) {
+		createdID, err := responseID(dispatchResult)
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but the created resource id could not be confirmed")
+		}
+		liveAfter, err := readPreimage(ctx, remote, stage.Operation, requestTarget{NetworkID: request.NetworkID, ID: createdID})
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but read-back was inconclusive")
+		}
+		actual, err := collectionFindID(liveAfter, createdID)
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "created resource could not be found in read-back")
+		}
+		matches, err := objectContains(actual, stage.IntendedAfter)
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "created resource response could not be compared with intent")
+		}
+		if !matches {
+			return finish(ctx, store, result, mutation.Partial, "created resource differs from intended state after create")
+		}
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "created resource matches intended state")
 	}
 	if isDeleteOperation(stage.Operation) {
 		if err := confirmDeleted(ctx, remote, stage.Operation, request); err != nil && !isNotFound(err) {
@@ -208,6 +251,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
 	case "networks.resources.update":
 		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
+	case "networks.resources.create":
+		return remote.ListNetworkResourcesRaw(ctx, target.NetworkID)
 	case "networks.routers.delete":
 		return remote.GetNetworkRouterRaw(ctx, target.NetworkID, target.ID)
 	case "networks.routers.update":
@@ -247,6 +292,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.UpdateNetworkResource(ctx, target.NetworkID, target.ID, body)
+	case "networks.resources.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateNetworkResource(ctx, target.NetworkID, body)
 	case "networks.routers.delete":
 		return remote.DeleteNetworkRouter(ctx, target.NetworkID, target.ID)
 	case "networks.routers.update":
@@ -258,6 +309,79 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
+}
+
+func isCreateOperation(operation string) bool {
+	return operation == "networks.resources.create"
+}
+
+func responseID(response json.RawMessage) (string, error) {
+	var object struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response, &object); err != nil || object.ID == "" {
+		return "", errors.New("create response has no id")
+	}
+	return object.ID, nil
+}
+
+func collectionContainsIntent(collection, intent json.RawMessage) (bool, error) {
+	var objects []json.RawMessage
+	if err := json.Unmarshal(collection, &objects); err != nil {
+		return false, err
+	}
+	for _, object := range objects {
+		matches, err := objectContains(object, intent)
+		if err != nil {
+			return false, err
+		}
+		if matches {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func collectionFindID(collection json.RawMessage, id string) (json.RawMessage, error) {
+	var objects []json.RawMessage
+	if err := json.Unmarshal(collection, &objects); err != nil {
+		return nil, err
+	}
+	for _, object := range objects {
+		var candidate struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(object, &candidate); err != nil {
+			return nil, err
+		}
+		if candidate.ID == id {
+			return object, nil
+		}
+	}
+	return nil, errors.New("created id is absent from collection")
+}
+
+func objectContains(actual, expected json.RawMessage) (bool, error) {
+	var actualObject, expectedObject map[string]any
+	if err := json.Unmarshal(actual, &actualObject); err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal(expected, &expectedObject); err != nil {
+		return false, err
+	}
+	for key, expectedValue := range expectedObject {
+		actualValue, ok := actualObject[key]
+		if !ok || !jsonValuesEqual(actualValue, expectedValue) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func jsonValuesEqual(left, right any) bool {
+	leftJSON, _ := json.Marshal(left)
+	rightJSON, _ := json.Marshal(right)
+	return string(leftJSON) == string(rightJSON)
 }
 
 func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
@@ -296,6 +420,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NetworkResourceDeleteImpact(before)
 	case "networks.resources.update":
 		return analysis.NetworkResourceUpdateImpact(before, intendedAfter)
+	case "networks.resources.create":
+		return analysis.NetworkResourceCreateImpact(intendedAfter)
 	case "networks.routers.delete":
 		return analysis.NetworkRouterDeleteImpact(before)
 	case "networks.routers.update":

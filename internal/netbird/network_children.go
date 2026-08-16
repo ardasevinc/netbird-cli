@@ -43,6 +43,18 @@ func (c *Client) ListNetworkResources(ctx context.Context, networkID string) ([]
 	return result, nil
 }
 
+func (c *Client) ListNetworkResourcesRaw(ctx context.Context, networkID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "resources", "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("list resources for network %q: %w", networkID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetNetworkResource(ctx context.Context, networkID, resourceID string) (NetworkResource, error) {
 	path, err := networkChildPath(networkID, "resources", resourceID)
 	if err != nil {
@@ -75,6 +87,18 @@ func (c *Client) UpdateNetworkResource(ctx context.Context, networkID, resourceI
 	var result json.RawMessage
 	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
 		return nil, fmt.Errorf("update resource %q for network %q: %w", resourceID, networkID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateNetworkResource(ctx context.Context, networkID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "resources", "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create resource for network %q: %w", networkID, err)
 	}
 	return result, nil
 }

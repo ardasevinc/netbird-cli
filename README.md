@@ -107,6 +107,9 @@ absence proof.
 Network resource updates are staged with name/description-only changes treated
 as neutral; address, enablement, or group changes emit the blocking
 `impact.network_resource_change` finding.
+Network resource creation snapshots the collection preimage, requires blocking
+`impact.network_resource_create` acknowledgement, and confirms the returned id
+and read-back fields against the intended state.
 Network router deletion is staged with blocking
 `impact.network_router_delete` acknowledgement and the same required 404
 absence proof.

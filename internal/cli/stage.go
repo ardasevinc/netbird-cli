@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.update", "networks.delete", "networks.resources.update", "networks.resources.delete", "networks.routers.update", "networks.routers.delete":
+			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.update", "networks.routers.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -85,6 +85,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.NetworkDeleteImpact(plan.Before)
 				case "networks.resources.update":
 					report, err = analysis.NetworkResourceUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "networks.resources.create":
+					report, err = analysis.NetworkResourceCreateImpact(plan.IntendedAfter)
 				case "networks.routers.update":
 					report, err = analysis.NetworkRouterUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.resources.delete":
@@ -135,6 +137,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "networks.resources.update" && report.Classification == "network_resource_change":
 					findingCode = "impact.network_resource_change"
 					findingMessage = "the proposed network resource change may alter reachability and requires exact acknowledgement"
+				case plan.Operation == "networks.resources.create" && report.Classification == "network_resource_create":
+					findingCode = "impact.network_resource_create"
+					findingMessage = "creating the network resource may add reachability and requires exact acknowledgement"
 				case plan.Operation == "networks.routers.update" && report.Classification == "network_router_change":
 					findingCode = "impact.network_router_change"
 					findingMessage = "the proposed network router change may alter reachability and requires exact acknowledgement"

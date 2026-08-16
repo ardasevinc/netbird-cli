@@ -1103,8 +1103,8 @@
       "id": "post.api.networks.networkId.resources",
       "method": "POST",
       "path": "/api/networks/{networkId}/resources",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.networks.networkId.resources.resourceId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 114,
+    "implemented": 115,
     "classified": 0,
-    "discovered": 122,
-    "contract_verified": 105,
+    "discovered": 121,
+    "contract_verified": 106,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

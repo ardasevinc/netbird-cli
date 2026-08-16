@@ -269,6 +269,22 @@ func NetworkResourceUpdateImpact(before, intendedAfter []byte) (ImpactReport, er
 	}, nil
 }
 
+func NetworkResourceCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode network resource create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "network_resource_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating a network resource can add a reachable destination; affected peers and routes require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "network_resource_create_requires_topology"},
+	}, nil
+}
+
 func NetworkRouterDeleteImpact(before []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(before, &object); err != nil {

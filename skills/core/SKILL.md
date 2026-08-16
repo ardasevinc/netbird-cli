@@ -65,5 +65,6 @@ Route deletion is blocking and requires the same absence proof.
 Network deletion is blocking and requires the same absence proof.
 Network resource deletion is blocking and requires the same absence proof.
 Network resource address, enablement, or group changes are blocking.
+Network resource creation is blocking and requires collection preimage and read-back proof.
 Network router deletion is blocking and requires the same absence proof.
 Network router updates are blocking.

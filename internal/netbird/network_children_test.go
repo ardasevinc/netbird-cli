@@ -102,6 +102,30 @@ func TestUpdateNetworkResourceUsesPUT(t *testing.T) {
 	}
 }
 
+func TestCreateNetworkResourceUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/networks/n1/resources" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["name"] != "new" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "r1", "name": "new", "address": "10.0.0.0/24", "enabled": true})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).CreateNetworkResource(context.Background(), "n1", json.RawMessage(`{"name":"new","address":"10.0.0.0/24","enabled":true,"groups":[]}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDeleteNetworkRouterUsesDELETE(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete || r.URL.Path != "/api/networks/n1/routers/rt1" {
