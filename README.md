@@ -40,6 +40,7 @@ go run ./cmd/nb users tokens list <user-id> --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb peers accessible <peer-id> --json
+go run ./cmd/nb analyze reachability <peer-id> --json
 go run ./cmd/nb policies list --json
 go run ./cmd/nb policies get <policy-id> --json
 go run ./cmd/nb stage create --from-json
@@ -48,6 +49,11 @@ go run ./cmd/nb apply <stage-id>@<revision>
 
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
+
+Reachability analysis reports server-reported accessible peers first, then
+policy-group intersections as explanatory evidence. Any reachable peer without
+an enabled `accept` rule match remains listed as unexplained; the analysis does
+not infer data-plane certainty from policy shape alone.
 
 Consequential changes are created as immutable local stages. `apply` accepts
 only an exact stage ID and revision, rechecks the live preimage, journals the

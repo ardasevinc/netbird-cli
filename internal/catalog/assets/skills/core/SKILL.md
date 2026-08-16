@@ -30,6 +30,7 @@ nb networks routers list <network-id> --json
 nb ingress list --json
 nb peers ingress-ports list <peer-id> --json
 nb peers accessible <peer-id> --json
+nb analyze reachability <peer-id> --json
 nb users tokens list <user-id> --json
 ```
 
@@ -37,6 +38,11 @@ Inventory commands are bounded reads. User and invite results intentionally omit
 passwords and invite tokens, setup-key inventory omits the upstream setup-key
 secret, and user-token inventory omits token values. These values are never part
 of the stable `nb` output contract.
+
+`nb analyze reachability` uses the server-reported accessible-peer inventory as
+the authoritative reachability result and attaches policy-group intersections
+as explanatory evidence. Reachable peers without an enabled accept-rule match
+are surfaced as unexplained rather than silently classified.
 
 Request `--json` explicitly when consuming output as an agent. Consequential
 NetBird changes belong under `nb stage`; do not invent a direct-write command.
