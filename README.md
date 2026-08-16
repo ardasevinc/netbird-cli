@@ -39,6 +39,7 @@ go run ./cmd/nb locations countries --json
 go run ./cmd/nb users tokens list <user-id> --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
+go run ./cmd/nb peers accessible <peer-id> --json
 go run ./cmd/nb policies list --json
 go run ./cmd/nb policies get <policy-id> --json
 go run ./cmd/nb stage create --from-json
