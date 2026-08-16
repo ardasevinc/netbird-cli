@@ -57,3 +57,20 @@ func TestNetworkChildReadsNormalizeTopology(t *testing.T) {
 		t.Fatalf("all=%+v err=%v", all, err)
 	}
 }
+
+func TestDeleteNetworkResourceUsesDELETE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/networks/n1/resources/r1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).DeleteNetworkResource(context.Background(), "n1", "r1"); err != nil {
+		t.Fatal(err)
+	}
+}

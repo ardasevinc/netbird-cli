@@ -150,6 +150,7 @@ func applyReviewedOverrides(ops []operation) {
 		"GET /api/users":                                       {ID: "users.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/users/invites":                               {ID: "users.invites", Implementation: "implemented", Verification: "contract_verified"},
 	}
+	reviewed["DELETE /api/networks/{networkId}/resources/{resourceId}"] = operation{ID: "networks.resources.delete", Implementation: "implemented", Verification: "contract_verified"}
 	for i, item := range ops {
 		if override, ok := reviewed[item.Method+" "+item.Path]; ok {
 			override.Method = item.Method

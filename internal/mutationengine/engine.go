@@ -33,6 +33,8 @@ type Remote interface {
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
 	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetwork(context.Context, string) (json.RawMessage, error)
+	GetNetworkResourceRaw(context.Context, string, string) (json.RawMessage, error)
+	DeleteNetworkResource(context.Context, string, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -50,6 +52,11 @@ type ApplyInput struct {
 	AccountID        string
 	Acknowledgements []string
 	AckAllBlocking   bool
+}
+
+type requestTarget struct {
+	ID        string `json:"id"`
+	NetworkID string `json:"network_id"`
 }
 
 type Result struct {
@@ -100,11 +107,12 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := remote.AccountScope(ctx, input.AccountID); err != nil {
 		return result, &ApplyError{Result: result, Err: err}
 	}
-	var request struct {
-		ID string `json:"id"`
-	}
+	var request requestTarget
 	if err := json.Unmarshal(stage.Request, &request); err != nil || request.ID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
+	}
+	if stage.Operation == "networks.resources.delete" && request.NetworkID == "" {
+		return result, &ApplyError{Result: result, Err: errors.New("networks.resources.delete stage request requires network_id")}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
 	for _, finding := range stage.Findings {
@@ -113,7 +121,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := mutation.ValidateAcknowledgements(findings, input.Acknowledgements, input.AckAllBlocking); err != nil {
 		return result, &ApplyError{Result: result, Err: err}
 	}
-	liveBefore, err := readPreimage(ctx, remote, stage.Operation, request.ID)
+	liveBefore, err := readPreimage(ctx, remote, stage.Operation, request)
 	if err != nil {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read %s preimage: %w", stage.Operation, err)}
 	}
@@ -146,17 +154,17 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if preimage == mutation.PreimageAlreadySatisfied {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
-	if _, err := dispatch(ctx, remote, stage.Operation, request.ID, stage.Request); err != nil {
+	if _, err := dispatch(ctx, remote, stage.Operation, request, stage.Request); err != nil {
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
 	if isDeleteOperation(stage.Operation) {
-		if err := confirmDeleted(ctx, remote, stage.Operation, request.ID); err != nil && !isNotFound(err) {
+		if err := confirmDeleted(ctx, remote, stage.Operation, request); err != nil && !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote "+strings.TrimSuffix(stage.Operation, ".delete")+" is absent after delete")
 	}
-	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request.ID)
+	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
 	if err != nil {
 		return finish(ctx, store, result, mutation.Unknown, "update may have applied, but read-back was inconclusive")
 	}
@@ -170,55 +178,59 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote state matches intended state")
 }
 
-func readPreimage(ctx context.Context, remote Remote, operation, id string) (json.RawMessage, error) {
+func readPreimage(ctx context.Context, remote Remote, operation string, target requestTarget) (json.RawMessage, error) {
 	switch operation {
 	case "groups.update":
-		return remote.GetGroup(ctx, id)
+		return remote.GetGroup(ctx, target.ID)
 	case "groups.delete":
-		return remote.GetGroup(ctx, id)
+		return remote.GetGroup(ctx, target.ID)
 	case "policies.update":
-		return remote.GetPolicyRaw(ctx, id)
+		return remote.GetPolicyRaw(ctx, target.ID)
 	case "policies.delete":
-		return remote.GetPolicyRaw(ctx, id)
+		return remote.GetPolicyRaw(ctx, target.ID)
 	case "routes.update":
-		return remote.GetRouteRaw(ctx, id)
+		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
-		return remote.GetRouteRaw(ctx, id)
+		return remote.GetRouteRaw(ctx, target.ID)
 	case "peers.update":
-		return remote.GetPeerRaw(ctx, id)
+		return remote.GetPeerRaw(ctx, target.ID)
 	case "peers.delete":
-		return remote.GetPeerRaw(ctx, id)
+		return remote.GetPeerRaw(ctx, target.ID)
 	case "networks.update":
-		return remote.GetNetworkRaw(ctx, id)
+		return remote.GetNetworkRaw(ctx, target.ID)
 	case "networks.delete":
-		return remote.GetNetworkRaw(ctx, id)
+		return remote.GetNetworkRaw(ctx, target.ID)
+	case "networks.resources.delete":
+		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
 }
 
-func dispatch(ctx context.Context, remote Remote, operation, id string, request json.RawMessage) (json.RawMessage, error) {
+func dispatch(ctx context.Context, remote Remote, operation string, target requestTarget, request json.RawMessage) (json.RawMessage, error) {
 	switch operation {
 	case "groups.update":
-		return remote.UpdateGroup(ctx, id, request)
+		return remote.UpdateGroup(ctx, target.ID, request)
 	case "groups.delete":
-		return remote.DeleteGroup(ctx, id)
+		return remote.DeleteGroup(ctx, target.ID)
 	case "policies.update":
-		return remote.UpdatePolicy(ctx, id, request)
+		return remote.UpdatePolicy(ctx, target.ID, request)
 	case "policies.delete":
-		return remote.DeletePolicy(ctx, id)
+		return remote.DeletePolicy(ctx, target.ID)
 	case "routes.update":
-		return remote.UpdateRoute(ctx, id, request)
+		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
-		return remote.DeleteRoute(ctx, id)
+		return remote.DeleteRoute(ctx, target.ID)
 	case "peers.update":
-		return remote.UpdatePeer(ctx, id, request)
+		return remote.UpdatePeer(ctx, target.ID, request)
 	case "peers.delete":
-		return remote.DeletePeer(ctx, id)
+		return remote.DeletePeer(ctx, target.ID)
 	case "networks.update":
-		return remote.UpdateNetwork(ctx, id, request)
+		return remote.UpdateNetwork(ctx, target.ID, request)
 	case "networks.delete":
-		return remote.DeleteNetwork(ctx, id)
+		return remote.DeleteNetwork(ctx, target.ID)
+	case "networks.resources.delete":
+		return remote.DeleteNetworkResource(ctx, target.NetworkID, target.ID)
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
@@ -246,13 +258,15 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NetworkUpdateImpact(before, intendedAfter)
 	case "networks.delete":
 		return analysis.NetworkDeleteImpact(before)
+	case "networks.resources.delete":
+		return analysis.NetworkResourceDeleteImpact(before)
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}
 }
 
-func confirmDeleted(ctx context.Context, remote Remote, operation, id string) error {
-	_, err := readPreimage(ctx, remote, operation, id)
+func confirmDeleted(ctx context.Context, remote Remote, operation string, target requestTarget) error {
+	_, err := readPreimage(ctx, remote, operation, target)
 	if err == nil {
 		return errors.New("resource still exists after delete")
 	}
@@ -265,7 +279,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

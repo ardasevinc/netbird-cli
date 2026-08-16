@@ -215,6 +215,22 @@ func NetworkDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func NetworkResourceDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode network resource delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "network_resource_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting a network resource can remove a reachable destination; affected peers and routes require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "network_resource_delete_requires_topology"},
+	}, nil
+}
+
 func GroupUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

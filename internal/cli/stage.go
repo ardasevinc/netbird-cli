@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.update", "networks.delete":
+			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.update", "networks.delete", "networks.resources.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -83,6 +83,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.delete":
 					report, err = analysis.NetworkDeleteImpact(plan.Before)
+				case "networks.resources.delete":
+					report, err = analysis.NetworkResourceDeleteImpact(plan.Before)
 				}
 				if err != nil {
 					return fail(2, err)
@@ -124,6 +126,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "networks.delete" && report.Classification == "network_delete":
 					findingCode = "impact.network_delete"
 					findingMessage = "deleting the network may remove attached topology and requires exact acknowledgement"
+				case plan.Operation == "networks.resources.delete" && report.Classification == "network_resource_delete":
+					findingCode = "impact.network_resource_delete"
+					findingMessage = "deleting the network resource may remove reachability and requires exact acknowledgement"
 				}
 				if findingCode != "" && !hasFinding(findings, findingCode) {
 					findings = append(findings, ledger.Finding{Code: findingCode, Severity: "blocking", Message: findingMessage})

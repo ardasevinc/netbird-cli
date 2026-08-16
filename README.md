@@ -101,6 +101,9 @@ changes to attached policies, resources, or routers emit the blocking
 `impact.network_change` finding.
 Network deletion is staged with blocking `impact.network_delete` acknowledgement
 and the same required 404 absence proof.
+Network resource deletion is staged with blocking
+`impact.network_resource_delete` acknowledgement and the same required 404
+absence proof.
 Policy deletion is also staged, requires the blocking `impact.policy_delete`
 acknowledgement, and is confirmed only when a post-delete policy read returns
 404.

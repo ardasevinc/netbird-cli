@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -50,6 +51,30 @@ func (c *Client) GetNetworkResource(ctx context.Context, networkID, resourceID s
 	var result NetworkResource
 	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
 		return NetworkResource{}, fmt.Errorf("get resource %q for network %q: %w", resourceID, networkID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetNetworkResourceRaw(ctx context.Context, networkID, resourceID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "resources", resourceID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get resource %q for network %q: %w", resourceID, networkID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteNetworkResource(ctx context.Context, networkID, resourceID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "resources", resourceID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete resource %q for network %q: %w", resourceID, networkID, err)
 	}
 	return result, nil
 }

@@ -12,20 +12,21 @@ import (
 )
 
 type fakeRemote struct {
-	identity      string
-	account       string
-	before        json.RawMessage
-	after         json.RawMessage
-	policyBefore  json.RawMessage
-	policyAfter   json.RawMessage
-	routeBefore   json.RawMessage
-	routeAfter    json.RawMessage
-	peerBefore    json.RawMessage
-	peerAfter     json.RawMessage
-	networkBefore json.RawMessage
-	networkAfter  json.RawMessage
-	updateErr     error
-	updates       int
+	identity       string
+	account        string
+	before         json.RawMessage
+	after          json.RawMessage
+	policyBefore   json.RawMessage
+	policyAfter    json.RawMessage
+	routeBefore    json.RawMessage
+	routeAfter     json.RawMessage
+	peerBefore     json.RawMessage
+	peerAfter      json.RawMessage
+	networkBefore  json.RawMessage
+	networkAfter   json.RawMessage
+	resourceBefore json.RawMessage
+	updateErr      error
+	updates        int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -159,6 +160,22 @@ func (f *fakeRemote) DeleteNetwork(_ context.Context, _ string) (json.RawMessage
 		return nil, f.updateErr
 	}
 	f.networkBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) GetNetworkResourceRaw(_ context.Context, _, _ string) (json.RawMessage, error) {
+	if f.resourceBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.resourceBefore...), nil
+}
+
+func (f *fakeRemote) DeleteNetworkResource(_ context.Context, _, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.resourceBefore = nil
 	return nil, nil
 }
 
@@ -590,5 +607,38 @@ func TestApplyDispatchesNetworkDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkResourceDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"r1","name":"db","address":"10.0.0.0/24","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.resources.delete",
+		Request:        json.RawMessage(`{"network_id":"n1","id":"r1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"network_resource_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a network resource can remove a reachable destination; affected peers and routes require live topology analysis"],"completeness":{"state":"unknown","reason":"network_resource_delete_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.network_resource_delete", Severity: "blocking", Message: "deleting the network resource may remove reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", resourceBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network resource delete result: %+v updates=%d", result, remote.updates)
 	}
 }

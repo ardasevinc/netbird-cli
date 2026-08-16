@@ -63,3 +63,4 @@ Policy deletion is blocking and requires read-back confirmation of absence.
 Group deletion is blocking and requires the same absence proof.
 Route deletion is blocking and requires the same absence proof.
 Network deletion is blocking and requires the same absence proof.
+Network resource deletion is blocking and requires the same absence proof.
