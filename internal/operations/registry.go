@@ -54,6 +54,7 @@ var definitions = map[string]Definition{
 	"ingress.peers.get":         {Name: "ingress.peers.get", Method: "GET", Path: "/api/ingress/peers/{ingressPeerId}", Mutation: ReadOnly},
 	"peers.ingress.ports.list":  {Name: "peers.ingress.ports.list", Method: "GET", Path: "/api/peers/{peerId}/ingress/ports", Mutation: ReadOnly},
 	"peers.ingress.ports.get":   {Name: "peers.ingress.ports.get", Method: "GET", Path: "/api/peers/{peerId}/ingress/ports/{allocationId}", Mutation: ReadOnly},
+	"peers.accessible":          {Name: "peers.accessible", Method: "GET", Path: "/api/peers/{peerId}/accessible-peers", Mutation: ReadOnly},
 	"networks.list":             {Name: "networks.list", Method: "GET", Path: "/api/networks", Mutation: ReadOnly},
 	"networks.get":              {Name: "networks.get", Method: "GET", Path: "/api/networks/{networkId}", Mutation: ReadOnly},
 	"routes.list":               {Name: "routes.list", Method: "GET", Path: "/api/routes", Mutation: ReadOnly},

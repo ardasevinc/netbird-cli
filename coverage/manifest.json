@@ -1212,11 +1212,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.accessible_peers",
+      "id": "peers.accessible",
       "method": "GET",
       "path": "/api/peers/{peerId}/accessible-peers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.ingress.ports.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 44,
+    "implemented": 45,
     "classified": 0,
-    "discovered": 192,
-    "contract_verified": 44,
+    "discovered": 191,
+    "contract_verified": 45,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

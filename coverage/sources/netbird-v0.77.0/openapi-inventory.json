@@ -234,11 +234,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.accessible_peers",
+      "id": "peers.accessible",
       "method": "GET",
       "path": "/api/peers/{peerId}/accessible-peers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.peers.peerId.temporary_access",
