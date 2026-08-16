@@ -44,3 +44,28 @@ func TestCreateGetAndCancelImmutableStage(t *testing.T) {
 		t.Fatal("stage was not cancelled")
 	}
 }
+
+func TestBeginAttemptJournalsBeforeDispatch(t *testing.T) {
+	store, err := Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	stage, err := store.Create(context.Background(), StageInput{
+		Profile:       "default",
+		Operation:     "groups.update",
+		Request:       json.RawMessage(`{"id":"group-1"}`),
+		Before:        json.RawMessage(`{"name":"before"}`),
+		IntendedAfter: json.RawMessage(`{"name":"after"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt, err := store.BeginAttempt(context.Background(), stage.ID, stage.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempt.State != "not_dispatched" || attempt.IntentAt.IsZero() {
+		t.Fatalf("unexpected attempt: %+v", attempt)
+	}
+}

@@ -53,6 +53,15 @@ type Stage struct {
 	CreatedAt      time.Time
 }
 
+type Attempt struct {
+	ID        string
+	StageID   string
+	Revision  int
+	State     string
+	CreatedAt time.Time
+	IntentAt  time.Time
+}
+
 func Open(path string) (*Store, error) {
 	if path == "" {
 		return nil, errors.New("ledger path is empty")
@@ -100,11 +109,38 @@ CREATE TABLE IF NOT EXISTS stages (
   cancelled INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   PRIMARY KEY (id, revision)
+);
+CREATE TABLE IF NOT EXISTS attempts (
+  id TEXT PRIMARY KEY,
+  stage_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  state TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  intent_at TEXT NOT NULL,
+  FOREIGN KEY (stage_id, revision) REFERENCES stages(id, revision)
 );`)
 	if err != nil {
 		return fmt.Errorf("migrate ledger: %w", err)
 	}
 	return nil
+}
+
+// BeginAttempt journals the exact revision before a dispatcher may send any
+// request bytes to a remote service.
+func (s *Store) BeginAttempt(ctx context.Context, stageID string, revision int) (Attempt, error) {
+	if _, err := s.Get(ctx, stageID, revision); err != nil {
+		return Attempt{}, err
+	}
+	id, err := newID()
+	if err != nil {
+		return Attempt{}, err
+	}
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO attempts (id, stage_id, revision, state, created_at, intent_at) VALUES (?, ?, ?, 'not_dispatched', ?, ?)`, id, stageID, revision, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano))
+	if err != nil {
+		return Attempt{}, fmt.Errorf("journal dispatch intent: %w", err)
+	}
+	return Attempt{ID: id, StageID: stageID, Revision: revision, State: "not_dispatched", CreatedAt: now, IntentAt: now}, nil
 }
 
 func (s *Store) Create(ctx context.Context, input StageInput) (Stage, error) {
