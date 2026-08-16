@@ -23,6 +23,8 @@ nb dns zones records list <zone-id> --json
 nb identity-providers list --json
 nb posture-checks list --json
 nb events --json
+nb events network-traffic --page 1 --page-size 100 --json
+nb events proxy --page 1 --page-size 50 --json
 nb setup-keys list --json
 nb locations countries --json
 nb networks resources list <network-id> --json

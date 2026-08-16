@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/events-network-traffic-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/events-network-traffic-result"},
+    "ok": {"const": true},
+    "operation": {"const": "events.network_traffic"},
+    "data": {
+      "type": "object",
+      "required": ["events", "page", "page_size", "total_pages", "total_records", "completeness"],
+      "properties": {
+        "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+        "page": {"type": "integer"},
+        "page_size": {"type": "integer"},
+        "total_pages": {"type": "integer"},
+        "total_records": {"type": "integer"},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["destination", "direction", "events", "flow_id", "icmp", "num_of_drops", "num_of_ends", "num_of_starts", "policy", "protocol", "reporter_id", "rx_bytes", "rx_packets", "source", "tx_bytes", "tx_packets", "user", "window_end", "window_start"],
+      "properties": {
+        "destination": {"$ref": "#/$defs/endpoint"}, "direction": {"type": "string"}, "events": {"type": "array", "items": {"type": "object"}}, "flow_id": {"type": "string"}, "icmp": {"type": "object"}, "num_of_drops": {"type": "integer"}, "num_of_ends": {"type": "integer"}, "num_of_starts": {"type": "integer"}, "policy": {"type": "object"}, "protocol": {"type": "integer"}, "reporter_id": {"type": "string"}, "rx_bytes": {"type": "integer"}, "rx_packets": {"type": "integer"}, "source": {"$ref": "#/$defs/endpoint"}, "tx_bytes": {"type": "integer"}, "tx_packets": {"type": "integer"}, "user": {"type": "object"}, "window_end": {"type": "string", "format": "date-time"}, "window_start": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "endpoint": {
+      "type": "object",
+      "required": ["address", "dns_label", "geo_location", "id", "name", "os", "type"],
+      "properties": {"address": {"type": "string"}, "dns_label": {"type": ["string", "null"]}, "geo_location": {"type": "object"}, "id": {"type": "string"}, "name": {"type": "string"}, "os": {"type": ["string", "null"]}, "type": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {"state": {"enum": ["complete", "partial"]}, "reason": {"type": ["string", "null"]}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -34,6 +34,8 @@ go run ./cmd/nb dns zones records list <zone-id> --json
 go run ./cmd/nb identity-providers list --json
 go run ./cmd/nb posture-checks list --json
 go run ./cmd/nb events --json
+go run ./cmd/nb events network-traffic --page 1 --page-size 100 --json
+go run ./cmd/nb events proxy --page 1 --page-size 50 --json
 go run ./cmd/nb setup-keys list --json
 go run ./cmd/nb locations countries --json
 go run ./cmd/nb users tokens list <user-id> --json
@@ -54,6 +56,10 @@ Reachability analysis reports server-reported accessible peers first, then
 policy-group intersections as explanatory evidence. Any reachable peer without
 an enabled `accept` rule match remains listed as unexplained; the analysis does
 not infer data-plane certainty from policy shape alone.
+
+The network-traffic and proxy event commands expose one server page at a time.
+Their JSON responses retain the server pagination totals and mark the result
+`partial` until the requested page reaches the final page.
 
 Consequential changes are created as immutable local stages. `apply` accepts
 only an exact stage ID and revision, rechecks the live preimage, journals the

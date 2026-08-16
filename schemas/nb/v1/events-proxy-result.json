@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/events-proxy-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/events-proxy-result"},
+    "ok": {"const": true},
+    "operation": {"const": "events.proxy"},
+    "data": {
+      "type": "object",
+      "required": ["logs", "page", "page_size", "total_pages", "total_records", "completeness"],
+      "properties": {
+        "logs": {"type": "array", "items": {"$ref": "#/$defs/log"}},
+        "page": {"type": "integer"},
+        "page_size": {"type": "integer"},
+        "total_pages": {"type": "integer"},
+        "total_records": {"type": "integer"},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "log": {
+      "type": "object",
+      "required": ["bytes_download", "bytes_upload", "duration_ms", "host", "id", "method", "path", "service_id", "status_code", "timestamp"],
+      "properties": {"auth_method_used": {"type": ["string", "null"]}, "bytes_download": {"type": "integer"}, "bytes_upload": {"type": "integer"}, "city_name": {"type": ["string", "null"]}, "country_code": {"type": ["string", "null"]}, "duration_ms": {"type": "integer"}, "host": {"type": "string"}, "id": {"type": "string"}, "metadata": {"type": ["object", "null"], "additionalProperties": {"type": "string"}}, "method": {"type": "string"}, "path": {"type": "string"}, "protocol": {"type": ["string", "null"]}, "reason": {"type": ["string", "null"]}, "service_id": {"type": "string"}, "source_ip": {"type": ["string", "null"]}, "status_code": {"type": "integer"}, "subdivision_code": {"type": ["string", "null"]}, "timestamp": {"type": "string", "format": "date-time"}, "user_id": {"type": ["string", "null"]}},
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {"state": {"enum": ["complete", "partial"]}, "reason": {"type": ["string", "null"]}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
