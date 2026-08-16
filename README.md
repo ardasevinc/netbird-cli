@@ -27,6 +27,7 @@ go run ./cmd/nb dns settings --json
 go run ./cmd/nb dns zones list --json
 go run ./cmd/nb identity-providers list --json
 go run ./cmd/nb posture-checks list --json
+go run ./cmd/nb events --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb policies list --json
