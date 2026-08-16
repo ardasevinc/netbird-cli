@@ -248,11 +248,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.ingress.ports",
+      "id": "peers.ingress.ports.list",
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.peers.peerId.ingress.ports",
@@ -262,11 +262,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.get",
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.peers.peerId.ingress.ports.allocationId",
@@ -283,11 +283,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.ingress.peers",
+      "id": "ingress.peers.list",
       "method": "GET",
       "path": "/api/ingress/peers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.ingress.peers",
@@ -297,11 +297,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.ingress.peers.ingressPeerId",
+      "id": "ingress.peers.get",
       "method": "GET",
       "path": "/api/ingress/peers/{ingressPeerId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.ingress.peers.ingressPeerId",

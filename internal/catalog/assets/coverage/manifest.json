@@ -477,11 +477,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.ingress.peers",
+      "id": "ingress.peers.list",
       "method": "GET",
       "path": "/api/ingress/peers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.ingress.peers",
@@ -498,11 +498,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.ingress.peers.ingressPeerId",
+      "id": "ingress.peers.get",
       "method": "GET",
       "path": "/api/ingress/peers/{ingressPeerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.ingress.peers.ingressPeerId",
@@ -1219,11 +1219,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.ingress.ports",
+      "id": "peers.ingress.ports.list",
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.peers.peerId.ingress.ports",
@@ -1240,11 +1240,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.get",
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.peers.peerId.ingress.ports.allocationId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 40,
+    "implemented": 44,
     "classified": 0,
-    "discovered": 196,
-    "contract_verified": 40,
+    "discovered": 192,
+    "contract_verified": 44,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

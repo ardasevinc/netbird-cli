@@ -96,6 +96,8 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.AddCommand(eventsCommand(state, stdout))
 	root.AddCommand(setupKeysCommand(state, stdout))
 	root.AddCommand(locationsCommand(state, stdout))
+	root.AddCommand(ingressCommand(state, stdout))
+	root.AddCommand(peerIngressPortsCommand(state, stdout))
 	return root
 }
 
