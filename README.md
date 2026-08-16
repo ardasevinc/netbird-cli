@@ -75,6 +75,10 @@ profile. User inventory never emits upstream password or invite-token fields;
 those values, along with setup-key and token secrets, are treated as one-time
 or secret material even when returned by the management API.
 
+Group stages persist deterministic mutation-impact evidence. Metadata-only group
+changes are marked reachability-neutral; unsupported state changes are marked
+unknown and become blocking until the exact impact finding is acknowledged.
+
 ## Development
 
 ```sh

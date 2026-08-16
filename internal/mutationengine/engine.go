@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ardasevinc/netbird-cli/internal/analysis"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
 	"github.com/ardasevinc/netbird-cli/internal/mutation"
 	"github.com/ardasevinc/netbird-cli/internal/operations"
@@ -108,6 +109,20 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if preimage == mutation.PreimageDrifted {
 		return result, &ApplyError{Result: result, Err: errors.New("staged group preimage drifted; create a new revision")}
+	}
+	impact, err := analysis.GroupUpdateImpact(liveBefore, stage.IntendedAfter)
+	if err != nil {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("recompute group mutation impact: %w", err)}
+	}
+	if len(stage.Impact) != 0 && string(stage.Impact) != "{}" {
+		liveImpact, err := json.Marshal(impact)
+		if err != nil {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("encode group mutation impact: %w", err)}
+		}
+		equal, err := mutation.Equivalent(stage.Impact, liveImpact)
+		if err != nil || !equal {
+			return result, &ApplyError{Result: result, Err: errors.New("staged mutation impact changed; create a new revision")}
+		}
 	}
 	attempt, err := store.BeginAttempt(ctx, stage.ID, stage.Revision)
 	if err != nil {

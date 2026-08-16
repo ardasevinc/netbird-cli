@@ -149,3 +149,29 @@ func TestApplyClassifiesDefinitiveRemoteRejection(t *testing.T) {
 		t.Fatalf("unexpected rejection result: %+v err=%v", result, err)
 	}
 }
+
+func TestApplyRefusesChangedImpactEvidence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "groups.update",
+		Request:        json.RawMessage(`{"id":"g1","name":"new"}`),
+		Before:         json.RawMessage(`{"id":"g1","name":"old"}`),
+		IntendedAfter:  json.RawMessage(`{"id":"g1","name":"new"}`),
+		Impact:         json.RawMessage(`{"classification":"unknown"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", before: []byte(`{"id":"g1","name":"old"}`), after: []byte(`{"id":"g1","name":"new"}`)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1"})
+	if err == nil || result.AttemptID != "" || remote.updates != 0 {
+		t.Fatalf("changed impact was not refused before dispatch: result=%+v err=%v updates=%d", result, err, remote.updates)
+	}
+}

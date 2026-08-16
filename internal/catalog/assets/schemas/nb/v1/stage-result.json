@@ -7,7 +7,7 @@
     "schema": {"const": "nb/v1/stage-result"},
     "ok": {"const": true},
     "operation": {"enum": ["stage.create", "stage.show", "stage.cancel"]},
-    "data": {"type": "object", "required": ["stage_id", "revision"], "properties": {"stage_id": {"type": "string"}, "revision": {"type": "integer", "minimum": 1}}, "additionalProperties": true}
+    "data": {"type": "object", "required": ["stage_id", "revision"], "properties": {"stage_id": {"type": "string"}, "revision": {"type": "integer", "minimum": 1}, "impact": {"type": "object"}, "findings": {"type": "array"}}, "additionalProperties": true}
   },
   "additionalProperties": false
 }

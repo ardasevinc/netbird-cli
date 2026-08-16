@@ -28,6 +28,7 @@ type StageInput struct {
 	Request        json.RawMessage
 	Before         json.RawMessage
 	IntendedAfter  json.RawMessage
+	Impact         json.RawMessage
 	Findings       []Finding
 }
 
@@ -47,6 +48,7 @@ type Stage struct {
 	Request        json.RawMessage
 	Before         json.RawMessage
 	IntendedAfter  json.RawMessage
+	Impact         json.RawMessage
 	Digest         string
 	Findings       []Finding
 	Cancelled      bool
@@ -107,7 +109,7 @@ func (s *Store) migrate(ctx context.Context) error {
 	_, err := s.db.ExecContext(ctx, `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 INSERT INTO schema_version(version)
-SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM schema_version);
+SELECT 3 WHERE NOT EXISTS (SELECT 1 FROM schema_version);
 CREATE TABLE IF NOT EXISTS stages (
   id TEXT NOT NULL,
   revision INTEGER NOT NULL,
@@ -118,6 +120,7 @@ CREATE TABLE IF NOT EXISTS stages (
   request_json BLOB NOT NULL,
   before_json BLOB NOT NULL,
   intended_after_json BLOB NOT NULL,
+  impact_json BLOB NOT NULL DEFAULT '{}',
   digest TEXT NOT NULL,
   findings_json BLOB NOT NULL,
   cancelled INTEGER NOT NULL DEFAULT 0,
@@ -145,9 +148,21 @@ CREATE TABLE IF NOT EXISTS receipts (
   FOREIGN KEY (attempt_id) REFERENCES attempts(id),
   FOREIGN KEY (stage_id, revision) REFERENCES stages(id, revision)
 );
-UPDATE schema_version SET version = 2 WHERE version < 2;`)
+	`)
 	if err != nil {
 		return fmt.Errorf("migrate ledger: %w", err)
+	}
+	var version int
+	if err := s.db.QueryRowContext(ctx, `SELECT version FROM schema_version LIMIT 1`).Scan(&version); err != nil {
+		return fmt.Errorf("read ledger schema version: %w", err)
+	}
+	if version < 3 {
+		if _, err := s.db.ExecContext(ctx, `ALTER TABLE stages ADD COLUMN impact_json BLOB NOT NULL DEFAULT '{}'`); err != nil {
+			return fmt.Errorf("migrate stage impact: %w", err)
+		}
+		if _, err := s.db.ExecContext(ctx, `UPDATE schema_version SET version = 3 WHERE version < 3`); err != nil {
+			return fmt.Errorf("update ledger schema version: %w", err)
+		}
 	}
 	return nil
 }
@@ -271,11 +286,19 @@ func (s *Store) Create(ctx context.Context, input StageInput) (Stage, error) {
 	if err != nil {
 		return Stage{}, fmt.Errorf("canonical intended state: %w", err)
 	}
+	impact := input.Impact
+	if len(impact) == 0 {
+		impact = json.RawMessage(`{}`)
+	}
+	impact, err = mutation.CanonicalJSON(impact)
+	if err != nil {
+		return Stage{}, fmt.Errorf("canonical impact evidence: %w", err)
+	}
 	findings, err := json.Marshal(input.Findings)
 	if err != nil {
 		return Stage{}, fmt.Errorf("encode findings: %w", err)
 	}
-	digest, err := mutation.Digest(request, before, after, findings)
+	digest, err := mutation.Digest(request, before, after, impact, findings)
 	if err != nil {
 		return Stage{}, fmt.Errorf("digest stage: %w", err)
 	}
@@ -284,11 +307,11 @@ func (s *Store) Create(ctx context.Context, input StageInput) (Stage, error) {
 		return Stage{}, err
 	}
 	created := time.Now().UTC().Truncate(time.Microsecond)
-	_, err = s.db.ExecContext(ctx, `INSERT INTO stages (id, revision, profile, server_identity, account_id, operation, request_json, before_json, intended_after_json, digest, findings_json, created_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, input.Profile, input.ServerIdentity, input.AccountID, input.Operation, request, before, after, digest, findings, created.Format(time.RFC3339Nano))
+	_, err = s.db.ExecContext(ctx, `INSERT INTO stages (id, revision, profile, server_identity, account_id, operation, request_json, before_json, intended_after_json, impact_json, digest, findings_json, created_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, input.Profile, input.ServerIdentity, input.AccountID, input.Operation, request, before, after, impact, digest, findings, created.Format(time.RFC3339Nano))
 	if err != nil {
 		return Stage{}, fmt.Errorf("persist stage: %w", err)
 	}
-	return Stage{ID: id, Revision: 1, Profile: input.Profile, ServerIdentity: input.ServerIdentity, AccountID: input.AccountID, Operation: input.Operation, Request: request, Before: before, IntendedAfter: after, Digest: digest, Findings: input.Findings, CreatedAt: created}, nil
+	return Stage{ID: id, Revision: 1, Profile: input.Profile, ServerIdentity: input.ServerIdentity, AccountID: input.AccountID, Operation: input.Operation, Request: request, Before: before, IntendedAfter: after, Impact: impact, Digest: digest, Findings: input.Findings, CreatedAt: created}, nil
 }
 
 func (s *Store) Get(ctx context.Context, id string, revision int) (Stage, error) {
@@ -296,7 +319,7 @@ func (s *Store) Get(ctx context.Context, id string, revision int) (Stage, error)
 	var findings []byte
 	var created string
 	var cancelled int
-	err := s.db.QueryRowContext(ctx, `SELECT id, revision, profile, server_identity, account_id, operation, request_json, before_json, intended_after_json, digest, findings_json, cancelled, created_at FROM stages WHERE id = ? AND revision = ?`, id, revision).Scan(&stage.ID, &stage.Revision, &stage.Profile, &stage.ServerIdentity, &stage.AccountID, &stage.Operation, &stage.Request, &stage.Before, &stage.IntendedAfter, &stage.Digest, &findings, &cancelled, &created)
+	err := s.db.QueryRowContext(ctx, `SELECT id, revision, profile, server_identity, account_id, operation, request_json, before_json, intended_after_json, impact_json, digest, findings_json, cancelled, created_at FROM stages WHERE id = ? AND revision = ?`, id, revision).Scan(&stage.ID, &stage.Revision, &stage.Profile, &stage.ServerIdentity, &stage.AccountID, &stage.Operation, &stage.Request, &stage.Before, &stage.IntendedAfter, &stage.Impact, &stage.Digest, &findings, &cancelled, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Stage{}, fmt.Errorf("stage %s@%d not found", id, revision)
 	}

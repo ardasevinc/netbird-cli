@@ -39,6 +39,9 @@ func TestStageCreateShowAndCancel(t *testing.T) {
 	if created.Data.StageID == "" || created.Data.Revision != 1 {
 		t.Fatalf("unexpected stage result: %s", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), `"classification":"metadata_only"`) {
+		t.Fatalf("stage result omitted impact evidence: %s", stdout.String())
+	}
 	stdout.Reset()
 	root.SetArgs([]string{"stage", "show", created.Data.StageID + "@1"})
 	if err := root.ExecuteContext(context.Background()); err != nil {

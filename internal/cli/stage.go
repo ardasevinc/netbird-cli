@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ardasevinc/netbird-cli/internal/analysis"
 	"github.com/ardasevinc/netbird-cli/internal/config"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
 	"github.com/ardasevinc/netbird-cli/internal/operations"
@@ -55,6 +56,21 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if plan.Operation == "" {
 				return fail(2, fmt.Errorf("stage plan operation is required"))
 			}
+			impact := json.RawMessage(`{}`)
+			findings := append([]ledger.Finding(nil), plan.Findings...)
+			if plan.Operation == "groups.update" {
+				report, err := analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
+				if err != nil {
+					return fail(2, err)
+				}
+				impact, err = json.Marshal(report)
+				if err != nil {
+					return fail(1, fmt.Errorf("encode mutation impact: %w", err))
+				}
+				if report.Classification == "unknown" && !hasFinding(findings, "impact.unknown") {
+					findings = append(findings, ledger.Finding{Code: "impact.unknown", Severity: "blocking", Message: "the proposed group change may affect reachability, but its impact cannot be calculated"})
+				}
+			}
 			definition, err := operations.Lookup(plan.Operation)
 			if err != nil {
 				return fail(2, err)
@@ -72,12 +88,13 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				Request:        plan.Request,
 				Before:         plan.Before,
 				IntendedAfter:  plan.IntendedAfter,
-				Findings:       plan.Findings,
+				Impact:         impact,
+				Findings:       findings,
 			})
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation, "mutation": definition.Mutation, "dispatcher_admitted": definition.DispatcherAdmitted}
+			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation, "mutation": definition.Mutation, "dispatcher_admitted": definition.DispatcherAdmitted, "impact": json.RawMessage(stage.Impact), "findings": stage.Findings}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/stage-result", "ok": true, "operation": "stage.create", "data": data})
 			}
@@ -108,7 +125,7 @@ func stageShowCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "profile": stage.Profile, "server_identity": stage.ServerIdentity, "account_id": stage.AccountID, "operation": stage.Operation, "request": json.RawMessage(stage.Request), "before": json.RawMessage(stage.Before), "intended_after": json.RawMessage(stage.IntendedAfter), "digest": stage.Digest, "findings": stage.Findings, "cancelled": stage.Cancelled, "created_at": stage.CreatedAt}
+			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "profile": stage.Profile, "server_identity": stage.ServerIdentity, "account_id": stage.AccountID, "operation": stage.Operation, "request": json.RawMessage(stage.Request), "before": json.RawMessage(stage.Before), "intended_after": json.RawMessage(stage.IntendedAfter), "impact": json.RawMessage(stage.Impact), "digest": stage.Digest, "findings": stage.Findings, "cancelled": stage.Cancelled, "created_at": stage.CreatedAt}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/stage-result", "ok": true, "operation": "stage.show", "data": data})
 			}
@@ -116,6 +133,15 @@ func stageShowCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			return err
 		},
 	}
+}
+
+func hasFinding(findings []ledger.Finding, code string) bool {
+	for _, finding := range findings {
+		if finding.Code == code {
+			return true
+		}
+	}
+	return false
 }
 
 func stageCancelCommand(state *commandState, stdout io.Writer) *cobra.Command {

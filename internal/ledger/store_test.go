@@ -20,6 +20,7 @@ func TestCreateGetAndCancelImmutableStage(t *testing.T) {
 		Request:        json.RawMessage(`{"name":"ops"}`),
 		Before:         json.RawMessage(`{"name":"old"}`),
 		IntendedAfter:  json.RawMessage(`{"name":"ops"}`),
+		Impact:         json.RawMessage(`{"classification":"metadata_only"}`),
 		Findings:       []Finding{{Code: "info", Severity: "info", Message: "safe"}},
 	}
 	created, err := store.Create(context.Background(), input)
@@ -30,7 +31,7 @@ func TestCreateGetAndCancelImmutableStage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fetched.Digest != created.Digest || fetched.Cancelled {
+	if fetched.Digest != created.Digest || string(fetched.Impact) != `{"classification":"metadata_only"}` || fetched.Cancelled {
 		t.Fatalf("unexpected stage: %+v", fetched)
 	}
 	if err := store.Cancel(context.Background(), created.ID, created.Revision); err != nil {

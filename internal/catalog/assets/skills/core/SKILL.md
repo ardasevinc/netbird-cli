@@ -51,3 +51,5 @@ Request `--json` explicitly when consuming output as an agent. Consequential
 NetBird changes belong under `nb stage`; do not invent a direct-write command.
 Inspect the stage, acknowledge the exact findings, and apply an exact
 `<stage-id>@<revision>` only after the caller's authority policy permits it.
+Inspect the stage impact evidence as part of that review. Metadata-only group
+changes are reachability-neutral; unknown impact is a blocking finding.
