@@ -28,8 +28,8 @@ var definitions = map[string]Definition{
 	"instance.status":  {Name: "instance.status", Method: "GET", Path: "/api/instance", Mutation: ReadOnly},
 	"users.current":    {Name: "users.current", Method: "GET", Path: "/api/users/current", Mutation: ReadOnly},
 	"groups.list":      {Name: "groups.list", Method: "GET", Path: "/api/groups", Mutation: ReadOnly},
-	"groups.get":       {Name: "groups.get", Method: "GET", Path: "/api/groups/{id}", Mutation: ReadOnly},
-	"groups.update":    {Name: "groups.update", Method: "PUT", Path: "/api/groups/{id}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"groups.get":       {Name: "groups.get", Method: "GET", Path: "/api/groups/{groupId}", Mutation: ReadOnly},
+	"groups.update":    {Name: "groups.update", Method: "PUT", Path: "/api/groups/{groupId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 }
 
 func Lookup(name string) (Definition, error) {

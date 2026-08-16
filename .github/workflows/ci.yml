@@ -58,6 +58,8 @@ jobs:
         run: ./tools/check-licenses.sh
       - name: Verify generated schemas
         run: ./tools/check-generated.sh
+      - name: Verify coverage reconciliation
+        run: ./tools/check-coverage.sh
       - name: Cross-build macOS and Linux
         shell: bash
         run: |

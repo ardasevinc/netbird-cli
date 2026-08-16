@@ -42,7 +42,10 @@ licenses:
 generated-check:
     ./tools/check-generated.sh
 
+coverage-check:
+    ./tools/check-coverage.sh
+
 diff-check:
     git diff --check
 
-gate: format-check test race vet lint security modules licenses generated-check cross-build build diff-check
+gate: format-check test race vet lint security modules licenses generated-check coverage-check cross-build build diff-check

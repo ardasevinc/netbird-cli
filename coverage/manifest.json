@@ -1,17 +1,1669 @@
 {
   "schema": "nb/v1/coverage-manifest",
-  "source_baseline": "not-yet-pinned",
-  "support_window": ["current", "previous-minor", "two-minors-back"],
+  "source_baseline": "netbird-v0.77.0",
+  "support_window": [
+    "current",
+    "previous-minor",
+    "two-minors-back"
+  ],
   "operations": [
-    {"id": "groups.list", "method": "GET", "path": "/api/groups", "implementation": "implemented", "verification": "contract_verified"},
-    {"id": "groups.get", "method": "GET", "path": "/api/groups/{id}", "implementation": "implemented", "verification": "contract_verified"},
-    {"id": "groups.update", "method": "PUT", "path": "/api/groups/{id}", "implementation": "implemented", "verification": "contract_verified"},
-    {"id": "instance.status", "method": "GET", "path": "/api/instance", "implementation": "implemented", "verification": "contract_verified"},
-    {"id": "instance.version", "method": "GET", "path": "/api/instance/version", "implementation": "implemented", "verification": "contract_verified"},
-    {"id": "users.current", "method": "GET", "path": "/api/users/current", "implementation": "implemented", "verification": "contract_verified"}
+    {
+      "id": "get.api.accounts",
+      "method": "GET",
+      "path": "/api/accounts",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.accounts.accountId",
+      "method": "DELETE",
+      "path": "/api/accounts/{accountId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.accounts.accountId",
+      "method": "PUT",
+      "path": "/api/accounts/{accountId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.access_log_sessions",
+      "method": "GET",
+      "path": "/api/agent-network/access-log-sessions",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.access_logs",
+      "method": "GET",
+      "path": "/api/agent-network/access-logs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.budget_rules",
+      "method": "GET",
+      "path": "/api/agent-network/budget-rules",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.agent_network.budget_rules",
+      "method": "POST",
+      "path": "/api/agent-network/budget-rules",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.agent_network.budget_rules.ruleId",
+      "method": "DELETE",
+      "path": "/api/agent-network/budget-rules/{ruleId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.budget_rules.ruleId",
+      "method": "GET",
+      "path": "/api/agent-network/budget-rules/{ruleId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.agent_network.budget_rules.ruleId",
+      "method": "PUT",
+      "path": "/api/agent-network/budget-rules/{ruleId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.catalog.providers",
+      "method": "GET",
+      "path": "/api/agent-network/catalog/providers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.consumption",
+      "method": "GET",
+      "path": "/api/agent-network/consumption",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.guardrails",
+      "method": "GET",
+      "path": "/api/agent-network/guardrails",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.agent_network.guardrails",
+      "method": "POST",
+      "path": "/api/agent-network/guardrails",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.agent_network.guardrails.guardrailId",
+      "method": "DELETE",
+      "path": "/api/agent-network/guardrails/{guardrailId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.guardrails.guardrailId",
+      "method": "GET",
+      "path": "/api/agent-network/guardrails/{guardrailId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.agent_network.guardrails.guardrailId",
+      "method": "PUT",
+      "path": "/api/agent-network/guardrails/{guardrailId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.policies",
+      "method": "GET",
+      "path": "/api/agent-network/policies",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.agent_network.policies",
+      "method": "POST",
+      "path": "/api/agent-network/policies",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.agent_network.policies.policyId",
+      "method": "DELETE",
+      "path": "/api/agent-network/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.policies.policyId",
+      "method": "GET",
+      "path": "/api/agent-network/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.agent_network.policies.policyId",
+      "method": "PUT",
+      "path": "/api/agent-network/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.providers",
+      "method": "GET",
+      "path": "/api/agent-network/providers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.agent_network.providers",
+      "method": "POST",
+      "path": "/api/agent-network/providers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.agent_network.providers.providerId",
+      "method": "DELETE",
+      "path": "/api/agent-network/providers/{providerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.providers.providerId",
+      "method": "GET",
+      "path": "/api/agent-network/providers/{providerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.agent_network.providers.providerId",
+      "method": "PUT",
+      "path": "/api/agent-network/providers/{providerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.agent_network.settings",
+      "method": "DELETE",
+      "path": "/api/agent-network/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.settings",
+      "method": "GET",
+      "path": "/api/agent-network/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.agent_network.settings",
+      "method": "POST",
+      "path": "/api/agent-network/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.agent_network.settings",
+      "method": "PUT",
+      "path": "/api/agent-network/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.agent_network.usage.overview",
+      "method": "GET",
+      "path": "/api/agent-network/usage/overview",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.nameservers",
+      "method": "GET",
+      "path": "/api/dns/nameservers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.dns.nameservers",
+      "method": "POST",
+      "path": "/api/dns/nameservers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.dns.nameservers.nsgroupId",
+      "method": "DELETE",
+      "path": "/api/dns/nameservers/{nsgroupId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.nameservers.nsgroupId",
+      "method": "GET",
+      "path": "/api/dns/nameservers/{nsgroupId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.dns.nameservers.nsgroupId",
+      "method": "PUT",
+      "path": "/api/dns/nameservers/{nsgroupId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.settings",
+      "method": "GET",
+      "path": "/api/dns/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.dns.settings",
+      "method": "PUT",
+      "path": "/api/dns/settings",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.zones",
+      "method": "GET",
+      "path": "/api/dns/zones",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.dns.zones",
+      "method": "POST",
+      "path": "/api/dns/zones",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.dns.zones.zoneId",
+      "method": "DELETE",
+      "path": "/api/dns/zones/{zoneId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.zones.zoneId",
+      "method": "GET",
+      "path": "/api/dns/zones/{zoneId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.dns.zones.zoneId",
+      "method": "PUT",
+      "path": "/api/dns/zones/{zoneId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.zones.zoneId.records",
+      "method": "GET",
+      "path": "/api/dns/zones/{zoneId}/records",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.dns.zones.zoneId.records",
+      "method": "POST",
+      "path": "/api/dns/zones/{zoneId}/records",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.dns.zones.zoneId.records.recordId",
+      "method": "DELETE",
+      "path": "/api/dns/zones/{zoneId}/records/{recordId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.dns.zones.zoneId.records.recordId",
+      "method": "GET",
+      "path": "/api/dns/zones/{zoneId}/records/{recordId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.dns.zones.zoneId.records.recordId",
+      "method": "PUT",
+      "path": "/api/dns/zones/{zoneId}/records/{recordId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.event_streaming",
+      "method": "GET",
+      "path": "/api/event-streaming",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.event_streaming",
+      "method": "POST",
+      "path": "/api/event-streaming",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.event_streaming.id",
+      "method": "DELETE",
+      "path": "/api/event-streaming/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.event_streaming.id",
+      "method": "GET",
+      "path": "/api/event-streaming/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.event_streaming.id",
+      "method": "PUT",
+      "path": "/api/event-streaming/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.events.audit",
+      "method": "GET",
+      "path": "/api/events/audit",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.events.network_traffic",
+      "method": "GET",
+      "path": "/api/events/network-traffic",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.events.proxy",
+      "method": "GET",
+      "path": "/api/events/proxy",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "groups.list",
+      "method": "GET",
+      "path": "/api/groups",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "post.api.groups",
+      "method": "POST",
+      "path": "/api/groups",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.groups.groupId",
+      "method": "DELETE",
+      "path": "/api/groups/{groupId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "groups.get",
+      "method": "GET",
+      "path": "/api/groups/{groupId}",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "groups.update",
+      "method": "PUT",
+      "path": "/api/groups/{groupId}",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "get.api.identity_providers",
+      "method": "GET",
+      "path": "/api/identity-providers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.identity_providers",
+      "method": "POST",
+      "path": "/api/identity-providers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.identity_providers.idpId",
+      "method": "DELETE",
+      "path": "/api/identity-providers/{idpId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.identity_providers.idpId",
+      "method": "GET",
+      "path": "/api/identity-providers/{idpId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.identity_providers.idpId",
+      "method": "PUT",
+      "path": "/api/identity-providers/{idpId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.ingress.peers",
+      "method": "GET",
+      "path": "/api/ingress/peers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.ingress.peers",
+      "method": "POST",
+      "path": "/api/ingress/peers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.ingress.peers.ingressPeerId",
+      "method": "DELETE",
+      "path": "/api/ingress/peers/{ingressPeerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.ingress.peers.ingressPeerId",
+      "method": "GET",
+      "path": "/api/ingress/peers/{ingressPeerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.ingress.peers.ingressPeerId",
+      "method": "PUT",
+      "path": "/api/ingress/peers/{ingressPeerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "instance.status",
+      "method": "GET",
+      "path": "/api/instance",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "instance.version",
+      "method": "GET",
+      "path": "/api/instance/version",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "get.api.integrations.azure_idp",
+      "method": "GET",
+      "path": "/api/integrations/azure-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.azure_idp",
+      "method": "POST",
+      "path": "/api/integrations/azure-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.azure_idp.id",
+      "method": "DELETE",
+      "path": "/api/integrations/azure-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.azure_idp.id",
+      "method": "GET",
+      "path": "/api/integrations/azure-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.azure_idp.id",
+      "method": "PUT",
+      "path": "/api/integrations/azure-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.azure_idp.id.logs",
+      "method": "GET",
+      "path": "/api/integrations/azure-idp/{id}/logs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.azure_idp.id.sync",
+      "method": "POST",
+      "path": "/api/integrations/azure-idp/{id}/sync",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.billing.aws.marketplace.activate",
+      "method": "POST",
+      "path": "/api/integrations/billing/aws/marketplace/activate",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.billing.aws.marketplace.enrich",
+      "method": "POST",
+      "path": "/api/integrations/billing/aws/marketplace/enrich",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.billing.checkout",
+      "method": "POST",
+      "path": "/api/integrations/billing/checkout",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.invoices",
+      "method": "GET",
+      "path": "/api/integrations/billing/invoices",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.invoices.id.csv",
+      "method": "GET",
+      "path": "/api/integrations/billing/invoices/{id}/csv",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.invoices.id.pdf",
+      "method": "GET",
+      "path": "/api/integrations/billing/invoices/{id}/pdf",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.plans",
+      "method": "GET",
+      "path": "/api/integrations/billing/plans",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.portal",
+      "method": "GET",
+      "path": "/api/integrations/billing/portal",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.subscription",
+      "method": "GET",
+      "path": "/api/integrations/billing/subscription",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.billing.subscription",
+      "method": "PUT",
+      "path": "/api/integrations/billing/subscription",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.billing.usage",
+      "method": "GET",
+      "path": "/api/integrations/billing/usage",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.edr.falcon",
+      "method": "DELETE",
+      "path": "/api/integrations/edr/falcon",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.edr.falcon",
+      "method": "GET",
+      "path": "/api/integrations/edr/falcon",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.edr.falcon",
+      "method": "POST",
+      "path": "/api/integrations/edr/falcon",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.edr.falcon",
+      "method": "PUT",
+      "path": "/api/integrations/edr/falcon",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.edr.fleetdm",
+      "method": "DELETE",
+      "path": "/api/integrations/edr/fleetdm",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.edr.fleetdm",
+      "method": "GET",
+      "path": "/api/integrations/edr/fleetdm",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.edr.fleetdm",
+      "method": "POST",
+      "path": "/api/integrations/edr/fleetdm",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.edr.fleetdm",
+      "method": "PUT",
+      "path": "/api/integrations/edr/fleetdm",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.edr.huntress",
+      "method": "DELETE",
+      "path": "/api/integrations/edr/huntress",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.edr.huntress",
+      "method": "GET",
+      "path": "/api/integrations/edr/huntress",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.edr.huntress",
+      "method": "POST",
+      "path": "/api/integrations/edr/huntress",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.edr.huntress",
+      "method": "PUT",
+      "path": "/api/integrations/edr/huntress",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.edr.intune",
+      "method": "DELETE",
+      "path": "/api/integrations/edr/intune",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.edr.intune",
+      "method": "GET",
+      "path": "/api/integrations/edr/intune",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.edr.intune",
+      "method": "POST",
+      "path": "/api/integrations/edr/intune",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.edr.intune",
+      "method": "PUT",
+      "path": "/api/integrations/edr/intune",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.edr.sentinelone",
+      "method": "DELETE",
+      "path": "/api/integrations/edr/sentinelone",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.edr.sentinelone",
+      "method": "GET",
+      "path": "/api/integrations/edr/sentinelone",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.edr.sentinelone",
+      "method": "POST",
+      "path": "/api/integrations/edr/sentinelone",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.edr.sentinelone",
+      "method": "PUT",
+      "path": "/api/integrations/edr/sentinelone",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.google_idp",
+      "method": "GET",
+      "path": "/api/integrations/google-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.google_idp",
+      "method": "POST",
+      "path": "/api/integrations/google-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.google_idp.id",
+      "method": "DELETE",
+      "path": "/api/integrations/google-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.google_idp.id",
+      "method": "GET",
+      "path": "/api/integrations/google-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.google_idp.id",
+      "method": "PUT",
+      "path": "/api/integrations/google-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.google_idp.id.logs",
+      "method": "GET",
+      "path": "/api/integrations/google-idp/{id}/logs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.google_idp.id.sync",
+      "method": "POST",
+      "path": "/api/integrations/google-idp/{id}/sync",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.msp.tenants",
+      "method": "GET",
+      "path": "/api/integrations/msp/tenants",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.msp.tenants",
+      "method": "POST",
+      "path": "/api/integrations/msp/tenants",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.msp.tenants.id",
+      "method": "PUT",
+      "path": "/api/integrations/msp/tenants/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.msp.tenants.id.dns",
+      "method": "POST",
+      "path": "/api/integrations/msp/tenants/{id}/dns",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.msp.tenants.id.invite",
+      "method": "POST",
+      "path": "/api/integrations/msp/tenants/{id}/invite",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.msp.tenants.id.invite",
+      "method": "PUT",
+      "path": "/api/integrations/msp/tenants/{id}/invite",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.msp.tenants.id.subscription",
+      "method": "POST",
+      "path": "/api/integrations/msp/tenants/{id}/subscription",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.msp.tenants.id.unlink",
+      "method": "POST",
+      "path": "/api/integrations/msp/tenants/{id}/unlink",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.notifications.channels",
+      "method": "GET",
+      "path": "/api/integrations/notifications/channels",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.notifications.channels",
+      "method": "POST",
+      "path": "/api/integrations/notifications/channels",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.notifications.channels.channelId",
+      "method": "DELETE",
+      "path": "/api/integrations/notifications/channels/{channelId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.notifications.channels.channelId",
+      "method": "GET",
+      "path": "/api/integrations/notifications/channels/{channelId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.notifications.channels.channelId",
+      "method": "PUT",
+      "path": "/api/integrations/notifications/channels/{channelId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.notifications.types",
+      "method": "GET",
+      "path": "/api/integrations/notifications/types",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.okta_scim_idp",
+      "method": "GET",
+      "path": "/api/integrations/okta-scim-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.okta_scim_idp",
+      "method": "POST",
+      "path": "/api/integrations/okta-scim-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.okta_scim_idp.id",
+      "method": "DELETE",
+      "path": "/api/integrations/okta-scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.okta_scim_idp.id",
+      "method": "GET",
+      "path": "/api/integrations/okta-scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.okta_scim_idp.id",
+      "method": "PUT",
+      "path": "/api/integrations/okta-scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.okta_scim_idp.id.logs",
+      "method": "GET",
+      "path": "/api/integrations/okta-scim-idp/{id}/logs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.okta_scim_idp.id.token",
+      "method": "POST",
+      "path": "/api/integrations/okta-scim-idp/{id}/token",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.scim_idp",
+      "method": "GET",
+      "path": "/api/integrations/scim-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.scim_idp",
+      "method": "POST",
+      "path": "/api/integrations/scim-idp",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.integrations.scim_idp.id",
+      "method": "DELETE",
+      "path": "/api/integrations/scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.scim_idp.id",
+      "method": "GET",
+      "path": "/api/integrations/scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.integrations.scim_idp.id",
+      "method": "PUT",
+      "path": "/api/integrations/scim-idp/{id}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.integrations.scim_idp.id.logs",
+      "method": "GET",
+      "path": "/api/integrations/scim-idp/{id}/logs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.integrations.scim_idp.id.token",
+      "method": "POST",
+      "path": "/api/integrations/scim-idp/{id}/token",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.locations.countries",
+      "method": "GET",
+      "path": "/api/locations/countries",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.locations.countries.country.cities",
+      "method": "GET",
+      "path": "/api/locations/countries/{country}/cities",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks",
+      "method": "GET",
+      "path": "/api/networks",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.networks",
+      "method": "POST",
+      "path": "/api/networks",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.routers",
+      "method": "GET",
+      "path": "/api/networks/routers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.networks.networkId",
+      "method": "DELETE",
+      "path": "/api/networks/{networkId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.networkId",
+      "method": "GET",
+      "path": "/api/networks/{networkId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.networks.networkId",
+      "method": "PUT",
+      "path": "/api/networks/{networkId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.networkId.resources",
+      "method": "GET",
+      "path": "/api/networks/{networkId}/resources",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.networks.networkId.resources",
+      "method": "POST",
+      "path": "/api/networks/{networkId}/resources",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.networks.networkId.resources.resourceId",
+      "method": "DELETE",
+      "path": "/api/networks/{networkId}/resources/{resourceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.networkId.resources.resourceId",
+      "method": "GET",
+      "path": "/api/networks/{networkId}/resources/{resourceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.networks.networkId.resources.resourceId",
+      "method": "PUT",
+      "path": "/api/networks/{networkId}/resources/{resourceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.networkId.routers",
+      "method": "GET",
+      "path": "/api/networks/{networkId}/routers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.networks.networkId.routers",
+      "method": "POST",
+      "path": "/api/networks/{networkId}/routers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.networks.networkId.routers.routerId",
+      "method": "DELETE",
+      "path": "/api/networks/{networkId}/routers/{routerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.networks.networkId.routers.routerId",
+      "method": "GET",
+      "path": "/api/networks/{networkId}/routers/{routerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.networks.networkId.routers.routerId",
+      "method": "PUT",
+      "path": "/api/networks/{networkId}/routers/{routerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers",
+      "method": "GET",
+      "path": "/api/peers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.edr.bypassed",
+      "method": "GET",
+      "path": "/api/peers/edr/bypassed",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.peers.peer_id.edr.bypass",
+      "method": "DELETE",
+      "path": "/api/peers/{peer-id}/edr/bypass",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.peers.peer_id.edr.bypass",
+      "method": "POST",
+      "path": "/api/peers/{peer-id}/edr/bypass",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.peers.peerId",
+      "method": "DELETE",
+      "path": "/api/peers/{peerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId",
+      "method": "GET",
+      "path": "/api/peers/{peerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.peers.peerId",
+      "method": "PUT",
+      "path": "/api/peers/{peerId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId.accessible_peers",
+      "method": "GET",
+      "path": "/api/peers/{peerId}/accessible-peers",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId.ingress.ports",
+      "method": "GET",
+      "path": "/api/peers/{peerId}/ingress/ports",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.peers.peerId.ingress.ports",
+      "method": "POST",
+      "path": "/api/peers/{peerId}/ingress/ports",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.peers.peerId.ingress.ports.allocationId",
+      "method": "DELETE",
+      "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId.ingress.ports.allocationId",
+      "method": "GET",
+      "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.peers.peerId.ingress.ports.allocationId",
+      "method": "PUT",
+      "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId.jobs",
+      "method": "GET",
+      "path": "/api/peers/{peerId}/jobs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.peers.peerId.jobs",
+      "method": "POST",
+      "path": "/api/peers/{peerId}/jobs",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.peers.peerId.jobs.jobId",
+      "method": "GET",
+      "path": "/api/peers/{peerId}/jobs/{jobId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.peers.peerId.temporary_access",
+      "method": "POST",
+      "path": "/api/peers/{peerId}/temporary-access",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.policies",
+      "method": "GET",
+      "path": "/api/policies",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.policies",
+      "method": "POST",
+      "path": "/api/policies",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.policies.policyId",
+      "method": "DELETE",
+      "path": "/api/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.policies.policyId",
+      "method": "GET",
+      "path": "/api/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.policies.policyId",
+      "method": "PUT",
+      "path": "/api/policies/{policyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.posture_checks",
+      "method": "GET",
+      "path": "/api/posture-checks",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.posture_checks",
+      "method": "POST",
+      "path": "/api/posture-checks",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.posture_checks.postureCheckId",
+      "method": "DELETE",
+      "path": "/api/posture-checks/{postureCheckId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.posture_checks.postureCheckId",
+      "method": "GET",
+      "path": "/api/posture-checks/{postureCheckId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.posture_checks.postureCheckId",
+      "method": "PUT",
+      "path": "/api/posture-checks/{postureCheckId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.clusters",
+      "method": "GET",
+      "path": "/api/reverse-proxies/clusters",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.reverse_proxies.clusters.clusterAddress",
+      "method": "DELETE",
+      "path": "/api/reverse-proxies/clusters/{clusterAddress}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.domains",
+      "method": "GET",
+      "path": "/api/reverse-proxies/domains",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.reverse_proxies.domains",
+      "method": "POST",
+      "path": "/api/reverse-proxies/domains",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.reverse_proxies.domains.domainId",
+      "method": "DELETE",
+      "path": "/api/reverse-proxies/domains/{domainId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.domains.domainId.validate",
+      "method": "GET",
+      "path": "/api/reverse-proxies/domains/{domainId}/validate",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.proxy_tokens",
+      "method": "GET",
+      "path": "/api/reverse-proxies/proxy-tokens",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.reverse_proxies.proxy_tokens",
+      "method": "POST",
+      "path": "/api/reverse-proxies/proxy-tokens",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.reverse_proxies.proxy_tokens.tokenId",
+      "method": "DELETE",
+      "path": "/api/reverse-proxies/proxy-tokens/{tokenId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.services",
+      "method": "GET",
+      "path": "/api/reverse-proxies/services",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.reverse_proxies.services",
+      "method": "POST",
+      "path": "/api/reverse-proxies/services",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.reverse_proxies.services.serviceId",
+      "method": "DELETE",
+      "path": "/api/reverse-proxies/services/{serviceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.reverse_proxies.services.serviceId",
+      "method": "GET",
+      "path": "/api/reverse-proxies/services/{serviceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.reverse_proxies.services.serviceId",
+      "method": "PUT",
+      "path": "/api/reverse-proxies/services/{serviceId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.routes",
+      "method": "GET",
+      "path": "/api/routes",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.routes",
+      "method": "POST",
+      "path": "/api/routes",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.routes.routeId",
+      "method": "DELETE",
+      "path": "/api/routes/{routeId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.routes.routeId",
+      "method": "GET",
+      "path": "/api/routes/{routeId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.routes.routeId",
+      "method": "PUT",
+      "path": "/api/routes/{routeId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.setup",
+      "method": "POST",
+      "path": "/api/setup",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.setup_keys",
+      "method": "GET",
+      "path": "/api/setup-keys",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.setup_keys",
+      "method": "POST",
+      "path": "/api/setup-keys",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.setup_keys.keyId",
+      "method": "DELETE",
+      "path": "/api/setup-keys/{keyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.setup_keys.keyId",
+      "method": "GET",
+      "path": "/api/setup-keys/{keyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.setup_keys.keyId",
+      "method": "PUT",
+      "path": "/api/setup-keys/{keyId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.users",
+      "method": "GET",
+      "path": "/api/users",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users",
+      "method": "POST",
+      "path": "/api/users",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "users.current",
+      "method": "GET",
+      "path": "/api/users/current",
+      "implementation": "implemented",
+      "verification": "contract_verified"
+    },
+    {
+      "id": "get.api.users.invites",
+      "method": "GET",
+      "path": "/api/users/invites",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.invites",
+      "method": "POST",
+      "path": "/api/users/invites",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.users.invites.inviteId",
+      "method": "DELETE",
+      "path": "/api/users/invites/{inviteId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.invites.inviteId.regenerate",
+      "method": "POST",
+      "path": "/api/users/invites/{inviteId}/regenerate",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.users.invites.token",
+      "method": "GET",
+      "path": "/api/users/invites/{token}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.invites.token.accept",
+      "method": "POST",
+      "path": "/api/users/invites/{token}/accept",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.users.userId",
+      "method": "DELETE",
+      "path": "/api/users/{userId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.users.userId",
+      "method": "PUT",
+      "path": "/api/users/{userId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.userId.approve",
+      "method": "POST",
+      "path": "/api/users/{userId}/approve",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.userId.invite",
+      "method": "POST",
+      "path": "/api/users/{userId}/invite",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "put.api.users.userId.password",
+      "method": "PUT",
+      "path": "/api/users/{userId}/password",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.users.userId.reject",
+      "method": "DELETE",
+      "path": "/api/users/{userId}/reject",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.users.userId.tokens",
+      "method": "GET",
+      "path": "/api/users/{userId}/tokens",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "post.api.users.userId.tokens",
+      "method": "POST",
+      "path": "/api/users/{userId}/tokens",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "delete.api.users.userId.tokens.tokenId",
+      "method": "DELETE",
+      "path": "/api/users/{userId}/tokens/{tokenId}",
+      "implementation": "discovered",
+      "verification": ""
+    },
+    {
+      "id": "get.api.users.userId.tokens.tokenId",
+      "method": "GET",
+      "path": "/api/users/{userId}/tokens/{tokenId}",
+      "implementation": "discovered",
+      "verification": ""
+    }
   ],
   "summary": {
     "implemented": 6,
+    "classified": 0,
+    "discovered": 230,
     "contract_verified": 6,
     "disposable_verified": 0,
     "live_verified": 0,
