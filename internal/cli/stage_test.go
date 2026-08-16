@@ -196,3 +196,23 @@ func TestStageCreateRouteDeleteRequiresAcknowledgement(t *testing.T) {
 		t.Fatalf("route delete acknowledgement finding missing: %s", stdout.String())
 	}
 }
+
+func TestStageCreateNetworkDeleteRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"networks.delete","request":{"id":"n1"},"before":{"id":"n1","name":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]},"intended_after":{}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.network_delete"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("network delete acknowledgement finding missing: %s", stdout.String())
+	}
+}

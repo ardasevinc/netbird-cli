@@ -31,6 +31,7 @@ type Remote interface {
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
 	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteNetwork(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -186,6 +187,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetPeerRaw(ctx, id)
 	case "networks.update":
 		return remote.GetNetworkRaw(ctx, id)
+	case "networks.delete":
+		return remote.GetNetworkRaw(ctx, id)
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
@@ -209,6 +212,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.UpdatePeer(ctx, id, request)
 	case "networks.update":
 		return remote.UpdateNetwork(ctx, id, request)
+	case "networks.delete":
+		return remote.DeleteNetwork(ctx, id)
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
@@ -232,6 +237,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PeerUpdateImpact(before, intendedAfter)
 	case "networks.update":
 		return analysis.NetworkUpdateImpact(before, intendedAfter)
+	case "networks.delete":
+		return analysis.NetworkDeleteImpact(before)
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}
@@ -251,7 +258,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "networks.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

@@ -126,6 +126,9 @@ func (f *fakeRemote) UpdatePeer(_ context.Context, _ string, _ json.RawMessage) 
 }
 
 func (f *fakeRemote) GetNetworkRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.networkBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
 	return append(json.RawMessage(nil), f.networkBefore...), nil
 }
 
@@ -136,6 +139,15 @@ func (f *fakeRemote) UpdateNetwork(_ context.Context, _ string, _ json.RawMessag
 	}
 	f.networkBefore = append(json.RawMessage(nil), f.networkAfter...)
 	return f.networkBefore, nil
+}
+
+func (f *fakeRemote) DeleteNetwork(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.networkBefore = nil
+	return nil, nil
 }
 
 func stageForTest(t *testing.T, store *ledger.Store, before, after string) ledger.Stage {
@@ -500,5 +512,38 @@ func TestApplyDispatchesNetworkUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"n1","name":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.delete",
+		Request:        json.RawMessage(`{"id":"n1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"network_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a network can remove attached policies, resources, and routers; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"network_delete_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.network_delete", Severity: "blocking", Message: "deleting the network may remove attached topology and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", networkBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network delete result: %+v updates=%d", result, remote.updates)
 	}
 }

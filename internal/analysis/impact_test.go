@@ -139,3 +139,13 @@ func TestNetworkUpdateImpactBlocksTopologyChanges(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestNetworkDeleteImpactIsConservative(t *testing.T) {
+	report, err := NetworkDeleteImpact([]byte(`{"id":"n1","name":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

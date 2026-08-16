@@ -1075,8 +1075,8 @@
       "id": "delete.api.networks.networkId",
       "method": "DELETE",
       "path": "/api/networks/{networkId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "networks.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 108,
+    "implemented": 109,
     "classified": 0,
-    "discovered": 128,
-    "contract_verified": 99,
+    "discovered": 127,
+    "contract_verified": 100,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
