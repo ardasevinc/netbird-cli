@@ -85,6 +85,10 @@ users_json="$(nb --json users list)"
 test "$(jq -r '.operation' <<<"$users_json")" = "users.list"
 groups_json="$(nb --json groups list)"
 test "$(jq -r '.data.groups | length' <<<"$groups_json")" -ge 1
+routes_json="$(nb --json routes list)"
+test "$(jq -r '.operation' <<<"$routes_json")" = "routes.list"
+networks_json="$(nb --json networks list)"
+test "$(jq -r '.operation' <<<"$networks_json")" = "networks.list"
 
 # The built-in All group is intentionally immutable. Create a disposable
 # fixture through the server API, then exercise the consequential update only
@@ -101,4 +105,4 @@ test "$(jq -r '.data.state' <<<"$apply_json")" = "confirmed_success"
 readback_json="$(nb --json groups get "$fixture_id")"
 test "$(jq -r '.data.group.name' <<<"$readback_json")" = "nb-e2e-fixture-renamed"
 
-printf 'self-hosted e2e passed: pinned %s, accounts/users/groups reads, staged group update, read-back confirmed\n' "$upstream_tag"
+printf 'self-hosted e2e passed: pinned %s, account/user/group/route/network reads, staged group update, read-back confirmed\n' "$upstream_tag"

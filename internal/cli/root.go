@@ -88,6 +88,8 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.AddCommand(policiesCommand(state, stdout))
 	root.AddCommand(accountsCommand(state, stdout))
 	root.AddCommand(usersCommand(state, stdout))
+	root.AddCommand(routesCommand(state, stdout))
+	root.AddCommand(networksCommand(state, stdout))
 	return root
 }
 

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/routes-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {"schema": {"const": "nb/v1/routes-list-result"}, "ok": {"const": true}, "operation": {"const": "routes.list"}, "data": {"type": "object", "required": ["routes", "completeness"], "properties": {"routes": {"type": "array", "items": {"$ref": "#/$defs/route"}}, "completeness": {"$ref": "#/$defs/completeness"}}, "additionalProperties": false}},
+  "$defs": {
+    "route": {"type": "object", "required": ["id", "description", "enabled", "groups", "keep_route", "masquerade", "metric", "network_id", "network_type"], "properties": {"id": {"type": "string"}, "description": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}}, "enabled": {"type": "boolean"}, "groups": {"type": "array", "items": {"type": "string"}}, "keep_route": {"type": "boolean"}, "masquerade": {"type": "boolean"}, "metric": {"type": "integer"}, "network": {"type": ["string", "null"]}, "network_id": {"type": "string"}, "network_type": {"type": "string"}, "peer": {"type": ["string", "null"]}, "peer_groups": {"type": "array", "items": {"type": "string"}}, "access_control_groups": {"type": "array", "items": {"type": "string"}}, "skip_auto_apply": {"type": ["boolean", "null"]}}, "additionalProperties": false},
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

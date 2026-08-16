@@ -423,11 +423,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.routes",
+      "id": "routes.list",
       "method": "GET",
       "path": "/api/routes",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.routes",
@@ -437,11 +437,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.routes.routeId",
+      "id": "routes.get",
       "method": "GET",
       "path": "/api/routes/{routeId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.routes.routeId",
@@ -458,11 +458,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks",
+      "id": "networks.list",
       "method": "GET",
       "path": "/api/networks",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.networks",
@@ -472,11 +472,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.networks.networkId",
+      "id": "networks.get",
       "method": "GET",
       "path": "/api/networks/{networkId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.networks.networkId",

@@ -20,6 +20,8 @@ go run ./cmd/nb groups get <group-id> --json
 go run ./cmd/nb accounts list --json
 go run ./cmd/nb users list --json
 go run ./cmd/nb users invites --json
+go run ./cmd/nb routes list --json
+go run ./cmd/nb networks list --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb policies list --json
@@ -52,7 +54,8 @@ security checks, module verification, license boundaries, generated schemas,
 cross-builds, and diff cleanliness.
 
 The opt-in self-hosted lane pins NetBird `v0.77.0`, boots a disposable combined
-server, bootstraps a throwaway admin PAT, exercises account/user/group reads,
+server, bootstraps a throwaway admin PAT, exercises account/user/group,
+route/network reads,
 and proves a staged group update through remote read-back. It never targets a
 production profile.
 
