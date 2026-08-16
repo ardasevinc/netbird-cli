@@ -28,6 +28,7 @@ go run ./cmd/nb dns zones list --json
 go run ./cmd/nb identity-providers list --json
 go run ./cmd/nb posture-checks list --json
 go run ./cmd/nb events --json
+go run ./cmd/nb setup-keys list --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb policies list --json
@@ -44,8 +45,8 @@ only an exact stage ID and revision, rechecks the live preimage, journals the
 dispatch intent, performs one remote mutation request, and verifies the result by
 reading the resource back. Never point an unreviewed stage at a production
 profile. User inventory never emits upstream password or invite-token fields;
-those values are treated as one-time or secret material even when returned by
-the management API.
+those values, along with setup-key secrets, are treated as one-time or secret
+material even when returned by the management API.
 
 ## Development
 

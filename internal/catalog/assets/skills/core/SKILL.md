@@ -22,10 +22,12 @@ nb dns zones list --json
 nb identity-providers list --json
 nb posture-checks list --json
 nb events --json
+nb setup-keys list --json
 ```
 
 Inventory commands are bounded reads. User and invite results intentionally omit
-passwords and invite tokens, which are never part of the stable `nb` output
+passwords and invite tokens, and setup-key inventory intentionally omits the
+upstream setup-key secret. These values are never part of the stable `nb` output
 contract.
 
 Request `--json` explicitly when consuming output as an agent. Consequential
