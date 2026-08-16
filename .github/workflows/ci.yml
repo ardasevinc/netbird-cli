@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -101,3 +102,29 @@ jobs:
         run: go test ./...
       - name: Build
         run: CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/nb" ./cmd/nb
+
+  self-hosted-e2e:
+    name: Disposable self-hosted E2E
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout nb
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Checkout pinned NetBird source
+        run: git clone --depth 1 --branch v0.77.0 https://github.com/netbirdio/netbird.git "$RUNNER_TEMP/netbird"
+      - name: Restore dependencies
+        run: go mod download
+      - name: Build nb
+        run: go build -trimpath -o bin/nb ./cmd/nb
+      - name: Run disposable self-hosted E2E
+        env:
+          NB_E2E_NETBIRD_REPO: ${{ runner.temp }}/netbird
+        run: ./tools/e2e-selfhosted.sh

@@ -45,6 +45,9 @@ generated-check:
 coverage-check:
     ./tools/check-coverage.sh
 
+e2e-selfhosted: build
+    ./tools/e2e-selfhosted.sh
+
 diff-check:
     git diff --check
 

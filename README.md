@@ -43,11 +43,18 @@ the management API.
 
 ```sh
 just gate
+# requires Docker, jq, and NB_E2E_NETBIRD_REPO (or the local reference checkout)
+NB_E2E_NETBIRD_IMAGE=nb-netbird-cli-e2e:v0.77.0 just e2e-selfhosted
 ```
 
 The local gate covers formatting, tests, race detection, vet, static analysis,
 security checks, module verification, license boundaries, generated schemas,
 cross-builds, and diff cleanliness.
+
+The opt-in self-hosted lane pins NetBird `v0.77.0`, boots a disposable combined
+server, bootstraps a throwaway admin PAT, exercises account/user/group reads,
+and proves a staged group update through remote read-back. It never targets a
+production profile.
 
 ## Status
 

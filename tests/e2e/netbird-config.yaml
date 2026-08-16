@@ -1,0 +1,15 @@
+server:
+  listenAddress: ":8080"
+  exposedAddress: "__EXPOSED_ADDRESS__"
+  healthcheckAddress: ":9000"
+  metricsPort: 9090
+  logLevel: "info"
+  logFile: "console"
+  authSecret: "nb-e2e-relay-secret"
+  dataDir: "/nb/data"
+  disableAnonymousMetrics: true
+  disableGeoliteUpdate: true
+  auth:
+    issuer: "http://localhost:8080/oauth2"
+  store:
+    engine: "sqlite"
