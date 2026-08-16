@@ -442,11 +442,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "get.api.identity_providers",
+      "id": "identity_providers.list",
       "method": "GET",
       "path": "/api/identity-providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.identity_providers",
@@ -463,11 +463,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.identity_providers.idpId",
+      "id": "identity_providers.get",
       "method": "GET",
       "path": "/api/identity-providers/{idpId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.identity_providers.idpId",
@@ -1317,11 +1317,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.posture_checks",
+      "id": "posture_checks.list",
       "method": "GET",
       "path": "/api/posture-checks",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.posture_checks",
@@ -1338,11 +1338,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.posture_checks.postureCheckId",
+      "id": "posture_checks.get",
       "method": "GET",
       "path": "/api/posture-checks/{postureCheckId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.posture_checks.postureCheckId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 22,
+    "implemented": 26,
     "classified": 0,
-    "discovered": 214,
-    "contract_verified": 22,
+    "discovered": 210,
+    "contract_verified": 26,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

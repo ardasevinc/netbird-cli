@@ -710,11 +710,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.posture_checks",
+      "id": "posture_checks.list",
       "method": "GET",
       "path": "/api/posture-checks",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.posture_checks",
@@ -724,11 +724,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.posture_checks.postureCheckId",
+      "id": "posture_checks.get",
       "method": "GET",
       "path": "/api/posture-checks/{postureCheckId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.posture_checks.postureCheckId",
@@ -759,11 +759,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.identity_providers",
+      "id": "identity_providers.list",
       "method": "GET",
       "path": "/api/identity-providers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.identity_providers",
@@ -773,11 +773,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.identity_providers.idpId",
+      "id": "identity_providers.get",
       "method": "GET",
       "path": "/api/identity-providers/{idpId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.identity_providers.idpId",
