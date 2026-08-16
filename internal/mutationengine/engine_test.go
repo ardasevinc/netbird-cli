@@ -20,6 +20,8 @@ type fakeRemote struct {
 	policyAfter  json.RawMessage
 	routeBefore  json.RawMessage
 	routeAfter   json.RawMessage
+	peerBefore   json.RawMessage
+	peerAfter    json.RawMessage
 	updateErr    error
 	updates      int
 }
@@ -70,6 +72,19 @@ func (f *fakeRemote) UpdateRoute(_ context.Context, _ string, _ json.RawMessage)
 	}
 	f.routeBefore = append(json.RawMessage(nil), f.routeAfter...)
 	return f.routeBefore, nil
+}
+
+func (f *fakeRemote) GetPeerRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	return append(json.RawMessage(nil), f.peerBefore...), nil
+}
+
+func (f *fakeRemote) UpdatePeer(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.peerBefore = append(json.RawMessage(nil), f.peerAfter...)
+	return f.peerBefore, nil
 }
 
 func stageForTest(t *testing.T, store *ledger.Store, before, after string) ledger.Stage {
@@ -269,5 +284,38 @@ func TestApplyDispatchesRouteUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected route result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPeerUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"p1","name":"old","approval_required":false,"connected":true}`
+	after := `{"id":"p1","name":"new","approval_required":false,"connected":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "peers.update",
+		Request:        json.RawMessage(`{"id":"p1","name":"new"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"metadata_only","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["peer name changed without changing peer access or connectivity state"],"completeness":{"state":"complete","reason":null}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", peerBefore: []byte(before), peerAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected peer result: %+v updates=%d", result, remote.updates)
 	}
 }

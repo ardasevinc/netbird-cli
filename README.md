@@ -91,6 +91,9 @@ require live topology analysis.
 Route stages use the same contract. Description-only edits are reachability-
 neutral; changes to enabled state, network, peer groups, metrics, or other
 routing fields emit the blocking `impact.route_change` finding.
+Peer stages use the same contract. Name-only edits are neutral; approval,
+expiry, SSH, address, or other access/connectivity changes emit the blocking
+`impact.peer_change` finding.
 
 ## Development
 

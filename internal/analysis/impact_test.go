@@ -57,3 +57,29 @@ func TestRouteUpdateImpactBlocksRoutingChanges(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestPeerUpdateImpactMarksNameOnlyChangeAsNeutral(t *testing.T) {
+	report, err := PeerUpdateImpact(
+		[]byte(`{"id":"p1","name":"old","approval_required":false,"connected":true}`),
+		[]byte(`{"id":"p1","name":"new","approval_required":false,"connected":true}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "metadata_only" || report.Reachability != "unchanged" || report.Confidence != "high" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestPeerUpdateImpactBlocksAccessChanges(t *testing.T) {
+	report, err := PeerUpdateImpact(
+		[]byte(`{"id":"p1","name":"peer","approval_required":false,"connected":true}`),
+		[]byte(`{"id":"p1","name":"peer","approval_required":true,"connected":true}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "peer_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

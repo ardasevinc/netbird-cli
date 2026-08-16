@@ -1205,11 +1205,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "put.api.peers.peerId",
+      "id": "peers.update",
       "method": "PUT",
       "path": "/api/peers/{peerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.accessible",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 103,
+    "implemented": 104,
     "classified": 0,
-    "discovered": 133,
-    "contract_verified": 94,
+    "discovered": 132,
+    "contract_verified": 95,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

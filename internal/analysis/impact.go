@@ -82,6 +82,37 @@ func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func PeerUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode peer impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode peer impact intended state: %w", err)
+	}
+	changed := changedKeys(beforeObject, afterObject)
+	if len(changed) == 0 || (len(changed) == 1 && changed[0] == "name") {
+		return ImpactReport{
+			Classification:    "metadata_only",
+			Reachability:      "unchanged",
+			AffectedPeers:     []string{},
+			AffectedResources: []string{},
+			Confidence:        "high",
+			Evidence:          []string{"peer name changed without changing peer access or connectivity state"},
+			Completeness:      map[string]any{"state": "complete", "reason": nil},
+		}, nil
+	}
+	return ImpactReport{
+		Classification:    "peer_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{fmt.Sprintf("peer update changes access or connectivity fields: %v; affected peers and resources require live topology analysis", changed)},
+		Completeness:      map[string]any{"state": "unknown", "reason": "peer_change_requires_topology"},
+	}, nil
+}
+
 func GroupUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {
