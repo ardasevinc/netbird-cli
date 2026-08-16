@@ -29,6 +29,7 @@ go run ./cmd/nb identity-providers list --json
 go run ./cmd/nb posture-checks list --json
 go run ./cmd/nb events --json
 go run ./cmd/nb setup-keys list --json
+go run ./cmd/nb locations countries --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb policies list --json

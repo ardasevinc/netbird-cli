@@ -23,6 +23,7 @@ nb identity-providers list --json
 nb posture-checks list --json
 nb events --json
 nb setup-keys list --json
+nb locations countries --json
 ```
 
 Inventory commands are bounded reads. User and invite results intentionally omit
