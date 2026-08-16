@@ -16,6 +16,11 @@ nb capabilities --json
 nb accounts list --json
 nb users list --json
 nb users invites --json
+nb dns nameservers list --json
+nb dns settings --json
+nb dns zones list --json
+nb identity-providers list --json
+nb posture-checks list --json
 ```
 
 Inventory commands are bounded reads. User and invite results intentionally omit
