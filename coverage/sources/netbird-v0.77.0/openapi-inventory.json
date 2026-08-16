@@ -689,11 +689,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.events.audit",
+      "id": "events.audit",
       "method": "GET",
       "path": "/api/events/audit",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.events.network_traffic",

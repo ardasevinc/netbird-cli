@@ -386,11 +386,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.events.audit",
+      "id": "events.audit",
       "method": "GET",
       "path": "/api/events/audit",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.events.network_traffic",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 26,
+    "implemented": 27,
     "classified": 0,
-    "discovered": 210,
-    "contract_verified": 26,
+    "discovered": 209,
+    "contract_verified": 27,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0
