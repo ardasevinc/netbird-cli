@@ -570,11 +570,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.nameservers",
+      "id": "dns.nameservers.list",
       "method": "GET",
       "path": "/api/dns/nameservers",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.dns.nameservers",
@@ -584,11 +584,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.nameservers.nsgroupId",
+      "id": "dns.nameservers.get",
       "method": "GET",
       "path": "/api/dns/nameservers/{nsgroupId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.dns.nameservers.nsgroupId",
@@ -605,11 +605,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.settings",
+      "id": "dns.settings",
       "method": "GET",
       "path": "/api/dns/settings",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.dns.settings",
@@ -619,11 +619,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones",
+      "id": "dns.zones.list",
       "method": "GET",
       "path": "/api/dns/zones",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.dns.zones",
@@ -633,11 +633,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones.zoneId",
+      "id": "dns.zones.get",
       "method": "GET",
       "path": "/api/dns/zones/{zoneId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.dns.zones.zoneId",
