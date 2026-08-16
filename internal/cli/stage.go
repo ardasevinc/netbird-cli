@@ -9,6 +9,7 @@ import (
 
 	"github.com/ardasevinc/netbird-cli/internal/config"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
+	"github.com/ardasevinc/netbird-cli/internal/operations"
 	"github.com/spf13/cobra"
 )
 
@@ -54,6 +55,10 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if plan.Operation == "" {
 				return fail(2, fmt.Errorf("stage plan operation is required"))
 			}
+			definition, err := operations.Lookup(plan.Operation)
+			if err != nil {
+				return fail(2, err)
+			}
 			store, err := ledger.Open(state.statePath)
 			if err != nil {
 				return fail(3, err)
@@ -72,7 +77,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation}
+			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation, "mutation": definition.Mutation, "dispatcher_admitted": definition.DispatcherAdmitted}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/stage-result", "ok": true, "operation": "stage.create", "data": data})
 			}
