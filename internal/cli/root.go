@@ -8,12 +8,16 @@ import (
 	"strings"
 
 	"github.com/ardasevinc/netbird-cli/internal/catalog"
+	"github.com/ardasevinc/netbird-cli/internal/config"
+	"github.com/ardasevinc/netbird-cli/internal/exit"
 	"github.com/ardasevinc/netbird-cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
 type commandState struct {
-	json bool
+	json        bool
+	configPath  string
+	profileName string
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info version.Info) int {
@@ -34,7 +38,10 @@ func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info 
 			})
 		}
 		_, _ = fmt.Fprintln(stderr, err)
-		return 2
+		if coded, ok := err.(interface{ ExitCode() int }); ok {
+			return coded.ExitCode()
+		}
+		return int(exit.InvalidInput)
 	}
 	return 0
 }
@@ -49,10 +56,14 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	root.PersistentFlags().BoolVar(&state.json, "json", false, "emit one machine-readable JSON document")
+	root.PersistentFlags().StringVar(&state.configPath, "config", config.DefaultPath(), "path to the TOML configuration")
+	root.PersistentFlags().StringVar(&state.profileName, "profile", "default", "named profile to use")
 	root.AddCommand(versionCommand(state, stdout, info))
 	root.AddCommand(schemaCommand(state, stdout))
 	root.AddCommand(skillsCommand(state, stdout))
 	root.AddCommand(coverageCommand(state, stdout))
+	root.AddCommand(profileCommand(state, stdout))
+	root.AddCommand(capabilitiesCommand(state, stdout))
 	return root
 }
 
@@ -178,4 +189,19 @@ func writeJSON(w io.Writer, value any) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(value)
+}
+
+type commandFailure struct {
+	code int
+	err  error
+}
+
+func (e commandFailure) Error() string { return e.err.Error() }
+
+func (e commandFailure) Unwrap() error { return e.err }
+
+func (e commandFailure) ExitCode() int { return e.code }
+
+func fail(code int, err error) error {
+	return commandFailure{code: code, err: err}
 }

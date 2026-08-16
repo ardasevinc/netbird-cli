@@ -1,0 +1,44 @@
+package transport
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestGetJSONSendsBearerAndBoundsBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer token" {
+			t.Errorf("authorization = %q", r.Header.Get("Authorization"))
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL, Token: "token", HTTP: server.Client(), MaxBody: 64})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]bool
+	if err := client.GetJSON(context.Background(), "/api/instance", &result); err != nil {
+		t.Fatal(err)
+	}
+	if !result["ok"] {
+		t.Fatalf("result = %v", result)
+	}
+}
+
+func TestGetJSONRejectsOversizedBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"long":"this exceeds the configured bound"}`))
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL, HTTP: server.Client(), MaxBody: 8})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.GetJSON(context.Background(), "/api/instance", &json.RawMessage{}); err == nil {
+		t.Fatal("expected oversized response to fail")
+	}
+}

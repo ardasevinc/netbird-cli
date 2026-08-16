@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/profile-validate-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/profile-validate-result"},
+    "ok": {"const": true},
+    "operation": {"const": "profile.validate"},
+    "data": {"type": "object", "required": ["name", "valid"], "properties": {"name": {"type": "string"}, "valid": {"const": true}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

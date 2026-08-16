@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/profile-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/profile-result"},
+    "ok": {"const": true},
+    "operation": {"const": "profile.show"},
+    "data": {"type": "object", "required": ["name", "url"], "properties": {"name": {"type": "string"}, "url": {"type": "string"}, "account_id": {"type": "string"}, "credential_ref": {"type": "string"}, "ca_file": {"type": "string"}, "server_identity": {"type": "string"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

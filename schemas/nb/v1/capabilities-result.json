@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/capabilities-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/capabilities-result"},
+    "ok": {"const": true},
+    "operation": {"const": "capabilities"},
+    "data": {"type": "object", "required": ["profile", "version", "instance", "completeness"], "properties": {"profile": {"type": "string"}, "server_identity": {"type": "string"}, "account_id": {"type": "string"}, "version": {"type": "object"}, "instance": {"type": "object"}, "user": {}, "completeness": {"const": "complete"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}
