@@ -94,6 +94,8 @@ routing fields emit the blocking `impact.route_change` finding.
 Peer stages use the same contract. Name-only edits are neutral; approval,
 expiry, SSH, address, or other access/connectivity changes emit the blocking
 `impact.peer_change` finding.
+Peer deletion is staged with blocking `impact.peer_delete` acknowledgement and
+the same required 404 absence proof.
 Network stages use the same contract. Name and description edits are neutral;
 changes to attached policies, resources, or routers emit the blocking
 `impact.network_change` finding.

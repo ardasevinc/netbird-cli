@@ -145,6 +145,22 @@ func PeerUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func PeerDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode peer delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "peer_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting a peer removes an access and connectivity principal; affected peers and resources require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "peer_delete_requires_topology"},
+	}, nil
+}
+
 func NetworkUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

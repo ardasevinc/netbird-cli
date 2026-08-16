@@ -121,3 +121,15 @@ func (c *Client) UpdatePeer(ctx context.Context, id string, request json.RawMess
 	}
 	return result, nil
 }
+
+func (c *Client) DeletePeer(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("peer id is required")
+	}
+	path := "/api/peers/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete peer %q: %w", id, err)
+	}
+	return result, nil
+}

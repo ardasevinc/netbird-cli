@@ -1194,8 +1194,8 @@
       "id": "delete.api.peers.peerId",
       "method": "DELETE",
       "path": "/api/peers/{peerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 109,
+    "implemented": 110,
     "classified": 0,
-    "discovered": 127,
-    "contract_verified": 100,
+    "discovered": 126,
+    "contract_verified": 101,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

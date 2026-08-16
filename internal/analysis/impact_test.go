@@ -114,6 +114,16 @@ func TestPeerUpdateImpactBlocksAccessChanges(t *testing.T) {
 	}
 }
 
+func TestPeerDeleteImpactIsConservative(t *testing.T) {
+	report, err := PeerDeleteImpact([]byte(`{"id":"p1","name":"peer","connected":true,"approval_required":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "peer_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestNetworkUpdateImpactMarksMetadataChangesAsNeutral(t *testing.T) {
 	report, err := NetworkUpdateImpact(
 		[]byte(`{"id":"n1","name":"old","description":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`),

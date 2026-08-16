@@ -29,6 +29,7 @@ type Remote interface {
 	DeleteRoute(context.Context, string) (json.RawMessage, error)
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeletePeer(context.Context, string) (json.RawMessage, error)
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
 	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetwork(context.Context, string) (json.RawMessage, error)
@@ -185,6 +186,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetRouteRaw(ctx, id)
 	case "peers.update":
 		return remote.GetPeerRaw(ctx, id)
+	case "peers.delete":
+		return remote.GetPeerRaw(ctx, id)
 	case "networks.update":
 		return remote.GetNetworkRaw(ctx, id)
 	case "networks.delete":
@@ -210,6 +213,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.DeleteRoute(ctx, id)
 	case "peers.update":
 		return remote.UpdatePeer(ctx, id, request)
+	case "peers.delete":
+		return remote.DeletePeer(ctx, id)
 	case "networks.update":
 		return remote.UpdateNetwork(ctx, id, request)
 	case "networks.delete":
@@ -235,6 +240,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.RouteDeleteImpact(before)
 	case "peers.update":
 		return analysis.PeerUpdateImpact(before, intendedAfter)
+	case "peers.delete":
+		return analysis.PeerDeleteImpact(before)
 	case "networks.update":
 		return analysis.NetworkUpdateImpact(before, intendedAfter)
 	case "networks.delete":
@@ -258,7 +265,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "networks.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

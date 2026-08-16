@@ -58,6 +58,7 @@ changes and policy metadata changes are reachability-neutral; unknown group
 impact, policy rule changes, and route behavior changes are blocking findings.
 Peer access or connectivity changes are also blocking findings.
 Network topology changes are also blocking findings.
+Peer deletion is blocking and requires the same absence proof.
 Policy deletion is blocking and requires read-back confirmation of absence.
 Group deletion is blocking and requires the same absence proof.
 Route deletion is blocking and requires the same absence proof.
