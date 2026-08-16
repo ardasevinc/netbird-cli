@@ -167,6 +167,30 @@ func (c *Client) GetNetwork(ctx context.Context, id string) (Network, error) {
 	return result.normalized(), nil
 }
 
+func (c *Client) GetNetworkRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := topologyPath("networks", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get network %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateNetwork(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := topologyPath("networks", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update network %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func normalizeRoutes(routes []routeWire) []Route {
 	result := make([]Route, len(routes))
 	for i, route := range routes {

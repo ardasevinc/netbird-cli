@@ -139,6 +139,7 @@ func applyReviewedOverrides(ops []operation) {
 		"PUT /api/policies/{policyId}":                         {ID: "policies.update", Implementation: "implemented", Verification: "contract_verified"},
 		"PUT /api/routes/{routeId}":                            {ID: "routes.update", Implementation: "implemented", Verification: "contract_verified"},
 		"PUT /api/peers/{peerId}":                              {ID: "peers.update", Implementation: "implemented", Verification: "contract_verified"},
+		"PUT /api/networks/{networkId}":                        {ID: "networks.update", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/routes":                                      {ID: "routes.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/routes/{routeId}":                            {ID: "routes.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/users":                                       {ID: "users.list", Implementation: "implemented", Verification: "contract_verified"},

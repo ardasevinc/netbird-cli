@@ -83,3 +83,29 @@ func TestPeerUpdateImpactBlocksAccessChanges(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestNetworkUpdateImpactMarksMetadataChangesAsNeutral(t *testing.T) {
+	report, err := NetworkUpdateImpact(
+		[]byte(`{"id":"n1","name":"old","description":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`),
+		[]byte(`{"id":"n1","name":"new","description":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "metadata_only" || report.Reachability != "unchanged" || report.Confidence != "high" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestNetworkUpdateImpactBlocksTopologyChanges(t *testing.T) {
+	report, err := NetworkUpdateImpact(
+		[]byte(`{"id":"n1","name":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`),
+		[]byte(`{"id":"n1","name":"office","policies":["p2"],"resources":["r1"],"routers":["rt1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

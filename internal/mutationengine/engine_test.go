@@ -12,18 +12,20 @@ import (
 )
 
 type fakeRemote struct {
-	identity     string
-	account      string
-	before       json.RawMessage
-	after        json.RawMessage
-	policyBefore json.RawMessage
-	policyAfter  json.RawMessage
-	routeBefore  json.RawMessage
-	routeAfter   json.RawMessage
-	peerBefore   json.RawMessage
-	peerAfter    json.RawMessage
-	updateErr    error
-	updates      int
+	identity      string
+	account       string
+	before        json.RawMessage
+	after         json.RawMessage
+	policyBefore  json.RawMessage
+	policyAfter   json.RawMessage
+	routeBefore   json.RawMessage
+	routeAfter    json.RawMessage
+	peerBefore    json.RawMessage
+	peerAfter     json.RawMessage
+	networkBefore json.RawMessage
+	networkAfter  json.RawMessage
+	updateErr     error
+	updates       int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -85,6 +87,19 @@ func (f *fakeRemote) UpdatePeer(_ context.Context, _ string, _ json.RawMessage) 
 	}
 	f.peerBefore = append(json.RawMessage(nil), f.peerAfter...)
 	return f.peerBefore, nil
+}
+
+func (f *fakeRemote) GetNetworkRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	return append(json.RawMessage(nil), f.networkBefore...), nil
+}
+
+func (f *fakeRemote) UpdateNetwork(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.networkBefore = append(json.RawMessage(nil), f.networkAfter...)
+	return f.networkBefore, nil
 }
 
 func stageForTest(t *testing.T, store *ledger.Store, before, after string) ledger.Stage {
@@ -317,5 +332,38 @@ func TestApplyDispatchesPeerUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected peer result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"n1","name":"old","description":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`
+	after := `{"id":"n1","name":"new","description":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.update",
+		Request:        json.RawMessage(`{"id":"n1","name":"new"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"metadata_only","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["network metadata changed without changing attached policies, resources, or routers"],"completeness":{"state":"complete","reason":null}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", networkBefore: []byte(before), networkAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network result: %+v updates=%d", result, remote.updates)
 	}
 }

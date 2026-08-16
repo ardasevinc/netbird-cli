@@ -94,6 +94,9 @@ routing fields emit the blocking `impact.route_change` finding.
 Peer stages use the same contract. Name-only edits are neutral; approval,
 expiry, SSH, address, or other access/connectivity changes emit the blocking
 `impact.peer_change` finding.
+Network stages use the same contract. Name and description edits are neutral;
+changes to attached policies, resources, or routers emit the blocking
+`impact.network_change` finding.
 
 ## Development
 

@@ -25,6 +25,8 @@ type Remote interface {
 	UpdateRoute(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
+	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -166,6 +168,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetRouteRaw(ctx, id)
 	case "peers.update":
 		return remote.GetPeerRaw(ctx, id)
+	case "networks.update":
+		return remote.GetNetworkRaw(ctx, id)
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
@@ -181,6 +185,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.UpdateRoute(ctx, id, request)
 	case "peers.update":
 		return remote.UpdatePeer(ctx, id, request)
+	case "networks.update":
+		return remote.UpdateNetwork(ctx, id, request)
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
@@ -196,6 +202,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "peers.update":
 		return analysis.PeerUpdateImpact(before, intendedAfter)
+	case "networks.update":
+		return analysis.NetworkUpdateImpact(before, intendedAfter)
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}

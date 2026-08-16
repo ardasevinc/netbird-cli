@@ -116,3 +116,23 @@ func TestStageCreatePeerChangeRequiresAcknowledgement(t *testing.T) {
 		t.Fatalf("peer impact acknowledgement finding missing: %s", stdout.String())
 	}
 }
+
+func TestStageCreateNetworkChangeRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"networks.update","request":{"id":"n1","name":"office"},"before":{"id":"n1","name":"office","policies":["p1"],"resources":["r1"],"routers":["rt1"]},"intended_after":{"id":"n1","name":"office","policies":["p2"],"resources":["r1"],"routers":["rt1"]}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.network_change"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("network impact acknowledgement finding missing: %s", stdout.String())
+	}
+}

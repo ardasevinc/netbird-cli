@@ -1086,11 +1086,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.networks.networkId",
+      "id": "networks.update",
       "method": "PUT",
       "path": "/api/networks/{networkId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "networks.resources.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 104,
+    "implemented": 105,
     "classified": 0,
-    "discovered": 132,
-    "contract_verified": 95,
+    "discovered": 131,
+    "contract_verified": 96,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
