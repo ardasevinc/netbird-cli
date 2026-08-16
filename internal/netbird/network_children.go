@@ -67,6 +67,18 @@ func (c *Client) GetNetworkResourceRaw(ctx context.Context, networkID, resourceI
 	return result, nil
 }
 
+func (c *Client) UpdateNetworkResource(ctx context.Context, networkID, resourceID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "resources", resourceID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update resource %q for network %q: %w", resourceID, networkID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) DeleteNetworkResource(ctx context.Context, networkID, resourceID string) (json.RawMessage, error) {
 	path, err := networkChildPath(networkID, "resources", resourceID)
 	if err != nil {

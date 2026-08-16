@@ -1124,8 +1124,8 @@
       "id": "put.api.networks.networkId.resources.resourceId",
       "method": "PUT",
       "path": "/api/networks/{networkId}/resources/{resourceId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "networks.routers.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 112,
+    "implemented": 113,
     "classified": 0,
-    "discovered": 124,
-    "contract_verified": 103,
+    "discovered": 123,
+    "contract_verified": 104,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

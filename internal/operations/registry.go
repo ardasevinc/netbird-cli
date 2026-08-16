@@ -47,6 +47,7 @@ var definitions = map[string]Definition{
 	"users.tokens.get":          {Name: "users.tokens.get", Method: "GET", Path: "/api/users/{userId}/tokens/{tokenId}", Mutation: ReadOnly},
 	"networks.resources.list":   {Name: "networks.resources.list", Method: "GET", Path: "/api/networks/{networkId}/resources", Mutation: ReadOnly},
 	"networks.resources.get":    {Name: "networks.resources.get", Method: "GET", Path: "/api/networks/{networkId}/resources/{resourceId}", Mutation: ReadOnly},
+	"networks.resources.update": {Name: "networks.resources.update", Method: "PUT", Path: "/api/networks/{networkId}/resources/{resourceId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.resources.delete": {Name: "networks.resources.delete", Method: "DELETE", Path: "/api/networks/{networkId}/resources/{resourceId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.routers.list":     {Name: "networks.routers.list", Method: "GET", Path: "/api/networks/{networkId}/routers", Mutation: ReadOnly},
 	"networks.routers.get":      {Name: "networks.routers.get", Method: "GET", Path: "/api/networks/{networkId}/routers/{routerId}", Mutation: ReadOnly},

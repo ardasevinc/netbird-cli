@@ -25,6 +25,7 @@ type fakeRemote struct {
 	networkBefore  json.RawMessage
 	networkAfter   json.RawMessage
 	resourceBefore json.RawMessage
+	resourceAfter  json.RawMessage
 	routerBefore   json.RawMessage
 	updateErr      error
 	updates        int
@@ -169,6 +170,15 @@ func (f *fakeRemote) GetNetworkResourceRaw(_ context.Context, _, _ string) (json
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.resourceBefore...), nil
+}
+
+func (f *fakeRemote) UpdateNetworkResource(_ context.Context, _, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.resourceBefore = append(json.RawMessage(nil), f.resourceAfter...)
+	return f.resourceBefore, nil
 }
 
 func (f *fakeRemote) DeleteNetworkResource(_ context.Context, _, _ string) (json.RawMessage, error) {
@@ -657,6 +667,39 @@ func TestApplyDispatchesNetworkResourceDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network resource delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkResourceUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"r1","name":"old","description":"db","address":"10.0.0.0/24","enabled":true,"groups":["g1"]}`
+	after := `{"id":"r1","name":"new","description":"db","address":"10.0.0.0/24","enabled":true,"groups":["g1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.resources.update",
+		Request:        json.RawMessage(`{"network_id":"n1","id":"r1","name":"new"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"metadata_only","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["network resource metadata changed without changing its address, enablement, or group assignment"],"completeness":{"state":"complete","reason":null}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", resourceBefore: []byte(before), resourceAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network resource update result: %+v updates=%d", result, remote.updates)
 	}
 }
 

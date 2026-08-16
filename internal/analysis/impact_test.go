@@ -170,6 +170,32 @@ func TestNetworkResourceDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestNetworkResourceUpdateImpactTreatsMetadataAsNeutral(t *testing.T) {
+	report, err := NetworkResourceUpdateImpact(
+		[]byte(`{"id":"r1","name":"old","description":"db","address":"10.0.0.0/24","enabled":true,"groups":["g1"]}`),
+		[]byte(`{"id":"r1","name":"new","description":"db","address":"10.0.0.0/24","enabled":true,"groups":["g1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "metadata_only" || report.Reachability != "unchanged" || report.Confidence != "high" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestNetworkResourceUpdateImpactBlocksTopologyChanges(t *testing.T) {
+	report, err := NetworkResourceUpdateImpact(
+		[]byte(`{"id":"r1","name":"db","address":"10.0.0.0/24","enabled":true,"groups":["g1"]}`),
+		[]byte(`{"id":"r1","name":"db","address":"10.0.1.0/24","enabled":true,"groups":["g1"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_resource_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestNetworkRouterDeleteImpactIsConservative(t *testing.T) {
 	report, err := NetworkRouterDeleteImpact([]byte(`{"id":"rt1","enabled":true,"masquerade":true,"metric":10,"peer":"p1"}`))
 	if err != nil {

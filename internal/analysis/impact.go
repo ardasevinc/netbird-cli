@@ -231,6 +231,44 @@ func NetworkResourceDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func NetworkResourceUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode network resource impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode network resource impact intended state: %w", err)
+	}
+	changed := changedKeys(beforeObject, afterObject)
+	metadataOnly := true
+	for _, key := range changed {
+		if key != "name" && key != "description" {
+			metadataOnly = false
+			break
+		}
+	}
+	if metadataOnly {
+		return ImpactReport{
+			Classification:    "metadata_only",
+			Reachability:      "unchanged",
+			AffectedPeers:     []string{},
+			AffectedResources: []string{},
+			Confidence:        "high",
+			Evidence:          []string{"network resource metadata changed without changing its address, enablement, or group assignment"},
+			Completeness:      map[string]any{"state": "complete", "reason": nil},
+		}, nil
+	}
+	return ImpactReport{
+		Classification:    "network_resource_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{fmt.Sprintf("network resource update changes topology fields: %v; affected peers and routes require live topology analysis", changed)},
+		Completeness:      map[string]any{"state": "unknown", "reason": "network_resource_change_requires_topology"},
+	}, nil
+}
+
 func NetworkRouterDeleteImpact(before []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(before, &object); err != nil {
