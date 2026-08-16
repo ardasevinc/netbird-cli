@@ -26,7 +26,10 @@ type Definition struct {
 var definitions = map[string]Definition{
 	"instance.version": {Name: "instance.version", Method: "GET", Path: "/api/instance/version", Mutation: ReadOnly},
 	"instance.status":  {Name: "instance.status", Method: "GET", Path: "/api/instance", Mutation: ReadOnly},
+	"accounts.list":    {Name: "accounts.list", Method: "GET", Path: "/api/accounts", Mutation: ReadOnly},
 	"users.current":    {Name: "users.current", Method: "GET", Path: "/api/users/current", Mutation: ReadOnly},
+	"users.list":       {Name: "users.list", Method: "GET", Path: "/api/users", Mutation: ReadOnly},
+	"users.invites":    {Name: "users.invites", Method: "GET", Path: "/api/users/invites", Mutation: ReadOnly},
 	"groups.list":      {Name: "groups.list", Method: "GET", Path: "/api/groups", Mutation: ReadOnly},
 	"groups.get":       {Name: "groups.get", Method: "GET", Path: "/api/groups/{groupId}", Mutation: ReadOnly},
 	"groups.update":    {Name: "groups.update", Method: "PUT", Path: "/api/groups/{groupId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/accounts-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/accounts-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "accounts.list"},
+    "data": {
+      "type": "object",
+      "required": ["accounts", "completeness"],
+      "properties": {
+        "accounts": {"type": "array", "items": {"$ref": "#/$defs/account"}},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "account": {
+      "type": "object",
+      "required": ["id", "settings", "domain", "domain_category", "created_at", "created_by", "onboarding"],
+      "properties": {
+        "id": {"type": "string"},
+        "settings": {"type": "object", "properties": {"peer_login_expiration_enabled": {"type": "boolean"}, "peer_login_expiration": {"type": "integer"}, "peer_inactivity_expiration_enabled": {"type": "boolean"}, "peer_inactivity_expiration": {"type": "integer"}, "regular_users_view_blocked": {"type": "boolean"}, "groups_propagation_enabled": {"type": "boolean"}, "jwt_groups_enabled": {"type": "boolean"}, "jwt_groups_claim_name": {"type": "string"}, "jwt_allow_groups": {"type": "array", "items": {"type": "string"}}, "routing_peer_dns_resolution_enabled": {"type": "boolean"}, "dns_domain": {"type": "string"}, "network_range": {"type": "string"}, "network_range_v6": {"type": "string"}, "peer_expose_enabled": {"type": "boolean"}, "peer_expose_groups": {"type": "array", "items": {"type": "string"}}, "extra": {"type": "object"}, "dashboard_features": {"type": "object"}, "lazy_connection_enabled": {"type": "boolean"}, "auto_update_version": {"type": "string"}, "auto_update_always": {"type": "boolean"}, "metrics_push_enabled": {"type": "boolean"}, "agent_network_only": {"type": "boolean"}, "embedded_idp_enabled": {"type": "boolean"}, "local_auth_disabled": {"type": "boolean"}, "local_mfa_enabled": {"type": "boolean"}, "ipv6_enabled_groups": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false},
+        "domain": {"type": "string"},
+        "domain_category": {"type": "string"},
+        "created_at": {"type": "string"},
+        "created_by": {"type": "string"},
+        "onboarding": {"type": "object", "required": ["signup_form_pending", "onboarding_flow_pending"], "properties": {"signup_form_pending": {"type": "boolean"}, "onboarding_flow_pending": {"type": "boolean"}}, "additionalProperties": false}
+      },
+      "additionalProperties": false
+    },
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

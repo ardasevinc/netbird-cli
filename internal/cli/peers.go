@@ -17,7 +17,7 @@ func peersCommand(state *commandState, stdout io.Writer) *cobra.Command {
 		Use:   "list",
 		Short: "list peers with bounded completeness semantics",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			client, err := peerClient(state)
+			client, err := managementClient(state)
 			if err != nil {
 				return err
 			}
@@ -42,7 +42,7 @@ func peersCommand(state *commandState, stdout io.Writer) *cobra.Command {
 		Short: "show one peer",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := peerClient(state)
+			client, err := managementClient(state)
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,7 @@ func peersCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	return command
 }
 
-func peerClient(state *commandState) (*netbird.Client, error) {
+func managementClient(state *commandState) (*netbird.Client, error) {
 	file, err := config.Load(state.configPath)
 	if err != nil {
 		return nil, fail(3, err)

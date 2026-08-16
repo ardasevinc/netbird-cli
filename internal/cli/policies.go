@@ -13,7 +13,7 @@ func policiesCommand(state *commandState, stdout io.Writer) *cobra.Command {
 		Use:   "list",
 		Short: "list policies with bounded completeness semantics",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			client, err := peerClient(state)
+			client, err := managementClient(state)
 			if err != nil {
 				return err
 			}
@@ -38,7 +38,7 @@ func policiesCommand(state *commandState, stdout io.Writer) *cobra.Command {
 		Short: "show one policy",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := peerClient(state)
+			client, err := managementClient(state)
 			if err != nil {
 				return err
 			}

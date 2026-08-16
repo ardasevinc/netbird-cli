@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/users-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/users-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "users.list"},
+    "data": {
+      "type": "object",
+      "required": ["users", "completeness"],
+      "properties": {
+        "users": {"type": "array", "items": {"$ref": "#/$defs/user"}},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "user": {"type": "object", "required": ["id", "email", "name", "role", "status", "auto_groups", "is_blocked", "pending_approval"], "properties": {"id": {"type": "string"}, "email": {"type": "string"}, "name": {"type": "string"}, "role": {"type": "string"}, "status": {"type": "string"}, "auto_groups": {"type": "array", "items": {"type": "string"}}, "is_current": {"type": ["boolean", "null"]}, "is_service_user": {"type": ["boolean", "null"]}, "is_blocked": {"type": "boolean"}, "pending_approval": {"type": "boolean"}, "issued": {"type": ["string", "null"]}, "idp_id": {"type": ["string", "null"]}, "last_login": {"type": ["string", "null"]}, "permissions": {"type": ["object", "null"]}}, "additionalProperties": false},
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

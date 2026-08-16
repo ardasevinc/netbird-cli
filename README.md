@@ -17,6 +17,9 @@ go run ./cmd/nb skills list
 go run ./cmd/nb coverage
 go run ./cmd/nb groups list --json
 go run ./cmd/nb groups get <group-id> --json
+go run ./cmd/nb accounts list --json
+go run ./cmd/nb users list --json
+go run ./cmd/nb users invites --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
 go run ./cmd/nb policies list --json
@@ -32,7 +35,9 @@ Consequential changes are created as immutable local stages. `apply` accepts
 only an exact stage ID and revision, rechecks the live preimage, journals the
 dispatch intent, performs one remote mutation request, and verifies the result by
 reading the resource back. Never point an unreviewed stage at a production
-profile.
+profile. User inventory never emits upstream password or invite-token fields;
+those values are treated as one-time or secret material even when returned by
+the management API.
 
 ## Development
 

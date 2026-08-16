@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/users-invites-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/users-invites-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "users.invites"},
+    "data": {
+      "type": "object",
+      "required": ["invites", "completeness"],
+      "properties": {
+        "invites": {"type": "array", "items": {"$ref": "#/$defs/invite"}},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "invite": {"type": "object", "required": ["id", "email", "name", "role", "auto_groups", "expires_at", "created_at", "expired"], "properties": {"id": {"type": "string"}, "email": {"type": "string"}, "name": {"type": "string"}, "role": {"type": "string"}, "auto_groups": {"type": "array", "items": {"type": "string"}}, "expires_at": {"type": "string"}, "created_at": {"type": "string"}, "expired": {"type": "boolean"}}, "additionalProperties": false},
+    "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

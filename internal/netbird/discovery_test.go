@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ardasevinc/netbird-cli/internal/transport"
@@ -118,5 +119,52 @@ func TestListAndGetPoliciesUseReadOnlyEndpoints(t *testing.T) {
 	policy, err := adapter.GetPolicy(context.Background(), "policy-1")
 	if err != nil || policy.ID == nil || *policy.ID != "policy-1" {
 		t.Fatalf("policy=%+v err=%v", policy, err)
+	}
+}
+
+func TestListAccountsUsersAndInvitesNeverExposeInviteTokens(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		switch r.URL.Path {
+		case "/api/accounts":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "acct-1", "domain": "example.com", "domain_category": "private", "created_at": "2026-01-01T00:00:00Z", "created_by": "user-1", "settings": map[string]any{}, "onboarding": map[string]any{"signup_form_pending": false, "onboarding_flow_pending": false}}})
+		case "/api/users":
+			if r.URL.Query().Get("service_user") != "true" {
+				t.Fatalf("unexpected user filter: %s", r.URL.RawQuery)
+			}
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "user-1", "email": "svc@example.com", "name": "svc", "role": "admin", "status": "active", "auto_groups": []string{}, "is_blocked": false, "pending_approval": false, "is_service_user": true}})
+		case "/api/users/invites":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "invite-1", "email": "new@example.com", "name": "New", "role": "user", "auto_groups": []string{}, "expires_at": "2026-01-02T00:00:00Z", "created_at": "2026-01-01T00:00:00Z", "expired": false, "invite_token": "nbi_secret"}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adapter := NewClient(client)
+	accounts, err := adapter.ListAccounts(context.Background())
+	if err != nil || len(accounts) != 1 || accounts[0].ID != "acct-1" {
+		t.Fatalf("accounts=%+v err=%v", accounts, err)
+	}
+	serviceUser := true
+	users, err := adapter.ListUsers(context.Background(), &serviceUser)
+	if err != nil || len(users) != 1 || users[0].ID != "user-1" {
+		t.Fatalf("users=%+v err=%v", users, err)
+	}
+	invites, err := adapter.ListInvites(context.Background())
+	if err != nil || len(invites) != 1 || invites[0].ID != "invite-1" {
+		t.Fatalf("invites=%+v err=%v", invites, err)
+	}
+	encoded, err := json.Marshal(invites[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) == "" || strings.Contains(string(encoded), "nbi_secret") {
+		t.Fatalf("invite token leaked: %s", encoded)
 	}
 }
