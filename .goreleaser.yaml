@@ -1,0 +1,102 @@
+version: 2
+
+project_name: nb
+
+before:
+  hooks:
+    - go mod verify
+
+builds:
+  - id: nb
+    main: ./cmd/nb
+    binary: nb
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/ardasevinc/netbird-cli/internal/version.Version={{ .Version }} -X github.com/ardasevinc/netbird-cli/internal/version.Commit={{ .FullCommit }} -X github.com/ardasevinc/netbird-cli/internal/version.Date={{ .Date }}
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    ids:
+      - nb
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+sboms:
+  - artifacts: archive
+
+signs:
+  - id: archives
+    cmd: cosign
+    args:
+      - sign-blob
+      - --bundle=${signature}
+      - ${artifact}
+      - --yes
+    artifacts: archive
+    output: true
+    signature: "${artifact}.sigstore.json"
+  - id: checksums
+    cmd: cosign
+    args:
+      - sign-blob
+      - --bundle=${signature}
+      - ${artifact}
+      - --yes
+    artifacts: checksum
+    output: true
+    signature: "${artifact}.sigstore.json"
+
+brews:
+  - name: nb
+    repository:
+      owner: ardasevinc
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: https://github.com/ardasevinc/netbird-cli
+    description: "An agent-first NetBird management CLI"
+    license: Apache-2.0
+    install: |
+      bin.install "nb"
+    test: |
+      system "#{bin}/nb", "version"
+    ids:
+      - default
+
+release:
+  github:
+    owner: ardasevinc
+    name: netbird-cli
+  draft: true
+  prerelease: auto
+  name_template: "v{{ .Version }}"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"

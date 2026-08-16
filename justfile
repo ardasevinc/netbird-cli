@@ -39,6 +39,9 @@ cross-build:
 licenses:
     ./tools/check-licenses.sh
 
+release-check:
+    ./tools/check-release.sh
+
 generated-check:
     ./tools/check-generated.sh
 
@@ -51,4 +54,4 @@ e2e-selfhosted: build
 diff-check:
     git diff --check
 
-gate: format-check test race vet lint security modules licenses generated-check coverage-check cross-build build diff-check
+gate: format-check test race vet lint security modules licenses release-check generated-check coverage-check cross-build build diff-check

@@ -93,6 +93,12 @@ route/network, and DNS reads,
 and proves a staged group update through remote read-back. It never targets a
 production profile.
 
+Release tags use the checked-in `.goreleaser.yaml` contract. It builds macOS and
+Linux archives with injected version provenance, SHA-256 checksums, archive
+SBOMs, keyless Sigstore bundles, and a Homebrew tap formula. The release
+workflow is intentionally tag-triggered and drafts the GitHub release; it needs
+the eventual repository and `HOMEBREW_TAP_TOKEN` secret before publication.
+
 ## Status
 
 The v1 objective is to ship complete declared NetBird management API coverage,
