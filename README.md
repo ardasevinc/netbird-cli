@@ -28,6 +28,7 @@ go run ./cmd/nb networks routers list-all --json
 go run ./cmd/nb dns nameservers list --json
 go run ./cmd/nb dns settings --json
 go run ./cmd/nb dns zones list --json
+go run ./cmd/nb dns zones records list <zone-id> --json
 go run ./cmd/nb identity-providers list --json
 go run ./cmd/nb posture-checks list --json
 go run ./cmd/nb events --json

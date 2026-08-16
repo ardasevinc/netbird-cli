@@ -19,6 +19,7 @@ nb users invites --json
 nb dns nameservers list --json
 nb dns settings --json
 nb dns zones list --json
+nb dns zones records list <zone-id> --json
 nb identity-providers list --json
 nb posture-checks list --json
 nb events --json
