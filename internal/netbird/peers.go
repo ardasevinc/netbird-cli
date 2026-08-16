@@ -54,6 +54,11 @@ type peerWire struct {
 }
 
 func (p peerWire) normalized() Peer {
+	groups := p.Groups
+	if groups == nil {
+		groups = []PeerGroup{}
+	}
+	p.Groups = groups
 	return Peer(p)
 }
 

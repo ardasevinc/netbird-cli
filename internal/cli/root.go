@@ -81,6 +81,7 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.AddCommand(coverageCommand(state, stdout))
 	root.AddCommand(profileCommand(state, stdout))
 	root.AddCommand(capabilitiesCommand(state, stdout))
+	root.AddCommand(analyzeCommand(state, stdout))
 	root.AddCommand(stageCommand(state, stdout))
 	root.AddCommand(applyCommand(state, stdout))
 	root.AddCommand(groupsCommand(state, stdout))

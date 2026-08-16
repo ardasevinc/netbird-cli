@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/reachability-analysis-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/reachability-analysis-result"},
+    "ok": {"const": true},
+    "operation": {"const": "analyze.reachability"},
+    "data": {
+      "type": "object",
+      "required": ["source_peer", "reachable_peers", "policy_evidence", "unexplained_reachable_peer_ids", "summary", "completeness"],
+      "properties": {
+        "source_peer": {"$ref": "#/$defs/peer"},
+        "reachable_peers": {"type": "array", "items": {"$ref": "#/$defs/peer"}},
+        "policy_evidence": {"type": "array", "items": {"$ref": "#/$defs/policyEvidence"}},
+        "unexplained_reachable_peer_ids": {"type": "array", "items": {"type": "string"}},
+        "summary": {"$ref": "#/$defs/summary"},
+        "completeness": {"$ref": "#/$defs/completeness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "peer": {
+      "type": "object",
+      "required": ["id", "name", "hostname", "ip", "os", "version", "connected", "ephemeral", "login_expired", "approval_required", "groups", "created_at", "last_seen"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string"},
+        "hostname": {"type": "string"},
+        "ip": {"type": "string"},
+        "ipv6": {"type": ["string", "null"]},
+        "os": {"type": "string"},
+        "version": {"type": "string"},
+        "connected": {"type": "boolean"},
+        "ephemeral": {"type": "boolean"},
+        "login_expired": {"type": "boolean"},
+        "approval_required": {"type": "boolean"},
+        "accessible_peers_count": {"type": "integer"},
+        "groups": {"type": "array"},
+        "created_at": {"type": "string"},
+        "last_seen": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "policyEvidence": {
+      "type": "object",
+      "required": ["reachable_peer_id", "policy_id", "policy_name", "rule_id", "rule_name", "action", "protocol", "direction"],
+      "properties": {
+        "reachable_peer_id": {"type": "string"},
+        "policy_id": {"type": "string"},
+        "policy_name": {"type": "string"},
+        "rule_id": {"type": "string"},
+        "rule_name": {"type": "string"},
+        "action": {"type": "string"},
+        "protocol": {"type": "string"},
+        "direction": {"enum": ["source_to_destination", "destination_to_source"]}
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["reachable_peer_count", "policy_evidence_count", "unexplained_reachable_peer_count"],
+      "properties": {
+        "reachable_peer_count": {"type": "integer"},
+        "policy_evidence_count": {"type": "integer"},
+        "unexplained_reachable_peer_count": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
