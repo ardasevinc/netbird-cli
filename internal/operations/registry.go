@@ -50,6 +50,7 @@ var definitions = map[string]Definition{
 	"networks.resources.delete": {Name: "networks.resources.delete", Method: "DELETE", Path: "/api/networks/{networkId}/resources/{resourceId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.routers.list":     {Name: "networks.routers.list", Method: "GET", Path: "/api/networks/{networkId}/routers", Mutation: ReadOnly},
 	"networks.routers.get":      {Name: "networks.routers.get", Method: "GET", Path: "/api/networks/{networkId}/routers/{routerId}", Mutation: ReadOnly},
+	"networks.routers.delete":   {Name: "networks.routers.delete", Method: "DELETE", Path: "/api/networks/{networkId}/routers/{routerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.routers.list_all": {Name: "networks.routers.list_all", Method: "GET", Path: "/api/networks/routers", Mutation: ReadOnly},
 	"dns.records.list":          {Name: "dns.records.list", Method: "GET", Path: "/api/dns/zones/{zoneId}/records", Mutation: ReadOnly},
 	"dns.records.get":           {Name: "dns.records.get", Method: "GET", Path: "/api/dns/zones/{zoneId}/records/{recordId}", Mutation: ReadOnly},

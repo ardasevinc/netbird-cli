@@ -1145,8 +1145,8 @@
       "id": "delete.api.networks.networkId.routers.routerId",
       "method": "DELETE",
       "path": "/api/networks/{networkId}/routers/{routerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "networks.routers.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 111,
+    "implemented": 112,
     "classified": 0,
-    "discovered": 125,
-    "contract_verified": 102,
+    "discovered": 124,
+    "contract_verified": 103,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

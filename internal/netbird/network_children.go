@@ -114,6 +114,30 @@ func (c *Client) GetNetworkRouter(ctx context.Context, networkID, routerID strin
 	return result, nil
 }
 
+func (c *Client) GetNetworkRouterRaw(ctx context.Context, networkID, routerID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "routers", routerID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get router %q for network %q: %w", routerID, networkID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteNetworkRouter(ctx context.Context, networkID, routerID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "routers", routerID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete router %q for network %q: %w", routerID, networkID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListAllNetworkRouters(ctx context.Context) ([]NetworkRouter, error) {
 	var result []NetworkRouter
 	if err := c.transport.GetJSON(ctx, "/api/networks/routers", &result); err != nil {

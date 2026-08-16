@@ -35,6 +35,8 @@ type Remote interface {
 	DeleteNetwork(context.Context, string) (json.RawMessage, error)
 	GetNetworkResourceRaw(context.Context, string, string) (json.RawMessage, error)
 	DeleteNetworkResource(context.Context, string, string) (json.RawMessage, error)
+	GetNetworkRouterRaw(context.Context, string, string) (json.RawMessage, error)
+	DeleteNetworkRouter(context.Context, string, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -111,8 +113,8 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := json.Unmarshal(stage.Request, &request); err != nil || request.ID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
-	if stage.Operation == "networks.resources.delete" && request.NetworkID == "" {
-		return result, &ApplyError{Result: result, Err: errors.New("networks.resources.delete stage request requires network_id")}
+	if (stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
 	for _, finding := range stage.Findings {
@@ -202,6 +204,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNetworkRaw(ctx, target.ID)
 	case "networks.resources.delete":
 		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
+	case "networks.routers.delete":
+		return remote.GetNetworkRouterRaw(ctx, target.NetworkID, target.ID)
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
@@ -231,6 +235,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.DeleteNetwork(ctx, target.ID)
 	case "networks.resources.delete":
 		return remote.DeleteNetworkResource(ctx, target.NetworkID, target.ID)
+	case "networks.routers.delete":
+		return remote.DeleteNetworkRouter(ctx, target.NetworkID, target.ID)
 	default:
 		return nil, fmt.Errorf("operation %q has no dispatcher", operation)
 	}
@@ -260,6 +266,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NetworkDeleteImpact(before)
 	case "networks.resources.delete":
 		return analysis.NetworkResourceDeleteImpact(before)
+	case "networks.routers.delete":
+		return analysis.NetworkRouterDeleteImpact(before)
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}
@@ -279,7 +287,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

@@ -74,3 +74,20 @@ func TestDeleteNetworkResourceUsesDELETE(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDeleteNetworkRouterUsesDELETE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/networks/n1/routers/rt1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).DeleteNetworkRouter(context.Background(), "n1", "rt1"); err != nil {
+		t.Fatal(err)
+	}
+}
