@@ -38,6 +38,18 @@ func DefaultPath() string {
 	return filepath.Join(base, "nb", "config.toml")
 }
 
+func DefaultStatePath() string {
+	base := os.Getenv("XDG_STATE_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return filepath.Join(".local", "state", "nb", "ledger.db")
+		}
+		base = filepath.Join(home, ".local", "state")
+	}
+	return filepath.Join(base, "nb", "ledger.db")
+}
+
 func Load(path string) (File, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- the operator explicitly selects the local config path.
 	if err != nil {
