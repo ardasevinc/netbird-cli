@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Go gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Restore dependencies
+        run: go mod download
+      - name: Install pinned analysis tools
+        run: |
+          go install mvdan.cc/gofumpt@v0.11.0
+          go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.28.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+      - name: Require formatted source
+        run: test -z "$(gofumpt -l .)"
+      - name: Unit tests
+        run: go test ./...
+      - name: Race tests
+        run: go test -race ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Staticcheck
+        run: staticcheck ./...
+      - name: GolangCI-Lint
+        run: golangci-lint run ./...
+      - name: Gosec
+        run: gosec -quiet ./...
+      - name: Govulncheck
+        run: govulncheck ./...
+      - name: Verify modules
+        run: go mod verify
+      - name: Verify license boundary
+        run: ./tools/check-licenses.sh
+      - name: Verify generated schemas
+        run: ./tools/check-generated.sh
+      - name: Cross-build macOS and Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$(mktemp -d)"
+          trap 'rm -rf "$build_dir"' EXIT
+          for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -o "$build_dir/nb-$os-$arch" ./cmd/nb
+          done
+      - name: Build binary
+        run: go build -trimpath -o "$RUNNER_TEMP/nb" ./cmd/nb
+      - name: Smoke binary
+        run: |
+          "$RUNNER_TEMP/nb" version
+          "$RUNNER_TEMP/nb" --json schema list
+          "$RUNNER_TEMP/nb" skills list
+      - name: Require clean diff
+        run: git diff --check
+
+  macos:
+    name: macOS build and tests
+    runs-on: macos-14
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Restore dependencies
+        run: go mod download
+      - name: Test
+        run: go test ./...
+      - name: Build
+        run: CGO_ENABLED=0 go build -trimpath -o "$RUNNER_TEMP/nb" ./cmd/nb
