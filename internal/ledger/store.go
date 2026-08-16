@@ -62,6 +62,16 @@ type Attempt struct {
 	IntentAt  time.Time
 }
 
+type Receipt struct {
+	ID        string
+	AttemptID string
+	StageID   string
+	Revision  int
+	State     string
+	Result    json.RawMessage
+	CreatedAt time.Time
+}
+
 func Open(path string) (*Store, error) {
 	if path == "" {
 		return nil, errors.New("ledger path is empty")
@@ -83,6 +93,10 @@ func Open(path string) (*Store, error) {
 	if err := store.migrate(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
+	}
+	if err := os.Chmod(path, 0o600); err != nil { // #nosec G302 -- the ledger is machine-local owner-only state.
+		_ = db.Close()
+		return nil, fmt.Errorf("protect ledger file: %w", err)
 	}
 	return store, nil
 }
@@ -118,7 +132,20 @@ CREATE TABLE IF NOT EXISTS attempts (
   created_at TEXT NOT NULL,
   intent_at TEXT NOT NULL,
   FOREIGN KEY (stage_id, revision) REFERENCES stages(id, revision)
-);`)
+
+);
+CREATE TABLE IF NOT EXISTS receipts (
+  id TEXT PRIMARY KEY,
+  attempt_id TEXT NOT NULL UNIQUE,
+  stage_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  state TEXT NOT NULL,
+  result_json BLOB NOT NULL,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (attempt_id) REFERENCES attempts(id),
+  FOREIGN KEY (stage_id, revision) REFERENCES stages(id, revision)
+);
+UPDATE schema_version SET version = 2 WHERE version < 2;`)
 	if err != nil {
 		return fmt.Errorf("migrate ledger: %w", err)
 	}
@@ -141,6 +168,91 @@ func (s *Store) BeginAttempt(ctx context.Context, stageID string, revision int) 
 		return Attempt{}, fmt.Errorf("journal dispatch intent: %w", err)
 	}
 	return Attempt{ID: id, StageID: stageID, Revision: revision, State: "not_dispatched", CreatedAt: now, IntentAt: now}, nil
+}
+
+func (s *Store) GetAttempt(ctx context.Context, id string) (Attempt, error) {
+	var attempt Attempt
+	var created, intent string
+	err := s.db.QueryRowContext(ctx, `SELECT id, stage_id, revision, state, created_at, intent_at FROM attempts WHERE id = ?`, id).Scan(&attempt.ID, &attempt.StageID, &attempt.Revision, &attempt.State, &created, &intent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Attempt{}, fmt.Errorf("attempt %s not found", id)
+	}
+	if err != nil {
+		return Attempt{}, fmt.Errorf("read attempt: %w", err)
+	}
+	attempt.CreatedAt, err = time.Parse(time.RFC3339Nano, created)
+	if err != nil {
+		return Attempt{}, fmt.Errorf("decode attempt timestamp: %w", err)
+	}
+	attempt.IntentAt, err = time.Parse(time.RFC3339Nano, intent)
+	if err != nil {
+		return Attempt{}, fmt.Errorf("decode intent timestamp: %w", err)
+	}
+	return attempt, nil
+}
+
+func (s *Store) SetAttemptState(ctx context.Context, id, state string) error {
+	attempt, err := s.GetAttempt(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := mutation.ValidateDispatchTransition(mutation.DispatchState(attempt.State), mutation.DispatchState(state)); err != nil {
+		return fmt.Errorf("attempt %s state transition: %w", id, err)
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE attempts SET state = ? WHERE id = ? AND state = ?`, state, id, attempt.State)
+	if err != nil {
+		return fmt.Errorf("update attempt state: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("check attempt state update: %w", err)
+	}
+	if count != 1 {
+		return fmt.Errorf("attempt %s state changed concurrently", id)
+	}
+	return nil
+}
+
+func (s *Store) RecordReceipt(ctx context.Context, receipt Receipt) error {
+	if receipt.AttemptID == "" || receipt.StageID == "" || receipt.State == "" {
+		return errors.New("receipt identity and state are required")
+	}
+	result, err := mutation.CanonicalJSON(receipt.Result)
+	if err != nil {
+		return fmt.Errorf("canonical receipt: %w", err)
+	}
+	if receipt.ID == "" {
+		receipt.ID, err = newID()
+		if err != nil {
+			return err
+		}
+	}
+	created := receipt.CreatedAt.UTC().Truncate(time.Microsecond)
+	if created.IsZero() {
+		created = time.Now().UTC().Truncate(time.Microsecond)
+	}
+	_, err = s.db.ExecContext(ctx, `INSERT INTO receipts (id, attempt_id, stage_id, revision, state, result_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, receipt.ID, receipt.AttemptID, receipt.StageID, receipt.Revision, receipt.State, result, created.Format(time.RFC3339Nano))
+	if err != nil {
+		return fmt.Errorf("persist receipt: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) GetReceipt(ctx context.Context, attemptID string) (Receipt, error) {
+	var receipt Receipt
+	var created string
+	err := s.db.QueryRowContext(ctx, `SELECT id, attempt_id, stage_id, revision, state, result_json, created_at FROM receipts WHERE attempt_id = ?`, attemptID).Scan(&receipt.ID, &receipt.AttemptID, &receipt.StageID, &receipt.Revision, &receipt.State, &receipt.Result, &created)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Receipt{}, fmt.Errorf("receipt for attempt %s not found", attemptID)
+	}
+	if err != nil {
+		return Receipt{}, fmt.Errorf("read receipt: %w", err)
+	}
+	receipt.CreatedAt, err = time.Parse(time.RFC3339Nano, created)
+	if err != nil {
+		return Receipt{}, fmt.Errorf("decode receipt timestamp: %w", err)
+	}
+	return receipt, nil
 }
 
 func (s *Store) Create(ctx context.Context, input StageInput) (Stage, error) {

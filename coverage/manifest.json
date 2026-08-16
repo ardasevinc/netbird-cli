@@ -2,10 +2,17 @@
   "schema": "nb/v1/coverage-manifest",
   "source_baseline": "not-yet-pinned",
   "support_window": ["current", "previous-minor", "two-minors-back"],
-  "operations": [],
+  "operations": [
+    {"id": "groups.list", "method": "GET", "path": "/api/groups", "implementation": "implemented", "verification": "contract_verified"},
+    {"id": "groups.get", "method": "GET", "path": "/api/groups/{id}", "implementation": "implemented", "verification": "contract_verified"},
+    {"id": "groups.update", "method": "PUT", "path": "/api/groups/{id}", "implementation": "implemented", "verification": "contract_verified"},
+    {"id": "instance.status", "method": "GET", "path": "/api/instance", "implementation": "implemented", "verification": "contract_verified"},
+    {"id": "instance.version", "method": "GET", "path": "/api/instance/version", "implementation": "implemented", "verification": "contract_verified"},
+    {"id": "users.current", "method": "GET", "path": "/api/users/current", "implementation": "implemented", "verification": "contract_verified"}
+  ],
   "summary": {
-    "implemented": 0,
-    "contract_verified": 0,
+    "implemented": 6,
+    "contract_verified": 6,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

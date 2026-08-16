@@ -53,7 +53,22 @@ func ValidateAcknowledgements(findings []Finding, acknowledgements []string, ack
 	}
 	provided := make(map[string]struct{}, len(acknowledgements))
 	for _, code := range acknowledgements {
+		if _, exists := provided[code]; exists {
+			return fmt.Errorf("blocking finding acknowledgement %q is repeated", code)
+		}
 		provided[code] = struct{}{}
+	}
+	for code := range provided {
+		found := false
+		for _, required := range blocking {
+			if code == required {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("acknowledgement %q does not match a blocking finding", code)
+		}
 	}
 	missing := make([]string, 0)
 	for _, code := range blocking {

@@ -18,10 +18,15 @@ type Instance struct {
 
 type User struct {
 	ID            string `json:"id"`
+	AccountID     string `json:"account_id,omitempty"`
 	Email         string `json:"email"`
 	Name          string `json:"name"`
 	Role          string `json:"role"`
 	IsServiceUser *bool  `json:"is_service_user,omitempty"`
+}
+
+type Account struct {
+	ID string `json:"id"`
 }
 
 type Discovery struct {
@@ -37,6 +42,8 @@ type Client struct {
 func NewClient(transportClient *transport.Client) *Client {
 	return &Client{transport: transportClient}
 }
+
+func (c *Client) ServerIdentity() string { return c.transport.Origin() }
 
 func (c *Client) Discover(ctx context.Context, authenticated bool) (Discovery, error) {
 	var result Discovery
@@ -54,4 +61,22 @@ func (c *Client) Discover(ctx context.Context, authenticated bool) (Discovery, e
 		result.User = &user
 	}
 	return result, nil
+}
+
+// AccountScope verifies that the authenticated token can see the configured
+// account. The management API returns the caller's visible account list.
+func (c *Client) AccountScope(ctx context.Context, accountID string) error {
+	if accountID == "" {
+		return fmt.Errorf("account scope is required")
+	}
+	var accounts []Account
+	if err := c.transport.GetJSON(ctx, "/api/accounts", &accounts); err != nil {
+		return fmt.Errorf("verify account scope: %w", err)
+	}
+	for _, account := range accounts {
+		if account.ID == accountID {
+			return nil
+		}
+	}
+	return fmt.Errorf("authenticated credential cannot access account %q", accountID)
 }

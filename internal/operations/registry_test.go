@@ -7,7 +7,7 @@ func TestConsequentialOperationRequiresSafetyProof(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if definition.Mutation != Consequential || !definition.RequiresPreimage || !definition.RequiresReadBack || definition.DispatcherAdmitted {
+	if definition.Mutation != Consequential || !definition.RequiresPreimage || !definition.RequiresReadBack || !definition.DispatcherAdmitted {
 		t.Fatalf("unexpected operation definition: %+v", definition)
 	}
 }

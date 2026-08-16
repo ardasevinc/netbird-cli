@@ -10,6 +10,12 @@ func TestAcknowledgementsBindToBlockingCodes(t *testing.T) {
 	if err := ValidateAcknowledgements(findings, []string{"impact.high"}, false); err != nil {
 		t.Fatal(err)
 	}
+	if err := ValidateAcknowledgements(findings, []string{"unknown", "impact.high"}, false); err == nil {
+		t.Fatal("expected unknown acknowledgement to fail")
+	}
+	if err := ValidateAcknowledgements(findings, []string{"impact.high", "impact.high"}, false); err == nil {
+		t.Fatal("expected repeated acknowledgement to fail")
+	}
 }
 
 func TestAmbiguousDispatchCannotRetry(t *testing.T) {

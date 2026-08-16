@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"strings"
@@ -32,6 +34,40 @@ type Client struct {
 	maxBody int64
 	http    *http.Client
 }
+
+// Response is the bounded response envelope returned by a management request.
+// Body is only populated after the response has been fully read.
+type Response struct {
+	StatusCode int
+	Status     string
+	Body       []byte
+}
+
+// RequestError preserves the one fact that matters for mutation replay: whether
+// the request may have reached the remote server.
+type RequestError struct {
+	Path        string
+	StatusCode  int
+	Dispatched  bool
+	Description string
+	Err         error
+}
+
+func (e *RequestError) Error() string {
+	if e.Err != nil {
+		return e.Description + ": " + e.Err.Error()
+	}
+	return e.Description
+}
+
+func (e *RequestError) Unwrap() error { return e.Err }
+
+func (e *RequestError) DispatchedState() bool { return e.Dispatched }
+
+func (e *RequestError) StatusCodeState() int { return e.StatusCode }
+
+// Origin returns the normalized origin used for server identity pinning.
+func (c *Client) Origin() string { return strings.TrimRight(c.baseURL.String(), "/") }
 
 func New(cfg Config) (*Client, error) {
 	u, err := url.Parse(cfg.BaseURL)
@@ -67,43 +103,75 @@ func New(cfg Config) (*Client, error) {
 }
 
 func (c *Client) GetJSON(ctx context.Context, path string, result any) error {
+	_, err := c.DoJSON(ctx, http.MethodGet, path, nil, result)
+	return err
+}
+
+// DoJSON performs exactly one bounded request. It never retries. Callers that
+// dispatch consequential mutations must persist their intent before invoking it.
+func (c *Client) DoJSON(ctx context.Context, method, path string, request any, result any) (Response, error) {
+	u, err := c.requestURL(path)
+	if err != nil {
+		return Response{}, err
+	}
+	var body io.Reader
+	if request != nil {
+		encoded, err := json.Marshal(request)
+		if err != nil {
+			return Response{}, fmt.Errorf("encode request %s: %w", path, err)
+		}
+		body = bytes.NewReader(encoded)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
+	if err != nil {
+		return Response{}, fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+	if request != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	dispatched := false
+	trace := &httptrace.ClientTrace{WroteRequest: func(httptrace.WroteRequestInfo) { dispatched = true }}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return Response{}, &RequestError{Path: path, Dispatched: dispatched, Description: "request failed", Err: err}
+	}
+	defer resp.Body.Close()
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBody+1))
+	if err != nil {
+		return Response{StatusCode: resp.StatusCode, Status: resp.Status, Body: responseBody}, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "read response failed", Err: err}
+	}
+	response := Response{StatusCode: resp.StatusCode, Status: resp.Status, Body: responseBody}
+	if int64(len(responseBody)) > c.maxBody {
+		return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: fmt.Sprintf("response exceeds %d-byte limit", c.maxBody)}
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "remote rejected request"}
+	}
+	if result != nil && len(responseBody) != 0 {
+		if err := json.Unmarshal(responseBody, result); err != nil {
+			return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "decode response failed", Err: err}
+		}
+	}
+	return response, nil
+}
+
+func (c *Client) requestURL(path string) (*url.URL, error) {
 	if path == "" || !strings.HasPrefix(path, "/") {
-		return errors.New("request path must start with /")
+		return nil, errors.New("request path must start with /")
 	}
 	relative, err := url.Parse(path)
 	if err != nil || relative.IsAbs() || relative.Host != "" {
-		return errors.New("request path must be relative")
+		return nil, errors.New("request path must be relative")
 	}
 	u := *c.baseURL
 	u.Path = strings.TrimRight(c.baseURL.Path, "/") + relative.Path
 	u.RawQuery = relative.RawQuery
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-	req.Header.Set("Accept", "application/json")
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("request %s: %w", path, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("request %s: remote status %s", path, resp.Status)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBody+1))
-	if err != nil {
-		return fmt.Errorf("read response %s: %w", path, err)
-	}
-	if int64(len(body)) > c.maxBody {
-		return fmt.Errorf("response %s exceeds %d-byte limit", path, c.maxBody)
-	}
-	if err := json.Unmarshal(body, result); err != nil {
-		return fmt.Errorf("decode response %s: %w", path, err)
-	}
-	return nil
+	return &u, nil
 }
 
 func loadCAPool(path string) (*x509.CertPool, error) {

@@ -15,10 +15,20 @@ go run ./cmd/nb version
 go run ./cmd/nb schema list
 go run ./cmd/nb skills list
 go run ./cmd/nb coverage
+go run ./cmd/nb groups list --json
+go run ./cmd/nb groups get <group-id> --json
+go run ./cmd/nb stage create --from-json
+go run ./cmd/nb apply <stage-id>@<revision>
 ```
 
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
+
+Consequential changes are created as immutable local stages. `apply` accepts
+only an exact stage ID and revision, rechecks the live preimage, journals the
+dispatch intent, performs one remote mutation request, and verifies the result by
+reading the resource back. Never point an unreviewed stage at a production
+profile.
 
 ## Development
 

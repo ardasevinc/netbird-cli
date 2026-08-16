@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/groups-get-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/groups-get-result"},
+    "ok": {"const": true},
+    "operation": {"const": "groups.get"},
+    "data": {
+      "type": "object",
+      "required": ["group", "completeness"],
+      "properties": {
+        "group": {"type": "object"},
+        "completeness": {"type": "object", "required": ["state"], "properties": {"state": {"const": "complete"}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
