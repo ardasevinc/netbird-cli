@@ -21,6 +21,7 @@ type Remote interface {
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeletePolicy(context.Context, string) (json.RawMessage, error)
 	GetRouteRaw(context.Context, string) (json.RawMessage, error)
 	UpdateRoute(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
@@ -144,6 +145,12 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
+	if stage.Operation == "policies.delete" {
+		if err := confirmDeleted(ctx, remote, stage.Operation, request.ID); err != nil && !isNotFound(err) {
+			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
+		}
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote policy is absent after delete")
+	}
 	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request.ID)
 	if err != nil {
 		return finish(ctx, store, result, mutation.Unknown, "update may have applied, but read-back was inconclusive")
@@ -164,6 +171,8 @@ func readPreimage(ctx context.Context, remote Remote, operation, id string) (jso
 		return remote.GetGroup(ctx, id)
 	case "policies.update":
 		return remote.GetPolicyRaw(ctx, id)
+	case "policies.delete":
+		return remote.GetPolicyRaw(ctx, id)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, id)
 	case "peers.update":
@@ -181,6 +190,8 @@ func dispatch(ctx context.Context, remote Remote, operation, id string, request 
 		return remote.UpdateGroup(ctx, id, request)
 	case "policies.update":
 		return remote.UpdatePolicy(ctx, id, request)
+	case "policies.delete":
+		return remote.DeletePolicy(ctx, id)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, id, request)
 	case "peers.update":
@@ -198,6 +209,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.GroupUpdateImpact(before, intendedAfter)
 	case "policies.update":
 		return analysis.PolicyUpdateImpact(before, intendedAfter)
+	case "policies.delete":
+		return analysis.PolicyDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "peers.update":
@@ -207,6 +220,19 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 	default:
 		return analysis.ImpactReport{}, fmt.Errorf("operation %q has no impact analyzer", operation)
 	}
+}
+
+func confirmDeleted(ctx context.Context, remote Remote, operation, id string) error {
+	_, err := readPreimage(ctx, remote, operation, id)
+	if err == nil {
+		return errors.New("resource still exists after delete")
+	}
+	return err
+}
+
+func isNotFound(err error) bool {
+	var status interface{ StatusCodeState() int }
+	return errors.As(err, &status) && status.StatusCodeState() == 404
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

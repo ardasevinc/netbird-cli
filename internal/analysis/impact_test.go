@@ -32,6 +32,16 @@ func TestPolicyUpdateImpactMarksRuleChangesAsPotentialReachabilityChange(t *test
 	}
 }
 
+func TestPolicyDeleteImpactIsConservative(t *testing.T) {
+	report, err := PolicyDeleteImpact([]byte(`{"id":"p1","name":"policy","rules":[]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "policy_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),

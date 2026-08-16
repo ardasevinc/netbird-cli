@@ -51,6 +51,9 @@ func (f *fakeRemote) UpdateGroup(_ context.Context, _ string, _ json.RawMessage)
 }
 
 func (f *fakeRemote) GetPolicyRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.policyBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
 	return append(json.RawMessage(nil), f.policyBefore...), nil
 }
 
@@ -61,6 +64,15 @@ func (f *fakeRemote) UpdatePolicy(_ context.Context, _ string, _ json.RawMessage
 	}
 	f.policyBefore = append(json.RawMessage(nil), f.policyAfter...)
 	return f.policyBefore, nil
+}
+
+func (f *fakeRemote) DeletePolicy(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.policyBefore = nil
+	return nil, nil
 }
 
 func (f *fakeRemote) GetRouteRaw(_ context.Context, _ string) (json.RawMessage, error) {
@@ -266,6 +278,39 @@ func TestApplyDispatchesPolicyUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected policy result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPolicyDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"p1","name":"policy","rules":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "policies.delete",
+		Request:        json.RawMessage(`{"id":"p1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"policy_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a policy can remove access edges; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"policy_delete_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.policy_delete", Severity: "blocking", Message: "deleting the policy may remove access and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", policyBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected policy delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

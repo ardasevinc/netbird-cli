@@ -97,6 +97,9 @@ expiry, SSH, address, or other access/connectivity changes emit the blocking
 Network stages use the same contract. Name and description edits are neutral;
 changes to attached policies, resources, or routers emit the blocking
 `impact.network_change` finding.
+Policy deletion is also staged, requires the blocking `impact.policy_delete`
+acknowledgement, and is confirmed only when a post-delete policy read returns
+404.
 
 ## Development
 

@@ -1296,11 +1296,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.policies.policyId",
+      "id": "policies.delete",
       "method": "DELETE",
       "path": "/api/policies/{policyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "policies.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 105,
+    "implemented": 106,
     "classified": 0,
-    "discovered": 131,
-    "contract_verified": 96,
+    "discovered": 130,
+    "contract_verified": 97,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

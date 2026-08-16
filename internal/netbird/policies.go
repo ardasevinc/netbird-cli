@@ -95,3 +95,15 @@ func (c *Client) UpdatePolicy(ctx context.Context, id string, request json.RawMe
 	}
 	return result, nil
 }
+
+func (c *Client) DeletePolicy(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("policy id is required")
+	}
+	path := "/api/policies/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete policy %q: %w", id, err)
+	}
+	return result, nil
+}
