@@ -82,6 +82,7 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.AddCommand(profileCommand(state, stdout))
 	root.AddCommand(capabilitiesCommand(state, stdout))
 	root.AddCommand(stageCommand(state, stdout))
+	root.AddCommand(groupsCommand(state, stdout))
 	return root
 }
 

@@ -39,3 +39,21 @@ func TestDiscoverUsesReadOnlyEndpoints(t *testing.T) {
 		t.Fatalf("unexpected discovery: %+v", result)
 	}
 }
+
+func TestListGroupsUsesBoundedRead(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/groups" || r.Method != http.MethodGet {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode([]Group{{ID: "g1", Name: "ops", PeersCount: 2}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	groups, err := NewClient(client).ListGroups(context.Background())
+	if err != nil || len(groups) != 1 || groups[0].Name != "ops" {
+		t.Fatalf("groups=%+v err=%v", groups, err)
+	}
+}

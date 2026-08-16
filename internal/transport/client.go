@@ -70,8 +70,13 @@ func (c *Client) GetJSON(ctx context.Context, path string, result any) error {
 	if path == "" || !strings.HasPrefix(path, "/") {
 		return errors.New("request path must start with /")
 	}
+	relative, err := url.Parse(path)
+	if err != nil || relative.IsAbs() || relative.Host != "" {
+		return errors.New("request path must be relative")
+	}
 	u := *c.baseURL
-	u.Path = strings.TrimRight(c.baseURL.Path, "/") + path
+	u.Path = strings.TrimRight(c.baseURL.Path, "/") + relative.Path
+	u.RawQuery = relative.RawQuery
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/groups-list-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/groups-list-result"},
+    "ok": {"const": true},
+    "operation": {"const": "groups.list"},
+    "data": {"type": "object", "required": ["groups", "completeness"], "properties": {"groups": {"type": "array"}, "completeness": {"type": "object"}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}
