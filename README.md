@@ -25,6 +25,8 @@ go run ./cmd/nb networks list --json
 go run ./cmd/nb networks resources list <network-id> --json
 go run ./cmd/nb networks routers list <network-id> --json
 go run ./cmd/nb networks routers list-all --json
+go run ./cmd/nb ingress list --json
+go run ./cmd/nb peers ingress-ports list <peer-id> --json
 go run ./cmd/nb dns nameservers list --json
 go run ./cmd/nb dns settings --json
 go run ./cmd/nb dns zones list --json

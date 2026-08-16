@@ -27,6 +27,8 @@ nb setup-keys list --json
 nb locations countries --json
 nb networks resources list <network-id> --json
 nb networks routers list <network-id> --json
+nb ingress list --json
+nb peers ingress-ports list <peer-id> --json
 nb users tokens list <user-id> --json
 ```
 
