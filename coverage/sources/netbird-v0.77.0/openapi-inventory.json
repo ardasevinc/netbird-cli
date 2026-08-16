@@ -654,11 +654,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones.zoneId.records",
+      "id": "dns.records.list",
       "method": "GET",
       "path": "/api/dns/zones/{zoneId}/records",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.dns.zones.zoneId.records",
@@ -668,11 +668,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones.zoneId.records.recordId",
+      "id": "dns.records.get",
       "method": "GET",
       "path": "/api/dns/zones/{zoneId}/records/{recordId}",
-      "implementation": "",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.dns.zones.zoneId.records.recordId",

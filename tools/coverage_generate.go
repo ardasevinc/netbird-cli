@@ -121,6 +121,8 @@ func applyReviewedOverrides(ops []operation) {
 		"GET /api/networks/{networkId}/routers":                {ID: "networks.routers.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/networks/{networkId}/routers/{routerId}":     {ID: "networks.routers.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/networks/routers":                            {ID: "networks.routers.list_all", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/dns/zones/{zoneId}/records":                  {ID: "dns.records.list", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/dns/zones/{zoneId}/records/{recordId}":       {ID: "dns.records.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/networks":                                    {ID: "networks.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/networks/{networkId}":                        {ID: "networks.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers":                                       {ID: "peers.list", Implementation: "implemented", Verification: "contract_verified"},

@@ -316,11 +316,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones.zoneId.records",
+      "id": "dns.records.list",
       "method": "GET",
       "path": "/api/dns/zones/{zoneId}/records",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.dns.zones.zoneId.records",
@@ -337,11 +337,11 @@
       "verification": ""
     },
     {
-      "id": "get.api.dns.zones.zoneId.records.recordId",
+      "id": "dns.records.get",
       "method": "GET",
       "path": "/api/dns/zones/{zoneId}/records/{recordId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.dns.zones.zoneId.records.recordId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 38,
+    "implemented": 40,
     "classified": 0,
-    "discovered": 198,
-    "contract_verified": 38,
+    "discovered": 196,
+    "contract_verified": 40,
     "disposable_verified": 0,
     "live_verified": 0,
     "unverified_live": 0

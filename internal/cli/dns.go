@@ -74,6 +74,7 @@ func dnsNameserverGetCommand(state *commandState, stdout io.Writer) *cobra.Comma
 
 func dnsZonesCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	command := &cobra.Command{Use: "zones", Short: "inspect DNS zones"}
+	command.AddCommand(dnsZoneRecordsCommand(state, stdout))
 	command.AddCommand(&cobra.Command{Use: "list", Short: "list DNS zones", RunE: func(cmd *cobra.Command, _ []string) error {
 		client, err := managementClient(state)
 		if err != nil {

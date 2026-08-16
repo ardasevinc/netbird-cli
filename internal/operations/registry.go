@@ -48,6 +48,8 @@ var definitions = map[string]Definition{
 	"networks.routers.list":     {Name: "networks.routers.list", Method: "GET", Path: "/api/networks/{networkId}/routers", Mutation: ReadOnly},
 	"networks.routers.get":      {Name: "networks.routers.get", Method: "GET", Path: "/api/networks/{networkId}/routers/{routerId}", Mutation: ReadOnly},
 	"networks.routers.list_all": {Name: "networks.routers.list_all", Method: "GET", Path: "/api/networks/routers", Mutation: ReadOnly},
+	"dns.records.list":          {Name: "dns.records.list", Method: "GET", Path: "/api/dns/zones/{zoneId}/records", Mutation: ReadOnly},
+	"dns.records.get":           {Name: "dns.records.get", Method: "GET", Path: "/api/dns/zones/{zoneId}/records/{recordId}", Mutation: ReadOnly},
 	"networks.list":             {Name: "networks.list", Method: "GET", Path: "/api/networks", Mutation: ReadOnly},
 	"networks.get":              {Name: "networks.get", Method: "GET", Path: "/api/networks/{networkId}", Mutation: ReadOnly},
 	"routes.list":               {Name: "routes.list", Method: "GET", Path: "/api/routes", Mutation: ReadOnly},
