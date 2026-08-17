@@ -36,6 +36,9 @@ type Remote interface {
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePeer(context.Context, string) (json.RawMessage, error)
+	ListEDRBypassedPeersRaw(context.Context) (json.RawMessage, error)
+	BypassPeerEDR(context.Context, string) (json.RawMessage, error)
+	RevokePeerEDRBypass(context.Context, string) (json.RawMessage, error)
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
 	ListNetworksRaw(context.Context) (json.RawMessage, error)
 	CreateNetwork(context.Context, json.RawMessage) (json.RawMessage, error)
@@ -318,6 +321,20 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
 	}
 	if isCreateOperation(stage.Operation) {
+		if stage.Operation == "peers.edr.bypass.create" {
+			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR bypass may have applied, but bypass state could not be confirmed")
+			}
+			present, err := collectionContainsPeerID(liveAfter, request.ID)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR bypass response could not be compared with the peer state")
+			}
+			if !present {
+				return finish(ctx, store, result, mutation.Partial, "EDR bypass dispatch completed but the peer is not present in bypassed state")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "peer is present in the EDR-bypassed state")
+		}
 		createdID, err := responseID(dispatchResult)
 		if err != nil {
 			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but the created resource id could not be confirmed")
@@ -347,6 +364,20 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "created resource matches intended state")
 	}
 	if isDeleteOperation(stage.Operation) {
+		if stage.Operation == "peers.edr.bypass.delete" {
+			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR bypass may have applied, but bypass state could not be confirmed")
+			}
+			present, err := collectionContainsPeerID(liveAfter, request.ID)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR bypass absence could not be compared with the peer state")
+			}
+			if present {
+				return finish(ctx, store, result, mutation.Partial, "EDR bypass remains present after revoke")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "peer is absent from the EDR-bypassed state after revoke")
+		}
 		if err := confirmDeleted(ctx, remote, stage.Operation, request); err != nil && !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
@@ -494,6 +525,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPeerRaw(ctx, target.ID)
 	case "peers.delete":
 		return remote.GetPeerRaw(ctx, target.ID)
+	case "peers.edr.bypass.create", "peers.edr.bypass.delete":
+		return remote.ListEDRBypassedPeersRaw(ctx)
 	case "networks.update":
 		return remote.GetNetworkRaw(ctx, target.ID)
 	case "networks.delete":
@@ -767,6 +800,10 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdatePeer(ctx, target.ID, request)
 	case "peers.delete":
 		return remote.DeletePeer(ctx, target.ID)
+	case "peers.edr.bypass.create":
+		return remote.BypassPeerEDR(ctx, target.ID)
+	case "peers.edr.bypass.delete":
+		return remote.RevokePeerEDRBypass(ctx, target.ID)
 	case "networks.update":
 		return remote.UpdateNetwork(ctx, target.ID, request)
 	case "networks.delete":
@@ -811,7 +848,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -873,6 +910,14 @@ func collectionContainsIntent(collection, intent json.RawMessage) (bool, error) 
 		}
 	}
 	return false, nil
+}
+
+func collectionContainsPeerID(collection json.RawMessage, peerID string) (bool, error) {
+	intent, err := json.Marshal(map[string]string{"peer_id": peerID})
+	if err != nil {
+		return false, err
+	}
+	return collectionContainsIntent(collection, intent)
 }
 
 func collectionFindID(collection json.RawMessage, id string) (json.RawMessage, error) {
@@ -1161,6 +1206,10 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PeerUpdateImpact(before, intendedAfter)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
+	case "peers.edr.bypass.create":
+		return analysis.EDRBypassCreateImpact(before, intendedAfter)
+	case "peers.edr.bypass.delete":
+		return analysis.EDRBypassDeleteImpact(before)
 	case "networks.update":
 		return analysis.NetworkUpdateImpact(before, intendedAfter)
 	case "networks.delete":
@@ -1198,7 +1247,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

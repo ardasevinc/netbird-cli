@@ -269,6 +269,36 @@ func TestStageCreateIngressPortAllocationMutationsRequireAcknowledgement(t *test
 	}
 }
 
+func TestStageCreateEDRBypassMutationsRequireAcknowledgement(t *testing.T) {
+	cases := []struct {
+		name, operation, before, after, finding string
+	}{
+		{"create", "peers.edr.bypass.create", `[]`, `{"peer_id":"peer-1"}`, "impact.edr_bypass_create"},
+		{"delete", "peers.edr.bypass.delete", `[{"peer_id":"peer-1"}]`, `{}`, "impact.edr_bypass_delete"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			temp := t.TempDir()
+			configPath := filepath.Join(temp, "config.toml")
+			statePath := filepath.Join(temp, "ledger.db")
+			if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+			var stdout, stderr bytes.Buffer
+			root := newRoot(state, &stdout, &stderr, version.Current())
+			root.SetArgs([]string{"stage", "create", "--from-json"})
+			root.SetIn(strings.NewReader(fmt.Sprintf(`{"operation":%q,"request":{"id":"peer-1"},"before":%s,"intended_after":%s}`, tc.operation, tc.before, tc.after)))
+			if err := root.ExecuteContext(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(stdout.String(), `"code":"`+tc.finding+`"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+				t.Fatalf("EDR bypass acknowledgement finding missing: %s", stdout.String())
+			}
+		})
+	}
+}
+
 func TestStageCreateAgentNetworkSettingsUpdateRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

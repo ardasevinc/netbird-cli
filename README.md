@@ -9,6 +9,7 @@ Ingress-peer creation is always treated as a blocking `impact.ingress_peer_creat
 Ingress-peer updates are always treated as blocking `impact.ingress_peer_change` changes and require exact preimage and read-back confirmation.
 Ingress-peer deletion is always treated as a blocking `impact.ingress_peer_delete` change and requires exact preimage and absence confirmation.
 Peer ingress-port allocation creation, updates, and deletion are capability-gated, blocking, and require peer-scoped exact preimage plus read-back or absence confirmation because they can expose or remove external service mappings.
+EDR compliance bypass and revoke are capability-gated, blocking security-control mutations; bypass grants immediate peer access outside normal compliance gating and requires exact collection proof.
 Agent-network settings updates are capability-gated, blocking `impact.agent_network_settings_change` changes and require exact preimage and read-back confirmation.
 Agent-network settings creation is capability-gated, blocking `impact.agent_network_settings_create` changes and requires exact preimage and read-back confirmation.
 Agent-network settings deletion is capability-gated, blocking `impact.agent_network_settings_delete` changes and requires exact preimage and absence confirmation.

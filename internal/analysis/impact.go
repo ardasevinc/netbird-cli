@@ -943,6 +943,26 @@ func PeerDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject []map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode EDR bypass preimage: %w", err)
+	}
+	var afterObject map[string]any
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode EDR bypass intent: %w", err)
+	}
+	return ImpactReport{Classification: "edr_bypass_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"bypassing EDR compliance immediately grants the peer network access outside the normal compliance control", "the bypassed-peer collection is the authoritative postcondition; the API response is not used as sole effect proof"}, Completeness: map[string]any{"state": "unknown", "reason": "edr_bypass_create_requires_compliance_analysis"}}, nil
+}
+
+func EDRBypassDeleteImpact(before []byte) (ImpactReport, error) {
+	var beforeObject []map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode EDR bypass revoke preimage: %w", err)
+	}
+	return ImpactReport{Classification: "edr_bypass_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"revoking an EDR bypass restores the peer's normal compliance gate and may remove current network access", "the bypassed-peer collection is the authoritative absence postcondition"}, Completeness: map[string]any{"state": "unknown", "reason": "edr_bypass_delete_requires_compliance_analysis"}}, nil
+}
+
 func NetworkUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

@@ -1170,25 +1170,25 @@
       "verification": "live_verified"
     },
     {
-      "id": "get.api.peers.edr.bypassed",
+      "id": "peers.edr.bypassed.list",
       "method": "GET",
       "path": "/api/peers/edr/bypassed",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
     {
-      "id": "delete.api.peers.peer_id.edr.bypass",
+      "id": "peers.edr.bypass.delete",
       "method": "DELETE",
       "path": "/api/peers/{peer-id}/edr/bypass",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.peers.peer_id.edr.bypass",
+      "id": "peers.edr.bypass.create",
       "method": "POST",
       "path": "/api/peers/{peer-id}/edr/bypass",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.peers.peerId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 171,
+    "implemented": 173,
     "classified": 0,
-    "discovered": 65,
-    "contract_verified": 162,
+    "discovered": 63,
+    "contract_verified": 164,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

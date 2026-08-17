@@ -143,6 +143,7 @@ func applyReviewedOverrides(ops []operation) {
 		"GET /api/networks/{networkId}":                           {ID: "networks.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers":                                          {ID: "peers.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers/{peerId}":                                 {ID: "peers.get", Implementation: "implemented", Verification: "contract_verified"},
+		"GET /api/peers/edr/bypassed":                             {ID: "peers.edr.bypassed.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/policies":                                       {ID: "policies.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/policies/{policyId}":                            {ID: "policies.get", Implementation: "implemented", Verification: "contract_verified"},
 		"DELETE /api/groups/{groupId}":                            {ID: "groups.delete", Implementation: "implemented", Verification: "contract_verified"},
@@ -179,6 +180,8 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["PUT /api/accounts/{accountId}"] = operation{ID: "accounts.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/accounts/{accountId}"] = operation{ID: "accounts.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/users/{userId}/password"] = operation{ID: "users.password.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/peers/{peer-id}/edr/bypass"] = operation{ID: "peers.edr.bypass.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["DELETE /api/peers/{peer-id}/edr/bypass"] = operation{ID: "peers.edr.bypass.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/users/{userId}/invite"] = operation{ID: "users.invite.resend", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/users/invites/{token}/accept"] = operation{ID: "users.invites.accept", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/users/invites"] = operation{ID: "users.invites.create", Implementation: "implemented", Verification: "contract_verified"}

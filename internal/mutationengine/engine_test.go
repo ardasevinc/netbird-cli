@@ -72,6 +72,7 @@ type fakeRemote struct {
 	routeCollection       json.RawMessage
 	peerBefore            json.RawMessage
 	peerAfter             json.RawMessage
+	edrBypassed           json.RawMessage
 	networkBefore         json.RawMessage
 	networkAfter          json.RawMessage
 	networkCollection     json.RawMessage
@@ -1001,6 +1002,41 @@ func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, e
 	return nil, nil
 }
 
+func (f *fakeRemote) ListEDRBypassedPeersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.edrBypassed == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.edrBypassed...), nil
+}
+
+func (f *fakeRemote) BypassPeerEDR(_ context.Context, peerID string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.edrBypassed = json.RawMessage(`[{"peer_id":"` + peerID + `"}]`)
+	return json.RawMessage(`{"peer_id":"` + peerID + `"}`), nil
+}
+
+func (f *fakeRemote) RevokePeerEDRBypass(_ context.Context, peerID string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	var peers []map[string]string
+	if err := json.Unmarshal(f.edrBypassed, &peers); err == nil {
+		filtered := peers[:0]
+		for _, peer := range peers {
+			if peer["peer_id"] != peerID {
+				filtered = append(filtered, peer)
+			}
+		}
+		encoded, _ := json.Marshal(filtered)
+		f.edrBypassed = encoded
+	}
+	return nil, nil
+}
+
 func (f *fakeRemote) GetNetworkRaw(_ context.Context, _ string) (json.RawMessage, error) {
 	if f.networkBefore == nil {
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
@@ -1873,6 +1909,46 @@ func TestApplyDispatchesIngressPortAllocationMutations(t *testing.T) {
 				if _, ok := body["peer_id"]; ok {
 					t.Fatalf("peer_id leaked into dispatched ingress port body: %s", remote.ingressPortBody)
 				}
+			}
+		})
+	}
+}
+
+func TestApplyDispatchesEDRBypassMutations(t *testing.T) {
+	cases := []struct {
+		name, operation, before, after, impact, finding, message string
+		bypassed                                                 json.RawMessage
+	}{
+		{
+			name: "create", operation: "peers.edr.bypass.create", before: `[]`, after: `{"peer_id":"peer-1"}`,
+			impact:  `{"classification":"edr_bypass_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["bypassing EDR compliance immediately grants the peer network access outside the normal compliance control","the bypassed-peer collection is the authoritative postcondition; the API response is not used as sole effect proof"],"completeness":{"state":"unknown","reason":"edr_bypass_create_requires_compliance_analysis"}}`,
+			finding: "impact.edr_bypass_create", message: "bypassing EDR compliance immediately grants peer network access and requires exact acknowledgement",
+		},
+		{
+			name: "delete", operation: "peers.edr.bypass.delete", before: `[{"peer_id":"peer-1"}]`, after: `{}`,
+			impact:  `{"classification":"edr_bypass_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["revoking an EDR bypass restores the peer's normal compliance gate and may remove current network access","the bypassed-peer collection is the authoritative absence postcondition"],"completeness":{"state":"unknown","reason":"edr_bypass_delete_requires_compliance_analysis"}}`,
+			finding: "impact.edr_bypass_delete", message: "revoking the EDR bypass restores compliance gating and may remove peer network access; exact acknowledgement is required",
+			bypassed: json.RawMessage(`[{"peer_id":"peer-1"}]`),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store, err := ledger.Open(t.TempDir() + "/ledger.db")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: tc.operation, Request: json.RawMessage(`{"id":"peer-1"}`), Before: json.RawMessage(tc.before), IntendedAfter: json.RawMessage(tc.after), Impact: json.RawMessage(tc.impact), Findings: []ledger.Finding{{Code: tc.finding, Severity: "blocking", Message: tc.message}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			remote := &fakeRemote{identity: "https://nb.test", account: "account-1", edrBypassed: tc.bypassed}
+			result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+				t.Fatalf("unexpected EDR bypass result: %+v updates=%d", result, remote.updates)
 			}
 		})
 	}

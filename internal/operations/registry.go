@@ -139,6 +139,9 @@ var definitions = map[string]Definition{
 	"routes.delete":                     {Name: "routes.delete", Method: "DELETE", Path: "/api/routes/{routeId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.update":                      {Name: "peers.update", Method: "PUT", Path: "/api/peers/{peerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.delete":                      {Name: "peers.delete", Method: "DELETE", Path: "/api/peers/{peerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"peers.edr.bypassed.list":           {Name: "peers.edr.bypassed.list", Method: "GET", Path: "/api/peers/edr/bypassed", Mutation: ReadOnly},
+	"peers.edr.bypass.create":           {Name: "peers.edr.bypass.create", Method: "POST", Path: "/api/peers/{peer-id}/edr/bypass", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"peers.edr.bypass.delete":           {Name: "peers.edr.bypass.delete", Method: "DELETE", Path: "/api/peers/{peer-id}/edr/bypass", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.update":                   {Name: "networks.update", Method: "PUT", Path: "/api/networks/{networkId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.delete":                   {Name: "networks.delete", Method: "DELETE", Path: "/api/networks/{networkId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 }

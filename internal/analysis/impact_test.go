@@ -679,6 +679,25 @@ func TestIngressPortAllocationImpactsAreConservative(t *testing.T) {
 	}
 }
 
+func TestEDRBypassImpactsAreHighConfidence(t *testing.T) {
+	create, err := EDRBypassCreateImpact([]byte(`[]`), []byte(`{"peer_id":"peer-1"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := EDRBypassDeleteImpact([]byte(`[{"peer_id":"peer-1"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range []ImpactReport{create, remove} {
+		if report.Reachability != "potentially_changed" || report.Confidence != "high" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected EDR bypass report: %+v", report)
+		}
+	}
+	if create.Classification != "edr_bypass_create" || remove.Classification != "edr_bypass_delete" {
+		t.Fatalf("unexpected EDR bypass classifications: %q %q", create.Classification, remove.Classification)
+	}
+}
+
 func TestUserTokenCreateImpactIsComplete(t *testing.T) {
 	report, err := UserTokenCreateImpact([]byte(`{"id":"token-1","name":"agent"}`))
 	if err != nil {
