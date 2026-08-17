@@ -218,3 +218,13 @@ func TestNetworkRouterUpdateImpactBlocksReachabilityChanges(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestNetworkRouterCreateImpactIsConservative(t *testing.T) {
+	report, err := NetworkRouterCreateImpact([]byte(`{"enabled":true,"masquerade":true,"metric":10,"peer":"p1"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_router_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}

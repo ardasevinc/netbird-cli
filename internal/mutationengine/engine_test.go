@@ -29,6 +29,7 @@ type fakeRemote struct {
 	resourceCollection json.RawMessage
 	routerBefore       json.RawMessage
 	routerAfter        json.RawMessage
+	routerCollection   json.RawMessage
 	updateErr          error
 	updates            int
 }
@@ -216,6 +217,25 @@ func (f *fakeRemote) GetNetworkRouterRaw(_ context.Context, _, _ string) (json.R
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.routerBefore...), nil
+}
+
+func (f *fakeRemote) ListNetworkRoutersRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.routerCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.routerCollection...), nil
+}
+
+func (f *fakeRemote) CreateNetworkRouter(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.routerAfter == nil {
+		return nil, errors.New("missing created router")
+	}
+	f.routerCollection = json.RawMessage("[" + string(f.routerAfter) + "]")
+	return append(json.RawMessage(nil), f.routerAfter...), nil
 }
 
 func (f *fakeRemote) UpdateNetworkRouter(_ context.Context, _, _ string, _ json.RawMessage) (json.RawMessage, error) {
@@ -765,6 +785,41 @@ func TestApplyDispatchesNetworkResourceCreateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network resource create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkRouterCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"enabled":true,"masquerade":true,"metric":10,"peer":"p1"}`
+	created := `{"id":"rt1","enabled":true,"masquerade":true,"metric":10,"peer":"p1","peer_groups":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.routers.create",
+		Request:        json.RawMessage(`{"network_id":"n1","enabled":true,"masquerade":true,"metric":10,"peer":"p1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"network_router_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a network router can add route availability and peer reachability; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"network_router_create_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.network_router_create", Severity: "blocking", Message: "creating the network router may alter reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", routerCollection: []byte(before), routerAfter: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network router create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

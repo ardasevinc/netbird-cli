@@ -166,3 +166,27 @@ func TestUpdateNetworkRouterUsesPUT(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateNetworkRouterUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/networks/n1/routers" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["peer"] != "p1" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "rt1", "enabled": true, "masquerade": true, "metric": 10, "peer": "p1", "peer_groups": []string{}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).CreateNetworkRouter(context.Background(), "n1", json.RawMessage(`{"enabled":true,"masquerade":true,"metric":10,"peer":"p1"}`)); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -39,6 +39,8 @@ type Remote interface {
 	UpdateNetworkResource(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetworkResource(context.Context, string, string) (json.RawMessage, error)
 	GetNetworkRouterRaw(context.Context, string, string) (json.RawMessage, error)
+	ListNetworkRoutersRaw(context.Context, string) (json.RawMessage, error)
+	CreateNetworkRouter(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	UpdateNetworkRouter(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetworkRouter(context.Context, string, string) (json.RawMessage, error)
 }
@@ -117,7 +119,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation)) {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
-	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
+	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
@@ -253,6 +255,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
 	case "networks.resources.create":
 		return remote.ListNetworkResourcesRaw(ctx, target.NetworkID)
+	case "networks.routers.create":
+		return remote.ListNetworkRoutersRaw(ctx, target.NetworkID)
 	case "networks.routers.delete":
 		return remote.GetNetworkRouterRaw(ctx, target.NetworkID, target.ID)
 	case "networks.routers.update":
@@ -298,6 +302,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateNetworkResource(ctx, target.NetworkID, body)
+	case "networks.routers.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateNetworkRouter(ctx, target.NetworkID, body)
 	case "networks.routers.delete":
 		return remote.DeleteNetworkRouter(ctx, target.NetworkID, target.ID)
 	case "networks.routers.update":
@@ -312,7 +322,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "networks.resources.create"
+	return operation == "networks.resources.create" || operation == "networks.routers.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -422,6 +432,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NetworkResourceUpdateImpact(before, intendedAfter)
 	case "networks.resources.create":
 		return analysis.NetworkResourceCreateImpact(intendedAfter)
+	case "networks.routers.create":
+		return analysis.NetworkRouterCreateImpact(intendedAfter)
 	case "networks.routers.delete":
 		return analysis.NetworkRouterDeleteImpact(before)
 	case "networks.routers.update":

@@ -162,6 +162,30 @@ func (c *Client) GetNetworkRouterRaw(ctx context.Context, networkID, routerID st
 	return result, nil
 }
 
+func (c *Client) ListNetworkRoutersRaw(ctx context.Context, networkID string) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "routers", "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("list routers for network %q: %w", networkID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateNetworkRouter(ctx context.Context, networkID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := networkChildPath(networkID, "routers", "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create router for network %q: %w", networkID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) UpdateNetworkRouter(ctx context.Context, networkID, routerID string, request json.RawMessage) (json.RawMessage, error) {
 	path, err := networkChildPath(networkID, "routers", routerID)
 	if err != nil {

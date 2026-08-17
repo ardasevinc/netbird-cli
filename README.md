@@ -115,6 +115,9 @@ Network router deletion is staged with blocking
 absence proof.
 Network router updates are always treated as topology changes and require the
 blocking `impact.network_router_change` acknowledgement.
+Network router creation snapshots the router collection preimage, requires
+blocking `impact.network_router_create` acknowledgement, and confirms the
+returned id and read-back fields against the intended state.
 Policy deletion is also staged, requires the blocking `impact.policy_delete`
 acknowledgement, and is confirmed only when a post-delete policy read returns
 404.
