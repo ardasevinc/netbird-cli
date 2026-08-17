@@ -58,6 +58,8 @@ type Remote interface {
 	DeleteDNSZone(context.Context, string) (json.RawMessage, error)
 	ListDNSRecordsRaw(context.Context, string) (json.RawMessage, error)
 	CreateDNSRecord(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetDNSRecordRaw(context.Context, string, string) (json.RawMessage, error)
+	UpdateDNSRecord(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -138,7 +140,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
 	}
-	if stage.Operation == "dns.records.create" && request.ZoneID == "" {
+	if strings.HasPrefix(stage.Operation, "dns.records.") && request.ZoneID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires zone_id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
@@ -268,6 +270,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetDNSZoneRaw(ctx, target.ID)
 	case "dns.records.create":
 		return remote.ListDNSRecordsRaw(ctx, target.ZoneID)
+	case "dns.records.update":
+		return remote.GetDNSRecordRaw(ctx, target.ZoneID, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -339,6 +343,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateDNSRecord(ctx, target.ZoneID, body)
+	case "dns.records.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateDNSRecord(ctx, target.ZoneID, target.ID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -502,6 +512,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSZoneUpdateImpact(before, intendedAfter)
 	case "dns.records.create":
 		return analysis.DNSRecordCreateImpact(intendedAfter)
+	case "dns.records.update":
+		return analysis.DNSRecordUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

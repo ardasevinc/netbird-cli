@@ -344,11 +344,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.dns.zones.zoneId.records.recordId",
+      "id": "dns.records.update",
       "method": "PUT",
       "path": "/api/dns/zones/{zoneId}/records/{recordId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.event_streaming",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 124,
+    "implemented": 125,
     "classified": 0,
-    "discovered": 112,
-    "contract_verified": 115,
+    "discovered": 111,
+    "contract_verified": 116,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

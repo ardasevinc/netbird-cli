@@ -60,6 +60,30 @@ func (c *Client) GetDNSRecord(ctx context.Context, zoneID, recordID string) (DNS
 	return result, nil
 }
 
+func (c *Client) GetDNSRecordRaw(ctx context.Context, zoneID, recordID string) (json.RawMessage, error) {
+	path, err := dnsRecordPath(zoneID, recordID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get dns record %q for zone %q: %w", recordID, zoneID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateDNSRecord(ctx context.Context, zoneID, recordID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := dnsRecordPath(zoneID, recordID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update dns record %q for zone %q: %w", recordID, zoneID, err)
+	}
+	return result, nil
+}
+
 func dnsRecordPath(zoneID, recordID string) (string, error) {
 	if strings.TrimSpace(zoneID) == "" {
 		return "", fmt.Errorf("zone id is required")
