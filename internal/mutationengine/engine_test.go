@@ -19,6 +19,7 @@ type fakeRemote struct {
 	postureCollection    json.RawMessage
 	postureBefore        json.RawMessage
 	postureAfter         json.RawMessage
+	ingressCollection    json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -125,6 +126,25 @@ func (f *fakeRemote) DeletePostureCheck(_ context.Context, _ string) (json.RawMe
 	}
 	f.postureBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) ListIngressPeersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.ingressCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.ingressCollection...), nil
+}
+
+func (f *fakeRemote) CreateIngressPeer(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.after == nil {
+		return nil, errors.New("missing created ingress peer")
+	}
+	f.ingressCollection = json.RawMessage("[" + string(f.after) + "]")
+	return append(json.RawMessage(nil), f.after...), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -1147,6 +1167,40 @@ func TestApplyDispatchesPostureCheckDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected posture check delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesIngressPeerCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"ing-2","peer_id":"peer-1","region":"eu","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "ingress.peers.create",
+		Request:        json.RawMessage(`{"peer_id":"peer-1","region":"eu","enabled":true}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"ingress_peer_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an ingress peer can add an external reachability path; affected peers and allocations require live topology analysis"],"completeness":{"state":"unknown","reason":"ingress_peer_create_requires_topology_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.ingress_peer_create", Severity: "blocking", Message: "creating the ingress peer may add external reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", ingressCollection: []byte(before), after: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected ingress peer create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

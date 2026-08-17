@@ -53,3 +53,32 @@ func TestIngressReadsAreGETOnly(t *testing.T) {
 		t.Fatalf("allocation=%+v err=%v", allocation, err)
 	}
 }
+
+func TestCreateIngressPeerUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/ingress/peers" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["peer_id"] != "peer-1" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "ing-2", "peer_id": "peer-1", "region": "eu", "enabled": true})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := NewClient(transportClient).CreateIngressPeer(context.Background(), json.RawMessage(`{"peer_id":"peer-1","region":"eu","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created map[string]any
+	if err := json.Unmarshal(response, &created); err != nil || created["id"] != "ing-2" {
+		t.Fatalf("created=%s err=%v", response, err)
+	}
+}

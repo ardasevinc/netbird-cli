@@ -76,6 +76,8 @@ type Remote interface {
 	GetPostureCheckRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePostureCheck(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePostureCheck(context.Context, string) (json.RawMessage, error)
+	ListIngressPeersRaw(context.Context) (json.RawMessage, error)
+	CreateIngressPeer(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -308,6 +310,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPostureCheckRaw(ctx, target.ID)
 	case "posture_checks.delete":
 		return remote.GetPostureCheckRaw(ctx, target.ID)
+	case "ingress.peers.create":
+		return remote.ListIngressPeersRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -425,6 +429,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdatePostureCheck(ctx, target.ID, body)
 	case "posture_checks.delete":
 		return remote.DeletePostureCheck(ctx, target.ID)
+	case "ingress.peers.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateIngressPeer(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -483,7 +493,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -614,6 +624,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PostureCheckUpdateImpact(before, intendedAfter)
 	case "posture_checks.delete":
 		return analysis.PostureCheckDeleteImpact(before)
+	case "ingress.peers.create":
+		return analysis.IngressPeerCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

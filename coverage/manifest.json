@@ -484,11 +484,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.ingress.peers",
+      "id": "ingress.peers.create",
       "method": "POST",
       "path": "/api/ingress/peers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.ingress.peers.ingressPeerId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 135,
+    "implemented": 136,
     "classified": 0,
-    "discovered": 101,
-    "contract_verified": 126,
+    "discovered": 100,
+    "contract_verified": 127,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

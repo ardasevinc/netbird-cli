@@ -130,6 +130,7 @@ func applyReviewedOverrides(ops []operation) {
 		"GET /api/dns/zones/{zoneId}/records/{recordId}":       {ID: "dns.records.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/ingress/peers":                               {ID: "ingress.peers.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/ingress/peers/{ingressPeerId}":               {ID: "ingress.peers.get", Implementation: "implemented", Verification: "contract_verified"},
+		"POST /api/ingress/peers":                              {ID: "ingress.peers.create", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers/{peerId}/ingress/ports":                {ID: "peers.ingress.ports.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers/{peerId}/ingress/ports/{allocationId}": {ID: "peers.ingress.ports.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/peers/{peerId}/accessible-peers":             {ID: "peers.accessible", Implementation: "implemented", Verification: "contract_verified"},

@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -64,6 +65,22 @@ func (c *Client) ListIngressPeers(ctx context.Context) ([]IngressPeer, error) {
 	result := make([]IngressPeer, len(wire))
 	for i, item := range wire {
 		result[i] = item.normalized()
+	}
+	return result, nil
+}
+
+func (c *Client) ListIngressPeersRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/ingress/peers", nil, &result); err != nil {
+		return nil, fmt.Errorf("list ingress peers: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateIngressPeer(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/ingress/peers", request, &result); err != nil {
+		return nil, fmt.Errorf("create ingress peer: %w", err)
 	}
 	return result, nil
 }
