@@ -61,8 +61,11 @@ done
 test -n "$host_port" || { docker logs "$container" >&2; exit 1; }
 base_url="http://127.0.0.1:$host_port"
 
-setup_json="$(curl -fsS -X POST "$base_url/api/setup" -H 'content-type: application/json' --data '{"email":"admin@netbird.test","password":"Netbird-e2e-Passw0rd!","name":"NB E2E Admin","create_pat":true,"pat_expire_in":1}')"
-pat="$(jq -er '.personal_access_token // empty' <<<"$setup_json")"
+bootstrap_password="$work_dir/bootstrap-password"
+printf '%s' 'Netbird-e2e-Passw0rd!' > "$bootstrap_password"
+chmod 600 "$bootstrap_password"
+setup_json="$("$repo_root/bin/nb" --json setup bootstrap --url "$base_url" --email admin@netbird.test --name 'NB E2E Admin' --password-ref "file:$bootstrap_password" --create-pat --pat-expire-in 1)"
+pat="$(jq -er '.data.personal_access_token // empty' <<<"$setup_json")"
 account_id="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/accounts" | jq -er '.[0].id')"
 
 profile="$work_dir/profile.toml"
