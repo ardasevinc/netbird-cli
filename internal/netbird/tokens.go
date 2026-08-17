@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -46,6 +47,36 @@ func (c *Client) GetPersonalAccessToken(ctx context.Context, userID, tokenID str
 	path := "/api/users/" + url.PathEscape(userID) + "/tokens/" + url.PathEscape(tokenID)
 	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
 		return PersonalAccessToken{}, fmt.Errorf("get token %q for user %q: %w", tokenID, userID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetPersonalAccessTokenRaw(ctx context.Context, userID, tokenID string) (json.RawMessage, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	if strings.TrimSpace(tokenID) == "" {
+		return nil, fmt.Errorf("token id is required")
+	}
+	path := "/api/users/" + url.PathEscape(userID) + "/tokens/" + url.PathEscape(tokenID)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get token %q for user %q: %w", tokenID, userID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeletePersonalAccessToken(ctx context.Context, userID, tokenID string) (json.RawMessage, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	if strings.TrimSpace(tokenID) == "" {
+		return nil, fmt.Errorf("token id is required")
+	}
+	path := "/api/users/" + url.PathEscape(userID) + "/tokens/" + url.PathEscape(tokenID)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete token %q for user %q: %w", tokenID, userID, err)
 	}
 	return result, nil
 }

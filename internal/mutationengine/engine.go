@@ -112,6 +112,8 @@ type Remote interface {
 	DeleteUser(context.Context, string) (json.RawMessage, error)
 	ApproveUser(context.Context, string) (json.RawMessage, error)
 	RejectUser(context.Context, string) (json.RawMessage, error)
+	GetPersonalAccessTokenRaw(context.Context, string, string) (json.RawMessage, error)
+	DeletePersonalAccessToken(context.Context, string, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -136,6 +138,8 @@ type requestTarget struct {
 	ID        string `json:"id"`
 	NetworkID string `json:"network_id"`
 	ZoneID    string `json:"zone_id"`
+	UserID    string `json:"user_id"`
+	TokenID   string `json:"token_id"`
 }
 
 type Result struct {
@@ -187,8 +191,11 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation)) {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation)) {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
+	}
+	if isUserTokenDeleteOperation(stage.Operation) && (request.UserID == "" || request.TokenID == "") {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires user_id and token_id", stage.Operation)}
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
@@ -389,6 +396,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListUsersRaw(ctx)
 	case "users.update", "users.delete", "users.approve", "users.reject":
 		return remote.GetUserRaw(ctx, target.ID)
+	case "users.tokens.delete":
+		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -600,6 +609,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.ApproveUser(ctx, target.ID)
 	case "users.reject":
 		return remote.RejectUser(ctx, target.ID)
+	case "users.tokens.delete":
+		return remote.DeletePersonalAccessToken(ctx, target.UserID, target.TokenID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -663,6 +674,10 @@ func isCreateOperation(operation string) bool {
 
 func isTargetlessOperation(operation string) bool {
 	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete"
+}
+
+func isUserTokenDeleteOperation(operation string) bool {
+	return operation == "users.tokens.delete"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -868,6 +883,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserApproveImpact(before)
 	case "users.reject":
 		return analysis.UserRejectImpact(before)
+	case "users.tokens.delete":
+		return analysis.UserTokenDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -915,7 +932,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

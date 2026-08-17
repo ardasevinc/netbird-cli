@@ -1646,11 +1646,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.users.userId.tokens.tokenId",
+      "id": "users.tokens.delete",
       "method": "DELETE",
       "path": "/api/users/{userId}/tokens/{tokenId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.tokens.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 158,
+    "implemented": 159,
     "classified": 0,
-    "discovered": 78,
-    "contract_verified": 149,
+    "discovered": 77,
+    "contract_verified": 150,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -625,3 +625,13 @@ func TestUserLifecycleMutationsAreConservative(t *testing.T) {
 		t.Fatalf("unexpected user classifications: %q %q %q %q %q", create.Classification, update.Classification, remove.Classification, approve.Classification, reject.Classification)
 	}
 }
+
+func TestUserTokenDeleteImpactIsComplete(t *testing.T) {
+	report, err := UserTokenDeleteImpact([]byte(`{"id":"token-1","name":"agent"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "user_token_delete" || report.Confidence != "high" || report.Completeness["state"] != "complete" {
+		t.Fatalf("unexpected token delete report: %+v", report)
+	}
+}

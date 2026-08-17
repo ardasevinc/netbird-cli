@@ -49,3 +49,20 @@ func TestPersonalAccessTokenReadsOmitSecretMaterial(t *testing.T) {
 		t.Fatalf("secret leaked: %s", encoded)
 	}
 }
+
+func TestDeletePersonalAccessTokenUsesDeclaredRoute(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.EscapedPath() != "/api/users/user%2Fone/tokens/token%2Fone" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.EscapedPath())
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).DeletePersonalAccessToken(context.Background(), "user/one", "token/one"); err != nil {
+		t.Fatal(err)
+	}
+}

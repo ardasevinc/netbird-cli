@@ -41,6 +41,7 @@ type fakeRemote struct {
 	userCollection        json.RawMessage
 	userBefore            json.RawMessage
 	userAfter             json.RawMessage
+	tokenBefore           json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -474,6 +475,22 @@ func (f *fakeRemote) RejectUser(_ context.Context, _ string) (json.RawMessage, e
 		return nil, f.updateErr
 	}
 	f.userBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) GetPersonalAccessTokenRaw(_ context.Context, _, _ string) (json.RawMessage, error) {
+	if f.tokenBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.tokenBefore...), nil
+}
+
+func (f *fakeRemote) DeletePersonalAccessToken(_ context.Context, _, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.tokenBefore = nil
 	return nil, nil
 }
 
@@ -1954,6 +1971,27 @@ func TestApplyDispatchesUserRejectAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected user reject result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesUserTokenDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"token-1","name":"agent","created_by":"user-1"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.tokens.delete", Request: json.RawMessage(`{"user_id":"user-1","token_id":"token-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"user_token_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["deleting a personal access token revokes the credential represented by the exact token preimage"],"completeness":{"state":"complete","reason":null}}`), Findings: []ledger.Finding{{Code: "impact.user_token_delete", Severity: "blocking", Message: "deleting the personal access token revokes a credential and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", tokenBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected token delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

@@ -333,6 +333,14 @@ func UserRejectImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "user_reject", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"rejecting a pending user removes a pending account-access edge; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_reject_requires_capability_analysis"}}, nil
 }
 
+func UserTokenDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode personal access token delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "user_token_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a personal access token revokes the credential represented by the exact token preimage"}, Completeness: map[string]any{"state": "complete", "reason": nil}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {
