@@ -277,6 +277,26 @@ func TestStageCreateDNSRecordUpdateRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateDNSRecordDeleteRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"dns.records.delete","request":{"zone_id":"zone-1","id":"record-1"},"before":{"id":"record-1","name":"db","type":"A","content":"10.0.0.5","ttl":60},"intended_after":{}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.dns_record_delete"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("dns record delete acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateGroupDeleteRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

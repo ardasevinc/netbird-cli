@@ -116,6 +116,8 @@ DNS record creation snapshots the zone's record collection, requires blocking
 read-back fields against the intended state.
 DNS record updates are always treated as blocking `impact.dns_record_change`
 changes and require exact zone/record preimage and read-back confirmation.
+DNS record deletion is staged with blocking `impact.dns_record_delete`
+acknowledgement and the same required 404 absence proof.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.

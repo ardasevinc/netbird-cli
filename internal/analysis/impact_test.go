@@ -108,6 +108,16 @@ func TestDNSRecordUpdateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSRecordDeleteImpactIsConservative(t *testing.T) {
+	report, err := DNSRecordDeleteImpact([]byte(`{"id":"record-1","name":"db","type":"A","content":"10.0.0.5","ttl":60}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_record_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),
