@@ -76,6 +76,18 @@ func (c *Client) UpdateAccount(ctx context.Context, id string, request json.RawM
 	return result, nil
 }
 
+func (c *Client) DeleteAccount(ctx context.Context, id string) (json.RawMessage, error) {
+	if id == "" {
+		return nil, fmt.Errorf("account id is required")
+	}
+	path := "/api/accounts/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete account %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListUsers(ctx context.Context, serviceUser *bool) ([]ManagedUser, error) {
 	path := "/api/users"
 	if serviceUser != nil {

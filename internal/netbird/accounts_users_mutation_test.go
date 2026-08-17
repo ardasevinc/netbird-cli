@@ -28,6 +28,8 @@ func TestAccountReadsAndUpdatesUseAccountScopedEndpoints(t *testing.T) {
 				t.Fatalf("unexpected request: %#v", request)
 			}
 			_, _ = w.Write([]byte(`{"id":"account-1","settings":{"peer_login_expiration_enabled":false}}`))
+		case http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			t.Fatalf("unexpected method: %s", r.Method)
 		}
@@ -49,5 +51,8 @@ func TestAccountReadsAndUpdatesUseAccountScopedEndpoints(t *testing.T) {
 	var result map[string]any
 	if err := json.Unmarshal(after, &result); err != nil || result["id"] != "account-1" {
 		t.Fatalf("after=%s err=%v", after, err)
+	}
+	if _, err := client.DeleteAccount(context.Background(), "account-1"); err != nil {
+		t.Fatal(err)
 	}
 }

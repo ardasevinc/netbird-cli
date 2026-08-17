@@ -15,11 +15,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "delete.api.accounts.accountId",
+      "id": "accounts.delete",
       "method": "DELETE",
       "path": "/api/accounts/{accountId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "accounts.update",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 131,
+    "implemented": 132,
     "classified": 0,
-    "discovered": 105,
-    "contract_verified": 122,
+    "discovered": 104,
+    "contract_verified": 123,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

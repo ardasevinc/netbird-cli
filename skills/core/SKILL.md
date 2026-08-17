@@ -4,6 +4,7 @@ description: Discover the installed nb command, schema, capability, and safety c
 ---
 
 Account updates are blocking and require exact preimage and read-back proof.
+Account deletion is blocking and requires exact preimage and absence proof.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

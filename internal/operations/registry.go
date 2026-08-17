@@ -28,6 +28,7 @@ var definitions = map[string]Definition{
 	"instance.status":           {Name: "instance.status", Method: "GET", Path: "/api/instance", Mutation: ReadOnly},
 	"accounts.list":             {Name: "accounts.list", Method: "GET", Path: "/api/accounts", Mutation: ReadOnly},
 	"accounts.update":           {Name: "accounts.update", Method: "PUT", Path: "/api/accounts/{accountId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"accounts.delete":           {Name: "accounts.delete", Method: "DELETE", Path: "/api/accounts/{accountId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"dns.nameservers.list":      {Name: "dns.nameservers.list", Method: "GET", Path: "/api/dns/nameservers", Mutation: ReadOnly},
 	"dns.nameservers.get":       {Name: "dns.nameservers.get", Method: "GET", Path: "/api/dns/nameservers/{nsgroupId}", Mutation: ReadOnly},
 	"dns.nameservers.create":    {Name: "dns.nameservers.create", Method: "POST", Path: "/api/dns/nameservers", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

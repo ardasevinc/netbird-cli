@@ -71,6 +71,15 @@ func (f *fakeRemote) UpdateAccount(_ context.Context, _ string, _ json.RawMessag
 	return append(json.RawMessage(nil), f.accountAfter...), nil
 }
 
+func (f *fakeRemote) DeleteAccount(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.accountBefore = nil
+	return nil, nil
+}
+
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
 	if f.dnsZoneCollection == nil {
 		return json.RawMessage(`[]`), nil
@@ -957,6 +966,39 @@ func TestApplyDispatchesAccountUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected account update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAccountDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"account-1","domain":"example.test"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "accounts.delete",
+		Request:        json.RawMessage(`{"id":"account-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"account_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an account can remove management access and account resources; affected peers and resources require live analysis"],"completeness":{"state":"unknown","reason":"account_delete_requires_management_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.account_delete", Severity: "blocking", Message: "deleting the account may remove management access and resources and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", accountBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected account delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 
