@@ -22,11 +22,11 @@
       "verification": ""
     },
     {
-      "id": "put.api.accounts.accountId",
+      "id": "accounts.update",
       "method": "PUT",
       "path": "/api/accounts/{accountId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.access_log_sessions",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 130,
+    "implemented": 131,
     "classified": 0,
-    "discovered": 106,
-    "contract_verified": 121,
+    "discovered": 105,
+    "contract_verified": 122,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

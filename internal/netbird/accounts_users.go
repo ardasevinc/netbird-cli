@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -47,6 +48,30 @@ func (c *Client) ListAccounts(ctx context.Context) ([]Account, error) {
 	var result []Account
 	if err := c.transport.GetJSON(ctx, "/api/accounts", &result); err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetAccountRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	if id == "" {
+		return nil, fmt.Errorf("account id is required")
+	}
+	path := "/api/accounts/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get account %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateAccount(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if id == "" {
+		return nil, fmt.Errorf("account id is required")
+	}
+	path := "/api/accounts/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update account %q: %w", id, err)
 	}
 	return result, nil
 }

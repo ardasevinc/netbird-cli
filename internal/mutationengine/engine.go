@@ -68,6 +68,8 @@ type Remote interface {
 	DeleteNameserverGroup(context.Context, string) (json.RawMessage, error)
 	GetDNSSettingsRaw(context.Context) (json.RawMessage, error)
 	UpdateDNSSettings(context.Context, json.RawMessage) (json.RawMessage, error)
+	GetAccountRaw(context.Context, string) (json.RawMessage, error)
+	UpdateAccount(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -290,6 +292,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNameserverGroupRaw(ctx, target.ID)
 	case "dns.settings.update":
 		return remote.GetDNSSettingsRaw(ctx)
+	case "accounts.update":
+		return remote.GetAccountRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -385,6 +389,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.DeleteNameserverGroup(ctx, target.ID)
 	case "dns.settings.update":
 		return remote.UpdateDNSSettings(ctx, request)
+	case "accounts.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateAccount(ctx, target.ID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -564,6 +574,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSNameserverDeleteImpact(before)
 	case "dns.settings.update":
 		return analysis.DNSSettingsUpdateImpact(before, intendedAfter)
+	case "accounts.update":
+		return analysis.AccountUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

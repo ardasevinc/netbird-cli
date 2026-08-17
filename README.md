@@ -1,5 +1,6 @@
 # nb
 
+Account updates are always treated as blocking `impact.account_change` changes and require exact account preimage and read-back confirmation.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.
