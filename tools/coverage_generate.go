@@ -227,6 +227,7 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["POST /api/reverse-proxies/services"] = operation{ID: "reverse_proxy_services.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/reverse-proxies/services/{serviceId}"] = operation{ID: "reverse_proxy_services.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/reverse-proxies/services/{serviceId}"] = operation{ID: "reverse_proxy_services.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/azure-idp/{id}/sync"] = operation{ID: "azure_idp.sync", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/peers/{peerId}/jobs"] = operation{ID: "peers.jobs.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/notifications/channels"] = operation{ID: "notification_channels.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/integrations/notifications/channels/{channelId}"] = operation{ID: "notification_channels.update", Implementation: "implemented", Verification: "contract_verified"}

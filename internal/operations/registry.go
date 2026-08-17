@@ -60,6 +60,7 @@ var definitions = map[string]Definition{
 	"azure_idp.create":                  {Name: "azure_idp.create", Method: "POST", Path: "/api/integrations/azure-idp", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
 	"azure_idp.update":                  {Name: "azure_idp.update", Method: "PUT", Path: "/api/integrations/azure-idp/{id}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"azure_idp.delete":                  {Name: "azure_idp.delete", Method: "DELETE", Path: "/api/integrations/azure-idp/{id}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"azure_idp.sync":                    {Name: "azure_idp.sync", Method: "POST", Path: "/api/integrations/azure-idp/{id}/sync", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
 	"posture_checks.list":               {Name: "posture_checks.list", Method: "GET", Path: "/api/posture-checks", Mutation: ReadOnly},
 	"posture_checks.get":                {Name: "posture_checks.get", Method: "GET", Path: "/api/posture-checks/{postureCheckId}", Mutation: ReadOnly},
 	"posture_checks.create":             {Name: "posture_checks.create", Method: "POST", Path: "/api/posture-checks", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

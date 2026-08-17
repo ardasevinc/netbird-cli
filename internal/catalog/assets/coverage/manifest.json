@@ -568,11 +568,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.azure_idp.id.sync",
+      "id": "azure_idp.sync",
       "method": "POST",
       "path": "/api/integrations/azure-idp/{id}/sync",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.billing.aws.marketplace.activate",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 196,
+    "implemented": 197,
     "classified": 0,
-    "discovered": 40,
-    "contract_verified": 187,
+    "discovered": 39,
+    "contract_verified": 188,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

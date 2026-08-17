@@ -173,6 +173,7 @@ type Remote interface {
 	CreateAzureIDP(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateAzureIDP(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteAzureIDP(context.Context, string) (json.RawMessage, error)
+	SyncAzureIDP(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -304,7 +305,16 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read %s preimage: %w", stage.Operation, err)}
 	}
 	preimage := mutation.PreimageMatches
-	if isCreateOperation(stage.Operation) {
+	if stage.Operation == "azure_idp.sync" {
+		equal, err := mutation.Equivalent(stage.Before, liveBefore)
+		if err != nil {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s preimage: %w", stage.Operation, err)}
+		}
+		if !equal {
+			return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
+		}
+		preimage = mutation.PreimageMatches
+	} else if isCreateOperation(stage.Operation) {
 		equal, err := mutation.Equivalent(stage.Before, liveBefore)
 		if err != nil {
 			return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s collection preimage: %w", stage.Operation, err)}
@@ -362,6 +372,15 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err != nil {
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
+	}
+	if stage.Operation == "azure_idp.sync" {
+		var response struct {
+			Result string `json:"result"`
+		}
+		if err := json.Unmarshal(dispatchResult, &response); err != nil || response.Result != "ok" {
+			return finish(ctx, store, result, mutation.Unknown, "azure IDP sync response did not confirm success")
+		}
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "azure IDP sync endpoint confirmed synchronization")
 	}
 	if isCreateOperation(stage.Operation) {
 		if stage.Operation == "peers.temporary_access.create" {
@@ -642,7 +661,7 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNotificationChannelRaw(ctx, target.ID)
 	case "azure_idp.create":
 		return remote.ListAzureIDPsRaw(ctx)
-	case "azure_idp.update", "azure_idp.delete":
+	case "azure_idp.update", "azure_idp.delete", "azure_idp.sync":
 		return remote.GetAzureIDPRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
@@ -999,6 +1018,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateAzureIDP(ctx, target.ID, body)
 	case "azure_idp.delete":
 		return remote.DeleteAzureIDP(ctx, target.ID)
+	case "azure_idp.sync":
+		return remote.SyncAzureIDP(ctx, target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1686,6 +1707,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AzureIDPUpdateImpact(before, intendedAfter)
 	case "azure_idp.delete":
 		return analysis.AzureIDPDeleteImpact(before)
+	case "azure_idp.sync":
+		return analysis.AzureIDPSyncImpact(before, intendedAfter)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":

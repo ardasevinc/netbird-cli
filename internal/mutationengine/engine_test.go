@@ -1394,6 +1394,14 @@ func (f *fakeRemote) DeleteAzureIDP(_ context.Context, _ string) (json.RawMessag
 	return json.RawMessage(`{}`), nil
 }
 
+func (f *fakeRemote) SyncAzureIDP(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	return json.RawMessage(`{"result":"ok"}`), nil
+}
+
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
 	f.updates++
 	if f.updateErr != nil {
@@ -3177,6 +3185,27 @@ func TestApplyAzureIDPResolvesClientSecretOnlyAtDispatch(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "base64-secret") || !strings.Contains(string(remote.azureIDP.body), "base64-secret") {
 		t.Fatalf("unexpected Azure IDP result: %+v body=%s", result, remote.azureIDP.body)
+	}
+}
+
+func TestApplyAzureIDPSyncRequiresExactPreimageAndEndpointProof(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":1,"enabled":true,"client_id":"client","tenant_id":"tenant","host":"microsoft.com"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "azure_idp.sync", Request: json.RawMessage(`{"id":"1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(before), Impact: json.RawMessage(`{"classification":"azure_idp_sync","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["triggering an Azure identity synchronization can create or update account users and groups from the external directory; the endpoint success response is the declared proof"],"completeness":{"state":"unknown","reason":"azure_idp_external_directory_sync"}}`), Findings: []ledger.Finding{{Code: "impact.azure_idp_sync", Severity: "blocking", Message: "triggering Azure directory synchronization may create or update account users and groups and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", azureIDP: azureIDPState{before: []byte(before)}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected Azure IDP sync result: %+v updates=%d", result, remote.updates)
 	}
 }
 

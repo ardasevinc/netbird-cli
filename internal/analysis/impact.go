@@ -1151,6 +1151,14 @@ func AzureIDPDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "azure_idp_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an Azure identity integration may strand users or stop directory synchronization"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_authentication_and_sync_boundary"}}, nil
 }
 
+func AzureIDPSyncImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode Azure IDP sync preimage: %w", err)
+	}
+	return ImpactReport{Classification: "azure_idp_sync", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"triggering an Azure identity synchronization can create or update account users and groups from the external directory; the endpoint success response is the declared proof"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_external_directory_sync"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

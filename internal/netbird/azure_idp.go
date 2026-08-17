@@ -60,3 +60,15 @@ func (c *Client) DeleteAzureIDP(ctx context.Context, id string) (json.RawMessage
 	}
 	return result, nil
 }
+
+func (c *Client) SyncAzureIDP(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("azure IDP integration id is required")
+	}
+	path := "/api/integrations/azure-idp/" + url.PathEscape(id) + "/sync"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("sync azure IDP integration %q: %w", id, err)
+	}
+	return result, nil
+}

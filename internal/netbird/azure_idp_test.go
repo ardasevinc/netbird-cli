@@ -23,6 +23,8 @@ func TestAzureIDPRoutes(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": 1, "enabled": false})
 		case r.Method == http.MethodDelete && r.URL.EscapedPath() == "/api/integrations/azure-idp/one%2Fone":
 			_ = json.NewEncoder(w).Encode(map[string]any{})
+		case r.Method == http.MethodPost && r.URL.EscapedPath() == "/api/integrations/azure-idp/one%2Fone/sync":
+			_ = json.NewEncoder(w).Encode(map[string]any{"result": "ok"})
 		default:
 			http.NotFound(w, r)
 		}
@@ -46,6 +48,9 @@ func TestAzureIDPRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := nb.DeleteAzureIDP(context.Background(), "one/one"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nb.SyncAzureIDP(context.Background(), "one/one"); err != nil {
 		t.Fatal(err)
 	}
 }

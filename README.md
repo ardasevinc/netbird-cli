@@ -239,3 +239,7 @@ sensitive diagnostics from the selected peer.
 Azure IDP stages use `client_secret_ref`; client secrets are resolved only at
 dispatch and never persisted in the stage or receipt. Create, update, and
 delete remain blocking authentication and synchronization effects.
+
+Azure IDP sync stages re-verify the exact integration preimage and require a
+separate acknowledgement because synchronization may create or update account
+users and groups.
