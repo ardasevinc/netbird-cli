@@ -954,6 +954,17 @@ func PeerDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func TemporaryAccessCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode temporary access peer preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode temporary access peer intent: %w", err)
+	}
+	return ImpactReport{Classification: "temporary_access_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a temporary access peer grants a short-lived scoped path to the target peer; automatic cleanup is controlled by the remote peer lifecycle and is not readable as durable state"}, Completeness: map[string]any{"state": "unknown", "reason": "temporary_access_peer_lifetime_is_external"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

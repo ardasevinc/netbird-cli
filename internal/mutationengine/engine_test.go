@@ -73,6 +73,8 @@ type fakeRemote struct {
 	routeCollection       json.RawMessage
 	peerBefore            json.RawMessage
 	peerAfter             json.RawMessage
+	temporaryAccessBody   json.RawMessage
+	temporaryAccessResult json.RawMessage
 	edrBypassed           json.RawMessage
 	networkBefore         json.RawMessage
 	networkAfter          json.RawMessage
@@ -1005,6 +1007,18 @@ func (f *fakeRemote) UpdatePeer(_ context.Context, _ string, _ json.RawMessage) 
 	}
 	f.peerBefore = append(json.RawMessage(nil), f.peerAfter...)
 	return f.peerBefore, nil
+}
+
+func (f *fakeRemote) CreateTemporaryAccessPeer(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.temporaryAccessBody = append(json.RawMessage(nil), body...)
+	if f.temporaryAccessResult == nil {
+		return nil, errors.New("missing temporary access result")
+	}
+	return append(json.RawMessage(nil), f.temporaryAccessResult...), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -2559,6 +2573,32 @@ func TestApplyDispatchesSetupKeyUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["revoked"] != true || body["auto_groups"] == nil {
 		t.Fatalf("unexpected setup key update result: %+v updates=%d body=%s", result, remote.updates, remote.setupKeyBody)
+	}
+}
+
+func TestApplyDispatchesTemporaryAccessAndConfirmsResponse(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"peer-1","name":"target","connected":true}`
+	after := `{"id":"temp-1","name":"temp-host","rules":["tcp/80"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "peers.temporary_access.create", Request: json.RawMessage(`{"id":"peer-1","name":"temp-host","wg_pub_key":"pub","rules":["tcp/80"]}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"temporary_access_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a temporary access peer grants a short-lived scoped path to the target peer; automatic cleanup is controlled by the remote peer lifecycle and is not readable as durable state"],"completeness":{"state":"unknown","reason":"temporary_access_peer_lifetime_is_external"}}`), Findings: []ledger.Finding{{Code: "impact.temporary_access_create", Severity: "blocking", Message: "creating a temporary access peer grants scoped network access and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", peerBefore: []byte(before), temporaryAccessResult: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.temporaryAccessBody, &body); err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["id"] != nil || body["name"] != "temp-host" {
+		t.Fatalf("unexpected temporary access result: %+v updates=%d body=%s", result, remote.updates, remote.temporaryAccessBody)
 	}
 }
 

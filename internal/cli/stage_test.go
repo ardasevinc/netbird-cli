@@ -771,6 +771,25 @@ func TestStageCreateSetupKeyUpdateRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateTemporaryAccessRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"peers.temporary_access.create","request":{"id":"peer-1","name":"temp-host","wg_pub_key":"pub","rules":["tcp/80"]},"before":{"id":"peer-1","name":"target"},"intended_after":{"id":"temp-1","name":"temp-host","rules":["tcp/80"]}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.temporary_access_create"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("temporary access acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

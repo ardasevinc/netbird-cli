@@ -738,6 +738,16 @@ func TestSetupKeyUpdateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestTemporaryAccessCreateImpactIsConservative(t *testing.T) {
+	report, err := TemporaryAccessCreateImpact([]byte(`{"id":"peer-1","name":"target"}`), []byte(`{"id":"temp-1","name":"temp-host","rules":["tcp/80"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "temporary_access_create" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected temporary access report: %+v", report)
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {

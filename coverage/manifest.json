@@ -1275,11 +1275,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.peers.peerId.temporary_access",
+      "id": "peers.temporary_access.create",
       "method": "POST",
       "path": "/api/peers/{peerId}/temporary-access",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "policies.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 174,
+    "implemented": 175,
     "classified": 0,
-    "discovered": 62,
-    "contract_verified": 165,
+    "discovered": 61,
+    "contract_verified": 166,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
