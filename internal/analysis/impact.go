@@ -1086,6 +1086,33 @@ func ReverseProxyServiceDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "reverse_proxy_service_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a reverse proxy service permanently removes its public ingress route, domain, and certificate"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_service_public_exposure"}}, nil
 }
 
+func NotificationChannelCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode notification channel create intent: %w", err)
+	}
+	return ImpactReport{Classification: "notification_channel_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a notification channel changes external account event delivery; target credentials are resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "notification_channel_external_delivery"}}, nil
+}
+
+func NotificationChannelUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode notification channel update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode notification channel update intent: %w", err)
+	}
+	return ImpactReport{Classification: "notification_channel_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating a notification channel may alter external account event delivery; write-only webhook headers are not persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "notification_channel_external_delivery"}}, nil
+}
+
+func NotificationChannelDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode notification channel delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "notification_channel_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a notification channel stops its external account event delivery"}, Completeness: map[string]any{"state": "unknown", "reason": "notification_channel_external_delivery"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

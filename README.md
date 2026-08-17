@@ -228,3 +228,6 @@ The v1 objective is to ship complete declared NetBird management API coverage,
 truthful capability and verification reporting, safe staged mutation semantics,
 runtime agent skills, and reproducible release artifacts. See the project
 notes for the locked contracts and release claim.
+
+Notification-channel stages use `target_ref`; email targets and webhook headers
+are resolved only at dispatch and are never persisted in the ledger.

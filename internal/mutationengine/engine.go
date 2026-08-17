@@ -162,6 +162,11 @@ type Remote interface {
 	CreateReverseProxyService(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateReverseProxyService(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteReverseProxyService(context.Context, string) (json.RawMessage, error)
+	ListNotificationChannelsRaw(context.Context) (json.RawMessage, error)
+	GetNotificationChannelRaw(context.Context, string) (json.RawMessage, error)
+	CreateNotificationChannel(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateNotificationChannel(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteNotificationChannel(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -599,6 +604,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListReverseProxyServicesRaw(ctx)
 	case "reverse_proxy_services.update", "reverse_proxy_services.delete":
 		return remote.GetReverseProxyServiceRaw(ctx, target.ID)
+	case "notification_channels.create":
+		return remote.ListNotificationChannelsRaw(ctx)
+	case "notification_channels.update", "notification_channels.delete":
+		return remote.GetNotificationChannelRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -924,6 +933,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateReverseProxyService(ctx, target.ID, body)
 	case "reverse_proxy_services.delete":
 		return remote.DeleteReverseProxyService(ctx, target.ID)
+	case "notification_channels.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateNotificationChannel(ctx, body)
+	case "notification_channels.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateNotificationChannel(ctx, target.ID, body)
+	case "notification_channels.delete":
+		return remote.DeleteNotificationChannel(ctx, target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1012,7 +1035,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1334,6 +1357,36 @@ func prepareSecretRequest(operation string, request json.RawMessage, resolve fun
 		object["auth"] = auth
 		return json.Marshal(object)
 	}
+	if operation == "notification_channels.create" || operation == "notification_channels.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode notification channel request: %w", err)
+		}
+		if _, ok := object["target"]; ok {
+			return nil, errors.New("notification channel target cannot be persisted; use target_ref")
+		}
+		ref, hasRef := object["target_ref"].(string)
+		delete(object, "target_ref")
+		if !hasRef || strings.TrimSpace(ref) == "" {
+			if operation == "notification_channels.create" {
+				return nil, errors.New("notification channel create requires target_ref")
+			}
+			return json.Marshal(object)
+		}
+		if resolve == nil {
+			return nil, errors.New("notification channel target_ref requires a configured secret resolver")
+		}
+		targetJSON, err := resolve(ref)
+		if err != nil || strings.TrimSpace(targetJSON) == "" {
+			return nil, errors.New("notification channel target_ref could not be resolved")
+		}
+		var target any
+		if err := json.Unmarshal([]byte(targetJSON), &target); err != nil {
+			return nil, errors.New("notification channel target_ref must resolve to JSON")
+		}
+		object["target"] = target
+		return json.Marshal(object)
+	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
 		return request, nil
 	}
@@ -1522,6 +1575,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.ReverseProxyServiceUpdateImpact(before, intendedAfter)
 	case "reverse_proxy_services.delete":
 		return analysis.ReverseProxyServiceDeleteImpact(before)
+	case "notification_channels.create":
+		return analysis.NotificationChannelCreateImpact(intendedAfter)
+	case "notification_channels.update":
+		return analysis.NotificationChannelUpdateImpact(before, intendedAfter)
+	case "notification_channels.delete":
+		return analysis.NotificationChannelDeleteImpact(before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1565,7 +1624,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

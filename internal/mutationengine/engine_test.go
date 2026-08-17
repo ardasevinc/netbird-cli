@@ -114,6 +114,14 @@ type fakeRemote struct {
 	routerCollection       json.RawMessage
 	updateErr              error
 	updates                int
+	notification           notificationChannelState
+}
+
+type notificationChannelState struct {
+	before     json.RawMessage
+	collection json.RawMessage
+	after      json.RawMessage
+	body       json.RawMessage
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -1263,6 +1271,56 @@ func (f *fakeRemote) DeleteReverseProxyService(_ context.Context, _ string) (jso
 	}
 	f.proxyServiceBefore = nil
 	f.proxyServiceCollection = json.RawMessage(`[]`)
+	return nil, nil
+}
+
+func (f *fakeRemote) ListNotificationChannelsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.notification.collection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.notification.collection...), nil
+}
+
+func (f *fakeRemote) GetNotificationChannelRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.notification.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.notification.before...), nil
+}
+
+func (f *fakeRemote) CreateNotificationChannel(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.notification.body = append(json.RawMessage(nil), body...)
+	if f.notification.after == nil {
+		return nil, errors.New("missing notification channel")
+	}
+	f.notification.collection = json.RawMessage("[" + string(f.notification.after) + "]")
+	return append(json.RawMessage(nil), f.notification.after...), nil
+}
+
+func (f *fakeRemote) UpdateNotificationChannel(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.notification.body = append(json.RawMessage(nil), body...)
+	if f.notification.after == nil {
+		return nil, errors.New("missing notification channel")
+	}
+	f.notification.before = append(json.RawMessage(nil), f.notification.after...)
+	return append(json.RawMessage(nil), f.notification.after...), nil
+}
+
+func (f *fakeRemote) DeleteNotificationChannel(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.notification.before = nil
+	f.notification.collection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -2969,6 +3027,33 @@ func TestApplyReverseProxyServiceResolvesAuthOnlyAtDispatch(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.proxyServiceBody), "real-secret") {
 		t.Fatalf("unexpected reverse proxy service result: %+v body=%s", result, remote.proxyServiceBody)
+	}
+}
+
+func TestApplyNotificationChannelResolvesTargetOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"channel-1","type":"webhook","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "notification_channels.create", Request: json.RawMessage(`{"type":"webhook","enabled":true,"target_ref":"pa:notification-target"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"notification_channel_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a notification channel changes external account event delivery; target credentials are resolved in memory and never persisted"],"completeness":{"state":"unknown","reason":"notification_channel_external_delivery"}}`), Findings: []ledger.Finding{{Code: "impact.notification_channel_create", Severity: "blocking", Message: "creating the notification channel changes external account delivery and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", notification: notificationChannelState{collection: []byte(before), after: []byte(after)}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:notification-target" {
+			t.Fatalf("unexpected target ref: %s", ref)
+		}
+		return `{"url":"https://hooks.example","headers":{"Authorization":"real-secret"}}`, nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.notification.body), "real-secret") {
+		t.Fatalf("unexpected notification channel result: %+v body=%s", result, remote.notification.body)
 	}
 }
 

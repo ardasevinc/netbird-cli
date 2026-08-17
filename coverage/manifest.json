@@ -904,18 +904,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.notifications.channels",
+      "id": "notification_channels.create",
       "method": "POST",
       "path": "/api/integrations/notifications/channels",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.notifications.channels.channelId",
+      "id": "notification_channels.delete",
       "method": "DELETE",
       "path": "/api/integrations/notifications/channels/{channelId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.notifications.channels.channelId",
@@ -925,11 +925,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.notifications.channels.channelId",
+      "id": "notification_channels.update",
       "method": "PUT",
       "path": "/api/integrations/notifications/channels/{channelId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.notifications.types",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 189,
+    "implemented": 192,
     "classified": 0,
-    "discovered": 47,
-    "contract_verified": 180,
+    "discovered": 44,
+    "contract_verified": 183,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
