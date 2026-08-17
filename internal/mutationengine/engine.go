@@ -100,6 +100,11 @@ type Remote interface {
 	CreateAgentNetworkPolicy(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateAgentNetworkPolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteAgentNetworkPolicy(context.Context, string) (json.RawMessage, error)
+	ListAgentNetworkProvidersRaw(context.Context) (json.RawMessage, error)
+	GetAgentNetworkProviderRaw(context.Context, string) (json.RawMessage, error)
+	CreateAgentNetworkProvider(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateAgentNetworkProvider(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteAgentNetworkProvider(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -117,6 +122,7 @@ type ApplyInput struct {
 	AccountID        string
 	Acknowledgements []string
 	AckAllBlocking   bool
+	SecretResolver   func(string) (string, error)
 }
 
 type requestTarget struct {
@@ -241,7 +247,11 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if preimage == mutation.PreimageAlreadySatisfied {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
-	dispatchResult, err := dispatch(ctx, remote, stage.Operation, request, stage.Request)
+	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
+	if err != nil {
+		return finish(ctx, store, result, mutation.NotDispatched, "request secret could not be resolved; mutation was not dispatched")
+	}
+	dispatchResult, err := dispatch(ctx, remote, stage.Operation, request, dispatchRequest)
 	if err != nil {
 		state := classifyDispatchError(err)
 		return finish(ctx, store, result, state, stage.Operation+" did not produce a confirmed success")
@@ -362,6 +372,12 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAgentNetworkPolicyRaw(ctx, target.ID)
 	case "agent_network.policies.delete":
 		return remote.GetAgentNetworkPolicyRaw(ctx, target.ID)
+	case "agent_network.providers.create":
+		return remote.ListAgentNetworkProvidersRaw(ctx)
+	case "agent_network.providers.update":
+		return remote.GetAgentNetworkProviderRaw(ctx, target.ID)
+	case "agent_network.providers.delete":
+		return remote.GetAgentNetworkProviderRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -541,6 +557,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateAgentNetworkPolicy(ctx, target.ID, body)
 	case "agent_network.policies.delete":
 		return remote.DeleteAgentNetworkPolicy(ctx, target.ID)
+	case "agent_network.providers.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateAgentNetworkProvider(ctx, body)
+	case "agent_network.providers.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateAgentNetworkProvider(ctx, target.ID, body)
+	case "agent_network.providers.delete":
+		return remote.DeleteAgentNetworkProvider(ctx, target.ID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -599,7 +629,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -686,6 +716,39 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(object)
 }
 
+func prepareSecretRequest(operation string, request json.RawMessage, resolve func(string) (string, error)) (json.RawMessage, error) {
+	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
+		return request, nil
+	}
+	var object map[string]any
+	if err := json.Unmarshal(request, &object); err != nil {
+		return nil, fmt.Errorf("decode provider request: %w", err)
+	}
+	if _, ok := object["api_key"]; ok {
+		return nil, errors.New("provider api_key cannot be persisted; use api_key_ref")
+	}
+	ref, ok := object["api_key_ref"].(string)
+	delete(object, "api_key_ref")
+	if !ok || strings.TrimSpace(ref) == "" {
+		if operation == "agent_network.providers.create" {
+			return nil, errors.New("provider create requires api_key_ref")
+		}
+		return json.Marshal(object)
+	}
+	if resolve == nil {
+		return nil, errors.New("provider api_key_ref requires a configured secret resolver")
+	}
+	secret, err := resolve(ref)
+	if err != nil {
+		return nil, errors.New("provider api_key_ref could not be resolved")
+	}
+	if strings.TrimSpace(secret) == "" {
+		return nil, errors.New("provider api_key_ref resolved to an empty secret")
+	}
+	object["api_key"] = secret
+	return json.Marshal(object)
+}
+
 func mutationImpact(operation string, before, intendedAfter json.RawMessage) (analysis.ImpactReport, error) {
 	switch operation {
 	case "groups.update":
@@ -760,6 +823,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AgentNetworkPolicyUpdateImpact(before, intendedAfter)
 	case "agent_network.policies.delete":
 		return analysis.AgentNetworkPolicyDeleteImpact(before)
+	case "agent_network.providers.create":
+		return analysis.AgentNetworkProviderCreateImpact(intendedAfter)
+	case "agent_network.providers.update":
+		return analysis.AgentNetworkProviderUpdateImpact(before, intendedAfter)
+	case "agent_network.providers.delete":
+		return analysis.AgentNetworkProviderDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -807,7 +876,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

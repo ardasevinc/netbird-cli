@@ -430,6 +430,56 @@ func TestStageCreateAgentNetworkPolicyMutationsRequireAcknowledgement(t *testing
 	}
 }
 
+func TestStageCreateAgentNetworkProviderMutationsRequireAcknowledgement(t *testing.T) {
+	cases := []struct {
+		name, operation, request, before, after, finding string
+	}{
+		{"create", "agent_network.providers.create", `{"name":"OpenAI","api_key_ref":"env:PROVIDER_KEY"}`, `[]`, `{"id":"provider-1","name":"OpenAI"}`, "impact.agent_network_provider_create"},
+		{"update", "agent_network.providers.update", `{"id":"provider-1","name":"OpenAI","api_key_ref":"env:PROVIDER_KEY"}`, `{"id":"provider-1","name":"OpenAI"}`, `{"id":"provider-1","name":"OpenAI","enabled":false}`, "impact.agent_network_provider_change"},
+		{"delete", "agent_network.providers.delete", `{"id":"provider-1"}`, `{"id":"provider-1","name":"OpenAI"}`, `{}`, "impact.agent_network_provider_delete"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			temp := t.TempDir()
+			configPath := filepath.Join(temp, "config.toml")
+			statePath := filepath.Join(temp, "ledger.db")
+			if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+			var stdout, stderr bytes.Buffer
+			root := newRoot(state, &stdout, &stderr, version.Current())
+			root.SetArgs([]string{"stage", "create", "--from-json"})
+			root.SetIn(strings.NewReader(fmt.Sprintf(`{"operation":%q,"request":%s,"before":%s,"intended_after":%s}`, tc.operation, tc.request, tc.before, tc.after)))
+			if err := root.ExecuteContext(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(stdout.String(), `"code":"`+tc.finding+`"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+				t.Fatalf("provider acknowledgement finding missing: %s", stdout.String())
+			}
+		})
+	}
+}
+
+func TestStageCreateRejectsPersistedProviderAPIKey(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"agent_network.providers.create","request":{"name":"OpenAI","api_key":"super-secret"},"before":[],"intended_after":{"name":"OpenAI"}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "api_key_ref") {
+		t.Fatalf("expected persisted secret rejection, got %v", err)
+	}
+	if strings.Contains(stdout.String()+stderr.String(), "super-secret") {
+		t.Fatal("provider secret leaked to command output")
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

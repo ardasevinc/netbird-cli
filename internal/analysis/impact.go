@@ -596,6 +596,57 @@ func AgentNetworkPolicyDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func AgentNetworkProviderCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network provider create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_provider_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating an agent-network provider can add upstream reachability and secret-bearing routing configuration; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_provider_create_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkProviderUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network provider impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network provider impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_provider_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an agent-network provider can alter upstream reachability and secret-bearing routing configuration; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_provider_update_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkProviderDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network provider delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_provider_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an agent-network provider can remove upstream reachability and secret-bearing routing configuration; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_provider_delete_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

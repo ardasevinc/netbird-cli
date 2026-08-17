@@ -58,6 +58,7 @@ func applyCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				AccountID:        profile.AccountID,
 				Acknowledgements: acknowledgements,
 				AckAllBlocking:   ackAll,
+				SecretResolver:   config.ResolveCredential,
 			})
 			if err != nil {
 				return fail(applyExit(result.State), err)

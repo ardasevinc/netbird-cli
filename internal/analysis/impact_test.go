@@ -571,3 +571,26 @@ func TestNetworkRouterCreateImpactIsConservative(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
+
+func TestAgentNetworkProviderMutationsAreConservative(t *testing.T) {
+	create, err := AgentNetworkProviderCreateImpact([]byte(`{"name":"OpenAI"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	update, err := AgentNetworkProviderUpdateImpact([]byte(`{"id":"provider-1","name":"OpenAI"}`), []byte(`{"id":"provider-1","name":"OpenAI","enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := AgentNetworkProviderDeleteImpact([]byte(`{"id":"provider-1","name":"OpenAI"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range []ImpactReport{create, update, remove} {
+		if report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected provider report: %+v", report)
+		}
+	}
+	if create.Classification != "agent_network_provider_create" || update.Classification != "agent_network_provider_change" || remove.Classification != "agent_network_provider_delete" {
+		t.Fatalf("unexpected provider classifications: %q %q %q", create.Classification, update.Classification, remove.Classification)
+	}
+}

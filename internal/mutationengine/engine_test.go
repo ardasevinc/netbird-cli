@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
@@ -33,6 +34,10 @@ type fakeRemote struct {
 	agentPolicyCollection json.RawMessage
 	agentPolicyBefore     json.RawMessage
 	agentPolicyAfter      json.RawMessage
+	providerCollection    json.RawMessage
+	providerBefore        json.RawMessage
+	providerAfter         json.RawMessage
+	providerSecretSeen    bool
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -348,6 +353,62 @@ func (f *fakeRemote) DeleteAgentNetworkPolicy(_ context.Context, _ string) (json
 		return nil, f.updateErr
 	}
 	f.agentPolicyBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListAgentNetworkProvidersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.providerCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.providerCollection...), nil
+}
+
+func (f *fakeRemote) GetAgentNetworkProviderRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.providerBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.providerBefore...), nil
+}
+
+func (f *fakeRemote) CreateAgentNetworkProvider(_ context.Context, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	var object map[string]any
+	if err := json.Unmarshal(request, &object); err == nil {
+		if secret, ok := object["api_key"].(string); ok && secret != "" {
+			f.providerSecretSeen = true
+		}
+	}
+	if f.providerAfter == nil {
+		return nil, errors.New("missing created agent-network provider")
+	}
+	f.providerCollection = json.RawMessage("[" + string(f.providerAfter) + "]")
+	return append(json.RawMessage(nil), f.providerAfter...), nil
+}
+
+func (f *fakeRemote) UpdateAgentNetworkProvider(_ context.Context, _ string, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	var object map[string]any
+	if err := json.Unmarshal(request, &object); err == nil {
+		if secret, ok := object["api_key"].(string); ok && secret != "" {
+			f.providerSecretSeen = true
+		}
+	}
+	f.providerBefore = append(json.RawMessage(nil), f.providerAfter...)
+	return append(json.RawMessage(nil), f.providerAfter...), nil
+}
+
+func (f *fakeRemote) DeleteAgentNetworkProvider(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.providerBefore = nil
 	return nil, nil
 }
 
@@ -1755,6 +1816,36 @@ func TestApplyDispatchesAgentNetworkPolicyCreateAndConfirmsReadBack(t *testing.T
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected agent policy create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyResolvesAgentNetworkProviderSecretOnlyForDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"provider-1","name":"OpenAI"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.providers.create", Request: json.RawMessage(`{"name":"OpenAI","api_key_ref":"env:PROVIDER_KEY"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"agent_network_provider_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an agent-network provider can add upstream reachability and secret-bearing routing configuration; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_provider_create_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_provider_create", Severity: "blocking", Message: "creating the agent-network provider may add upstream reachability and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", providerCollection: []byte(before), providerAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "env:PROVIDER_KEY" {
+			t.Fatalf("unexpected secret ref %q", ref)
+		}
+		return "ephemeral", nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || !remote.providerSecretSeen || remote.updates != 1 {
+		t.Fatalf("unexpected provider create result: %+v updates=%d secret_seen=%v", result, remote.updates, remote.providerSecretSeen)
+	}
+	if strings.Contains(string(stage.Request), "ephemeral") || strings.Contains(string(stage.Request), "api_key\":\"") {
+		t.Fatal("provider secret was persisted in staged request")
 	}
 }
 

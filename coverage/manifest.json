@@ -169,18 +169,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.agent_network.providers",
+      "id": "agent_network.providers.create",
       "method": "POST",
       "path": "/api/agent-network/providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.agent_network.providers.providerId",
+      "id": "agent_network.providers.delete",
       "method": "DELETE",
       "path": "/api/agent-network/providers/{providerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.providers.providerId",
@@ -190,11 +190,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.agent_network.providers.providerId",
+      "id": "agent_network.providers.update",
       "method": "PUT",
       "path": "/api/agent-network/providers/{providerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "agent_network.settings.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 150,
+    "implemented": 153,
     "classified": 0,
-    "discovered": 86,
-    "contract_verified": 141,
+    "discovered": 83,
+    "contract_verified": 144,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
