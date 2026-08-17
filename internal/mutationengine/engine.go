@@ -81,6 +81,11 @@ type Remote interface {
 	GetIngressPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdateIngressPeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteIngressPeer(context.Context, string) (json.RawMessage, error)
+	ListIngressPortAllocationsRaw(context.Context, string) (json.RawMessage, error)
+	GetIngressPortAllocationRaw(context.Context, string, string) (json.RawMessage, error)
+	CreateIngressPortAllocation(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	UpdateIngressPortAllocation(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
+	DeleteIngressPortAllocation(context.Context, string, string) (json.RawMessage, error)
 	GetAgentNetworkSettingsRaw(context.Context) (json.RawMessage, error)
 	UpdateAgentNetworkSettings(context.Context, json.RawMessage) (json.RawMessage, error)
 	CreateAgentNetworkSettings(context.Context, json.RawMessage) (json.RawMessage, error)
@@ -153,6 +158,7 @@ type requestTarget struct {
 	ID             string `json:"id"`
 	NetworkID      string `json:"network_id"`
 	ZoneID         string `json:"zone_id"`
+	PeerID         string `json:"peer_id"`
 	UserID         string `json:"user_id"`
 	TokenID        string `json:"token_id"`
 	InviteID       string `json:"invite_id"`
@@ -215,6 +221,9 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if (isUserTokenDeleteOperation(stage.Operation) || stage.Operation == "users.tokens.create") && request.UserID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires user_id", stage.Operation)}
+	}
+	if strings.HasPrefix(stage.Operation, "peers.ingress.ports.") && request.PeerID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires peer_id", stage.Operation)}
 	}
 	if isUserTokenDeleteOperation(stage.Operation) && request.TokenID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires token_id", stage.Operation)}
@@ -423,6 +432,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetIngressPeerRaw(ctx, target.ID)
 	case "ingress.peers.delete":
 		return remote.GetIngressPeerRaw(ctx, target.ID)
+	case "peers.ingress.ports.create":
+		return remote.ListIngressPortAllocationsRaw(ctx, target.PeerID)
+	case "peers.ingress.ports.update", "peers.ingress.ports.delete":
+		return remote.GetIngressPortAllocationRaw(ctx, target.PeerID, target.ID)
 	case "agent_network.settings.update":
 		return remote.GetAgentNetworkSettingsRaw(ctx)
 	case "agent_network.settings.create":
@@ -602,6 +615,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateIngressPeer(ctx, target.ID, body)
 	case "ingress.peers.delete":
 		return remote.DeleteIngressPeer(ctx, target.ID)
+	case "peers.ingress.ports.create":
+		body, err := stripIngressPortTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateIngressPortAllocation(ctx, target.PeerID, body)
+	case "peers.ingress.ports.update":
+		body, err := stripIngressPortTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateIngressPortAllocation(ctx, target.PeerID, target.ID, body)
+	case "peers.ingress.ports.delete":
+		return remote.DeleteIngressPortAllocation(ctx, target.PeerID, target.ID)
 	case "agent_network.settings.update":
 		return remote.UpdateAgentNetworkSettings(ctx, request)
 	case "agent_network.settings.create":
@@ -784,7 +811,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -904,6 +931,19 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	delete(object, "invite_token_ref")
 	delete(object, "invite_token")
 	delete(object, "password_ref")
+	return json.Marshal(object)
+}
+
+func stripIngressPortTargetFields(request json.RawMessage) (json.RawMessage, error) {
+	body, err := stripTargetFields(request)
+	if err != nil {
+		return nil, err
+	}
+	var object map[string]any
+	if err := json.Unmarshal(body, &object); err != nil {
+		return nil, err
+	}
+	delete(object, "peer_id")
 	return json.Marshal(object)
 }
 
@@ -1045,6 +1085,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.IngressPeerUpdateImpact(before, intendedAfter)
 	case "ingress.peers.delete":
 		return analysis.IngressPeerDeleteImpact(before)
+	case "peers.ingress.ports.create":
+		return analysis.IngressPortAllocationCreateImpact(intendedAfter)
+	case "peers.ingress.ports.update":
+		return analysis.IngressPortAllocationUpdateImpact(before, intendedAfter)
+	case "peers.ingress.ports.delete":
+		return analysis.IngressPortAllocationDeleteImpact(before)
 	case "agent_network.settings.update":
 		return analysis.AgentNetworkSettingsUpdateImpact(before, intendedAfter)
 	case "agent_network.settings.create":
@@ -1152,7 +1198,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

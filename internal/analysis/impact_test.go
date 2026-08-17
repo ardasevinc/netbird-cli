@@ -656,6 +656,29 @@ func TestUserInviteResendImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestIngressPortAllocationImpactsAreConservative(t *testing.T) {
+	create, err := IngressPortAllocationCreateImpact([]byte(`{"id":"alloc-1","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	update, err := IngressPortAllocationUpdateImpact([]byte(`{"id":"alloc-1","enabled":true}`), []byte(`{"id":"alloc-1","enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := IngressPortAllocationDeleteImpact([]byte(`{"id":"alloc-1","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range []ImpactReport{create, update, remove} {
+		if report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected ingress port report: %+v", report)
+		}
+	}
+	if create.Classification != "ingress_port_allocation_create" || update.Classification != "ingress_port_allocation_change" || remove.Classification != "ingress_port_allocation_delete" {
+		t.Fatalf("unexpected ingress port classifications: %q %q %q", create.Classification, update.Classification, remove.Classification)
+	}
+}
+
 func TestUserTokenCreateImpactIsComplete(t *testing.T) {
 	report, err := UserTokenCreateImpact([]byte(`{"id":"token-1","name":"agent"}`))
 	if err != nil {

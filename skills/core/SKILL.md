@@ -11,6 +11,7 @@ Posture-check deletion is blocking and requires exact preimage and absence proof
 Ingress-peer creation is blocking and requires collection preimage and read-back proof.
 Ingress-peer updates are blocking and require exact preimage and read-back proof.
 Ingress-peer deletion is blocking and requires exact preimage and absence proof.
+Peer ingress-port allocation creation, updates, and deletion are capability-gated, blocking, and require peer-scoped exact preimage plus read-back or absence proof because they can expose or remove external service mappings.
 Agent-network settings updates are capability-gated, blocking, and require exact preimage and read-back proof.
 Agent-network settings creation is capability-gated, blocking, and requires exact preimage and read-back proof.
 Agent-network settings deletion is capability-gated, blocking, and requires exact preimage and absence proof.

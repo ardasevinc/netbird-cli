@@ -128,3 +128,45 @@ func TestDeleteIngressPeerUsesDELETE(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestIngressPortAllocationMutationsUsePeerScopedRoutes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/peers/peer-1/ingress/ports/alloc-1" && r.URL.Path != "/api/peers/peer-1/ingress/ports" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		switch r.Method {
+		case http.MethodPost:
+			if r.URL.Path != "/api/peers/peer-1/ingress/ports" {
+				t.Fatalf("unexpected create path: %s", r.URL.Path)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "alloc-1", "name": "web", "enabled": true})
+		case http.MethodPut:
+			if r.URL.Path != "/api/peers/peer-1/ingress/ports/alloc-1" {
+				t.Fatalf("unexpected update path: %s", r.URL.Path)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "alloc-1", "name": "web-updated", "enabled": false})
+		case http.MethodDelete:
+			if r.URL.Path != "/api/peers/peer-1/ingress/ports/alloc-1" {
+				t.Fatalf("unexpected delete path: %s", r.URL.Path)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(transportClient)
+	if _, err := client.CreateIngressPortAllocation(context.Background(), "peer-1", json.RawMessage(`{"name":"web","enabled":true}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.UpdateIngressPortAllocation(context.Background(), "peer-1", "alloc-1", json.RawMessage(`{"enabled":false}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DeleteIngressPortAllocation(context.Background(), "peer-1", "alloc-1"); err != nil {
+		t.Fatal(err)
+	}
+}

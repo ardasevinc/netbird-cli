@@ -57,6 +57,10 @@ type fakeRemote struct {
 	publicInviteToken     string
 	publicInviteAccepted  bool
 	publicInviteBody      json.RawMessage
+	ingressPortCollection json.RawMessage
+	ingressPortBefore     json.RawMessage
+	ingressPortAfter      json.RawMessage
+	ingressPortBody       json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -206,6 +210,52 @@ func (f *fakeRemote) DeleteIngressPeer(_ context.Context, _ string) (json.RawMes
 		return nil, f.updateErr
 	}
 	f.ingressBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListIngressPortAllocationsRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.ingressPortCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.ingressPortCollection...), nil
+}
+
+func (f *fakeRemote) GetIngressPortAllocationRaw(_ context.Context, _, _ string) (json.RawMessage, error) {
+	if f.ingressPortBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.ingressPortBefore...), nil
+}
+
+func (f *fakeRemote) CreateIngressPortAllocation(_ context.Context, _ string, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.ingressPortAfter == nil {
+		return nil, errors.New("missing created ingress port allocation")
+	}
+	f.ingressPortBody = append(json.RawMessage(nil), request...)
+	f.ingressPortCollection = json.RawMessage("[" + string(f.ingressPortAfter) + "]")
+	return append(json.RawMessage(nil), f.ingressPortAfter...), nil
+}
+
+func (f *fakeRemote) UpdateIngressPortAllocation(_ context.Context, _, _ string, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.ingressPortBefore = append(json.RawMessage(nil), f.ingressPortAfter...)
+	f.ingressPortBody = append(json.RawMessage(nil), request...)
+	return append(json.RawMessage(nil), f.ingressPortAfter...), nil
+}
+
+func (f *fakeRemote) DeleteIngressPortAllocation(_ context.Context, _, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.ingressPortBefore = nil
 	return nil, nil
 }
 
@@ -1767,6 +1817,64 @@ func TestApplyDispatchesIngressPeerDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected ingress peer delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesIngressPortAllocationMutations(t *testing.T) {
+	cases := []struct {
+		name, operation, request, before, after, impact, finding, message string
+	}{
+		{
+			name: "create", operation: "peers.ingress.ports.create",
+			request: `{"peer_id":"peer-1","name":"web","enabled":true}`,
+			before:  `[]`, after: `{"id":"alloc-1","name":"web","enabled":true}`,
+			impact:  `{"classification":"ingress_port_allocation_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an ingress port allocation can expose peer services through an external ingress path; affected peers and mappings require live topology analysis"],"completeness":{"state":"unknown","reason":"ingress_port_allocation_create_requires_topology_analysis"}}`,
+			finding: "impact.ingress_port_allocation_create", message: "creating the ingress port allocation may expose peer services externally and requires exact acknowledgement",
+		},
+		{
+			name: "update", operation: "peers.ingress.ports.update",
+			request: `{"peer_id":"peer-1","id":"alloc-1","enabled":false}`,
+			before:  `{"id":"alloc-1","name":"web","enabled":true}`, after: `{"id":"alloc-1","name":"web","enabled":false}`,
+			impact:  `{"classification":"ingress_port_allocation_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating an ingress port allocation can change externally exposed peer services and port mappings; affected peers require live topology analysis"],"completeness":{"state":"unknown","reason":"ingress_port_allocation_update_requires_topology_analysis"}}`,
+			finding: "impact.ingress_port_allocation_change", message: "the proposed ingress port allocation change may alter external peer exposure and requires exact acknowledgement",
+		},
+		{
+			name: "delete", operation: "peers.ingress.ports.delete",
+			request: `{"peer_id":"peer-1","id":"alloc-1"}`,
+			before:  `{"id":"alloc-1","name":"web","enabled":true}`, after: `{}`,
+			impact:  `{"classification":"ingress_port_allocation_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an ingress port allocation can remove externally exposed peer services and port mappings; affected peers require live topology analysis"],"completeness":{"state":"unknown","reason":"ingress_port_allocation_delete_requires_topology_analysis"}}`,
+			finding: "impact.ingress_port_allocation_delete", message: "deleting the ingress port allocation may remove external peer exposure and requires exact acknowledgement",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			store, err := ledger.Open(t.TempDir() + "/ledger.db")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: tc.operation, Request: json.RawMessage(tc.request), Before: json.RawMessage(tc.before), IntendedAfter: json.RawMessage(tc.after), Impact: json.RawMessage(tc.impact), Findings: []ledger.Finding{{Code: tc.finding, Severity: "blocking", Message: tc.message}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			remote := &fakeRemote{identity: "https://nb.test", account: "account-1", ingressPortCollection: []byte(tc.before), ingressPortBefore: []byte(tc.before), ingressPortAfter: []byte(tc.after)}
+			result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+				t.Fatalf("unexpected ingress port result: %+v updates=%d", result, remote.updates)
+			}
+			if tc.name != "delete" {
+				var body map[string]any
+				if err := json.Unmarshal(remote.ingressPortBody, &body); err != nil {
+					t.Fatal(err)
+				}
+				if _, ok := body["peer_id"]; ok {
+					t.Fatalf("peer_id leaked into dispatched ingress port body: %s", remote.ingressPortBody)
+				}
+			}
+		})
 	}
 }
 

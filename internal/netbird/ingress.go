@@ -164,6 +164,66 @@ func (c *Client) GetIngressPortAllocation(ctx context.Context, peerID, allocatio
 	return result, nil
 }
 
+func (c *Client) ListIngressPortAllocationsRaw(ctx context.Context, peerID string) (json.RawMessage, error) {
+	path, err := ingressPortsPath(peerID, "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("list ingress ports for peer %q: %w", peerID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetIngressPortAllocationRaw(ctx context.Context, peerID, allocationID string) (json.RawMessage, error) {
+	path, err := ingressPortsPath(peerID, allocationID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get ingress port allocation %q for peer %q: %w", allocationID, peerID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateIngressPortAllocation(ctx context.Context, peerID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := ingressPortsPath(peerID, "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create ingress port allocation for peer %q: %w", peerID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateIngressPortAllocation(ctx context.Context, peerID, allocationID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := ingressPortsPath(peerID, allocationID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update ingress port allocation %q for peer %q: %w", allocationID, peerID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteIngressPortAllocation(ctx context.Context, peerID, allocationID string) (json.RawMessage, error) {
+	path, err := ingressPortsPath(peerID, allocationID)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete ingress port allocation %q for peer %q: %w", allocationID, peerID, err)
+	}
+	return result, nil
+}
+
 func ingressPortsPath(peerID, allocationID string) (string, error) {
 	if strings.TrimSpace(peerID) == "" {
 		return "", fmt.Errorf("peer id is required")

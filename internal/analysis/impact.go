@@ -527,6 +527,57 @@ func IngressPeerDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func IngressPortAllocationCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress port allocation create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "ingress_port_allocation_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating an ingress port allocation can expose peer services through an external ingress path; affected peers and mappings require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "ingress_port_allocation_create_requires_topology_analysis"},
+	}, nil
+}
+
+func IngressPortAllocationUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress port allocation impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress port allocation impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "ingress_port_allocation_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an ingress port allocation can change externally exposed peer services and port mappings; affected peers require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "ingress_port_allocation_update_requires_topology_analysis"},
+	}, nil
+}
+
+func IngressPortAllocationDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress port allocation delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "ingress_port_allocation_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an ingress port allocation can remove externally exposed peer services and port mappings; affected peers require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "ingress_port_allocation_delete_requires_topology_analysis"},
+	}, nil
+}
+
 func AgentNetworkSettingsUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

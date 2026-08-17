@@ -1226,18 +1226,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.peers.peerId.ingress.ports",
+      "id": "peers.ingress.ports.create",
       "method": "POST",
       "path": "/api/peers/{peerId}/ingress/ports",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.delete",
       "method": "DELETE",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.ingress.ports.get",
@@ -1247,11 +1247,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.update",
       "method": "PUT",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.peers.peerId.jobs",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 168,
+    "implemented": 171,
     "classified": 0,
-    "discovered": 68,
-    "contract_verified": 159,
+    "discovered": 65,
+    "contract_verified": 162,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

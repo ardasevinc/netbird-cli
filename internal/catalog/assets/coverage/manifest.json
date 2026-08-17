@@ -169,18 +169,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.agent_network.providers",
+      "id": "agent_network.providers.create",
       "method": "POST",
       "path": "/api/agent-network/providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.agent_network.providers.providerId",
+      "id": "agent_network.providers.delete",
       "method": "DELETE",
       "path": "/api/agent-network/providers/{providerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.providers.providerId",
@@ -190,11 +190,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.agent_network.providers.providerId",
+      "id": "agent_network.providers.update",
       "method": "PUT",
       "path": "/api/agent-network/providers/{providerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "agent_network.settings.delete",
@@ -1226,18 +1226,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.peers.peerId.ingress.ports",
+      "id": "peers.ingress.ports.create",
       "method": "POST",
       "path": "/api/peers/{peerId}/ingress/ports",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.delete",
       "method": "DELETE",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "peers.ingress.ports.get",
@@ -1247,11 +1247,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.peers.peerId.ingress.ports.allocationId",
+      "id": "peers.ingress.ports.update",
       "method": "PUT",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.peers.peerId.jobs",
@@ -1499,18 +1499,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.setup_keys",
+      "id": "setup_keys.create",
       "method": "POST",
       "path": "/api/setup-keys",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.setup_keys.keyId",
+      "id": "setup_keys.delete",
       "method": "DELETE",
       "path": "/api/setup-keys/{keyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "setup_keys.get",
@@ -1534,11 +1534,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "post.api.users",
+      "id": "users.create",
       "method": "POST",
       "path": "/api/users",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.current",
@@ -1555,25 +1555,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites",
+      "id": "users.invites.create",
       "method": "POST",
       "path": "/api/users/invites",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.users.invites.inviteId",
+      "id": "users.invites.delete",
       "method": "DELETE",
       "path": "/api/users/invites/{inviteId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites.inviteId.regenerate",
+      "id": "users.invites.regenerate",
       "method": "POST",
       "path": "/api/users/invites/{inviteId}/regenerate",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.users.invites.token",
@@ -1583,53 +1583,53 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites.token.accept",
+      "id": "users.invites.accept",
       "method": "POST",
       "path": "/api/users/invites/{token}/accept",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.users.userId",
+      "id": "users.delete",
       "method": "DELETE",
       "path": "/api/users/{userId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.users.userId",
+      "id": "users.update",
       "method": "PUT",
       "path": "/api/users/{userId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.approve",
+      "id": "users.approve",
       "method": "POST",
       "path": "/api/users/{userId}/approve",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.invite",
+      "id": "users.invite.resend",
       "method": "POST",
       "path": "/api/users/{userId}/invite",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.users.userId.password",
+      "id": "users.password.update",
       "method": "PUT",
       "path": "/api/users/{userId}/password",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.users.userId.reject",
+      "id": "users.reject",
       "method": "DELETE",
       "path": "/api/users/{userId}/reject",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.tokens.list",
@@ -1639,18 +1639,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.tokens",
+      "id": "users.tokens.create",
       "method": "POST",
       "path": "/api/users/{userId}/tokens",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.users.userId.tokens.tokenId",
+      "id": "users.tokens.delete",
       "method": "DELETE",
       "path": "/api/users/{userId}/tokens/{tokenId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.tokens.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 150,
+    "implemented": 171,
     "classified": 0,
-    "discovered": 86,
-    "contract_verified": 141,
+    "discovered": 65,
+    "contract_verified": 162,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

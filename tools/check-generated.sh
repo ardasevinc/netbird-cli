@@ -2,6 +2,11 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! cmp -s "$repo_root/coverage/manifest.json" "$repo_root/internal/catalog/assets/coverage/manifest.json"; then
+  echo "stale generated coverage manifest: internal/catalog/assets/coverage/manifest.json" >&2
+  exit 1
+fi
+
 asset_root="$repo_root/internal/catalog/assets/schemas/nb/v1"
 public_root="$repo_root/schemas/nb/v1"
 
