@@ -65,6 +65,7 @@ var definitions = map[string]Definition{
 	"peers.accessible":          {Name: "peers.accessible", Method: "GET", Path: "/api/peers/{peerId}/accessible-peers", Mutation: ReadOnly},
 	"networks.list":             {Name: "networks.list", Method: "GET", Path: "/api/networks", Mutation: ReadOnly},
 	"networks.get":              {Name: "networks.get", Method: "GET", Path: "/api/networks/{networkId}", Mutation: ReadOnly},
+	"networks.create":           {Name: "networks.create", Method: "POST", Path: "/api/networks", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"routes.list":               {Name: "routes.list", Method: "GET", Path: "/api/routes", Mutation: ReadOnly},
 	"routes.get":                {Name: "routes.get", Method: "GET", Path: "/api/routes/{routeId}", Mutation: ReadOnly},
 	"users.current":             {Name: "users.current", Method: "GET", Path: "/api/users/current", Mutation: ReadOnly},

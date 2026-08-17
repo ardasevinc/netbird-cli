@@ -143,3 +143,27 @@ func TestDeleteNetworkUsesDELETE(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateNetworkUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/networks" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["name"] != "office" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "network-1", "name": "office", "policies": []string{}, "resources": []string{}, "routers": []string{}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).CreateNetwork(context.Background(), json.RawMessage(`{"name":"office","description":"primary"}`)); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -1058,11 +1058,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.networks",
+      "id": "networks.create",
       "method": "POST",
       "path": "/api/networks",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "networks.routers.list_all",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 116,
+    "implemented": 117,
     "classified": 0,
-    "discovered": 120,
-    "contract_verified": 107,
+    "discovered": 119,
+    "contract_verified": 108,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

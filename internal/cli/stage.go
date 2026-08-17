@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
+			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -81,6 +81,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.PeerDeleteImpact(plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "networks.create":
+					report, err = analysis.NetworkCreateImpact(plan.IntendedAfter)
 				case "networks.delete":
 					report, err = analysis.NetworkDeleteImpact(plan.Before)
 				case "networks.resources.update":
@@ -133,6 +135,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"
+				case plan.Operation == "networks.create" && report.Classification == "network_create":
+					findingCode = "impact.network_create"
+					findingMessage = "creating the network may add topology and requires exact acknowledgement"
 				case plan.Operation == "networks.delete" && report.Classification == "network_delete":
 					findingCode = "impact.network_delete"
 					findingMessage = "deleting the network may remove attached topology and requires exact acknowledgement"

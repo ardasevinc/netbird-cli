@@ -167,6 +167,22 @@ func (c *Client) ListNetworks(ctx context.Context) ([]Network, error) {
 	return normalized, nil
 }
 
+func (c *Client) ListNetworksRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/networks", nil, &result); err != nil {
+		return nil, fmt.Errorf("list networks: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateNetwork(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/networks", request, &result); err != nil {
+		return nil, fmt.Errorf("create network: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetNetwork(ctx context.Context, id string) (Network, error) {
 	path, err := topologyPath("networks", id)
 	if err != nil {

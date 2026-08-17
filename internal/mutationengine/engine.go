@@ -31,6 +31,8 @@ type Remote interface {
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePeer(context.Context, string) (json.RawMessage, error)
 	GetNetworkRaw(context.Context, string) (json.RawMessage, error)
+	ListNetworksRaw(context.Context) (json.RawMessage, error)
+	CreateNetwork(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateNetwork(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetwork(context.Context, string) (json.RawMessage, error)
 	GetNetworkResourceRaw(context.Context, string, string) (json.RawMessage, error)
@@ -249,6 +251,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNetworkRaw(ctx, target.ID)
 	case "networks.delete":
 		return remote.GetNetworkRaw(ctx, target.ID)
+	case "networks.create":
+		return remote.ListNetworksRaw(ctx)
 	case "networks.resources.delete":
 		return remote.GetNetworkResourceRaw(ctx, target.NetworkID, target.ID)
 	case "networks.resources.update":
@@ -288,6 +292,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateNetwork(ctx, target.ID, request)
 	case "networks.delete":
 		return remote.DeleteNetwork(ctx, target.ID)
+	case "networks.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateNetwork(ctx, body)
 	case "networks.resources.delete":
 		return remote.DeleteNetworkResource(ctx, target.NetworkID, target.ID)
 	case "networks.resources.update":
@@ -322,7 +332,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "networks.resources.create" || operation == "networks.routers.create"
+	return operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -426,6 +436,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NetworkUpdateImpact(before, intendedAfter)
 	case "networks.delete":
 		return analysis.NetworkDeleteImpact(before)
+	case "networks.create":
+		return analysis.NetworkCreateImpact(intendedAfter)
 	case "networks.resources.delete":
 		return analysis.NetworkResourceDeleteImpact(before)
 	case "networks.resources.update":

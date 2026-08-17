@@ -24,6 +24,7 @@ type fakeRemote struct {
 	peerAfter          json.RawMessage
 	networkBefore      json.RawMessage
 	networkAfter       json.RawMessage
+	networkCollection  json.RawMessage
 	resourceBefore     json.RawMessage
 	resourceAfter      json.RawMessage
 	resourceCollection json.RawMessage
@@ -148,6 +149,25 @@ func (f *fakeRemote) GetNetworkRaw(_ context.Context, _ string) (json.RawMessage
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.networkBefore...), nil
+}
+
+func (f *fakeRemote) ListNetworksRaw(_ context.Context) (json.RawMessage, error) {
+	if f.networkCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.networkCollection...), nil
+}
+
+func (f *fakeRemote) CreateNetwork(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.networkAfter == nil {
+		return nil, errors.New("missing created network")
+	}
+	f.networkCollection = json.RawMessage("[" + string(f.networkAfter) + "]")
+	return append(json.RawMessage(nil), f.networkAfter...), nil
 }
 
 func (f *fakeRemote) UpdateNetwork(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
@@ -651,6 +671,41 @@ func TestApplyDispatchesNetworkUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected network result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNetworkCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"name":"office","description":"primary"}`
+	created := `{"id":"n1","name":"office","description":"primary","policies":[],"resources":[],"routers":[],"routing_peers_count":0}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "networks.create",
+		Request:        json.RawMessage(`{"name":"office","description":"primary"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"network_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a network can add a topology scope for policies, resources, and routers; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"network_create_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.network_create", Severity: "blocking", Message: "creating the network may add topology and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", networkCollection: []byte(before), networkAfter: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected network create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

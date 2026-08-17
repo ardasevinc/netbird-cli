@@ -160,6 +160,16 @@ func TestNetworkDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestNetworkCreateImpactIsConservative(t *testing.T) {
+	report, err := NetworkCreateImpact([]byte(`{"name":"office","description":"primary"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "network_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestNetworkResourceDeleteImpactIsConservative(t *testing.T) {
 	report, err := NetworkResourceDeleteImpact([]byte(`{"id":"r1","name":"db","address":"10.0.0.0/24","enabled":true}`))
 	if err != nil {
