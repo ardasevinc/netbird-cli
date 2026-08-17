@@ -443,6 +443,57 @@ func AgentNetworkSettingsDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func AgentNetworkBudgetRuleCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network budget rule create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_budget_rule_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating an agent-network budget rule can change spend and token admission for targeted callers; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_budget_rule_create_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkBudgetRuleUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network budget rule impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network budget rule impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_budget_rule_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an agent-network budget rule can change spend and token admission for targeted callers; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_budget_rule_update_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkBudgetRuleDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network budget rule delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_budget_rule_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an agent-network budget rule can remove spend and token admission limits for targeted callers; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_budget_rule_delete_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

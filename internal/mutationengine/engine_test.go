@@ -24,6 +24,9 @@ type fakeRemote struct {
 	ingressAfter         json.RawMessage
 	agentSettingsBefore  json.RawMessage
 	agentSettingsAfter   json.RawMessage
+	budgetCollection     json.RawMessage
+	budgetBefore         json.RawMessage
+	budgetAfter          json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -207,6 +210,50 @@ func (f *fakeRemote) DeleteAgentNetworkSettings(_ context.Context) (json.RawMess
 		return nil, f.updateErr
 	}
 	f.agentSettingsBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListAgentNetworkBudgetRulesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.budgetCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.budgetCollection...), nil
+}
+
+func (f *fakeRemote) GetAgentNetworkBudgetRuleRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.budgetBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.budgetBefore...), nil
+}
+
+func (f *fakeRemote) CreateAgentNetworkBudgetRule(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.budgetAfter == nil {
+		return nil, errors.New("missing created agent-network budget rule")
+	}
+	f.budgetCollection = json.RawMessage("[" + string(f.budgetAfter) + "]")
+	return append(json.RawMessage(nil), f.budgetAfter...), nil
+}
+
+func (f *fakeRemote) UpdateAgentNetworkBudgetRule(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.budgetBefore = append(json.RawMessage(nil), f.budgetAfter...)
+	return append(json.RawMessage(nil), f.budgetAfter...), nil
+}
+
+func (f *fakeRemote) DeleteAgentNetworkBudgetRule(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.budgetBefore = nil
 	return nil, nil
 }
 
@@ -1432,6 +1479,101 @@ func TestApplyDispatchesAgentNetworkSettingsDeleteAndConfirmsAbsence(t *testing.
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected agent-network settings delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkBudgetRuleCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"rule-1","name":"monthly","enabled":true,"limits":{"budget_limit":{"enabled":true,"group_cap_usd":100,"user_cap_usd":0,"window_seconds":3600}}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "agent_network.budget_rules.create",
+		Request:        json.RawMessage(`{"name":"monthly","enabled":true}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"agent_network_budget_rule_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an agent-network budget rule can change spend and token admission for targeted callers; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_budget_rule_create_requires_capability_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.agent_network_budget_rule_create", Severity: "blocking", Message: "creating the agent-network budget rule may change spend and token admission and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", budgetCollection: []byte(before), budgetAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected budget rule create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkBudgetRuleUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"rule-1","name":"monthly","enabled":true}`
+	after := `{"id":"rule-1","name":"monthly","enabled":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "agent_network.budget_rules.update",
+		Request:        json.RawMessage(after),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"agent_network_budget_rule_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating an agent-network budget rule can change spend and token admission for targeted callers; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_budget_rule_update_requires_capability_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.agent_network_budget_rule_change", Severity: "blocking", Message: "the proposed agent-network budget rule change may change spend and token admission and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", budgetBefore: []byte(before), budgetAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected budget rule update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkBudgetRuleDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"rule-1","name":"monthly","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "agent_network.budget_rules.delete",
+		Request:        json.RawMessage(`{"id":"rule-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"agent_network_budget_rule_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an agent-network budget rule can remove spend and token admission limits for targeted callers; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_budget_rule_delete_requires_capability_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.agent_network_budget_rule_delete", Severity: "blocking", Message: "deleting the agent-network budget rule may remove spend and token limits and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", budgetBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected budget rule delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

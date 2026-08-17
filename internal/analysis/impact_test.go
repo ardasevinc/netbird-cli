@@ -240,6 +240,29 @@ func TestAgentNetworkSettingsDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestAgentNetworkBudgetRuleImpactsAreConservative(t *testing.T) {
+	create, err := AgentNetworkBudgetRuleCreateImpact([]byte(`{"name":"monthly","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	update, err := AgentNetworkBudgetRuleUpdateImpact([]byte(`{"id":"rule-1","enabled":true}`), []byte(`{"id":"rule-1","enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := AgentNetworkBudgetRuleDeleteImpact([]byte(`{"id":"rule-1","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Classification != "agent_network_budget_rule_create" || update.Classification != "agent_network_budget_rule_change" || remove.Classification != "agent_network_budget_rule_delete" {
+		t.Fatalf("unexpected classifications: create=%+v update=%+v delete=%+v", create, update, remove)
+	}
+	for _, report := range []ImpactReport{create, update, remove} {
+		if report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected report: %+v", report)
+		}
+	}
+}
+
 func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
 	if err != nil {

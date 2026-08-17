@@ -50,18 +50,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.agent_network.budget_rules",
+      "id": "agent_network.budget_rules.create",
       "method": "POST",
       "path": "/api/agent-network/budget-rules",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.agent_network.budget_rules.ruleId",
+      "id": "agent_network.budget_rules.delete",
       "method": "DELETE",
       "path": "/api/agent-network/budget-rules/{ruleId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.budget_rules.ruleId",
@@ -71,11 +71,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.agent_network.budget_rules.ruleId",
+      "id": "agent_network.budget_rules.update",
       "method": "PUT",
       "path": "/api/agent-network/budget-rules/{ruleId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.catalog.providers",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 141,
+    "implemented": 144,
     "classified": 0,
-    "discovered": 95,
-    "contract_verified": 132,
+    "discovered": 92,
+    "contract_verified": 135,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

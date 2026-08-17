@@ -178,6 +178,9 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["PUT /api/agent-network/settings"] = operation{ID: "agent_network.settings.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/agent-network/settings"] = operation{ID: "agent_network.settings.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/agent-network/settings"] = operation{ID: "agent_network.settings.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/agent-network/budget-rules"] = operation{ID: "agent_network.budget_rules.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/agent-network/budget-rules/{ruleId}"] = operation{ID: "agent_network.budget_rules.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["DELETE /api/agent-network/budget-rules/{ruleId}"] = operation{ID: "agent_network.budget_rules.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/networks/{networkId}/resources/{resourceId}"] = operation{ID: "networks.resources.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/networks/{networkId}/routers/{routerId}"] = operation{ID: "networks.routers.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/networks/{networkId}/routers/{routerId}"] = operation{ID: "networks.routers.update", Implementation: "implemented", Verification: "contract_verified"}
