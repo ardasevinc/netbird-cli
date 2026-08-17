@@ -75,6 +75,7 @@ go run ./cmd/nb events --json
 go run ./cmd/nb events network-traffic --page 1 --page-size 100 --json
 go run ./cmd/nb events proxy --page 1 --page-size 50 --json
 go run ./cmd/nb setup-keys list --json
+go run ./cmd/nb setup bootstrap --url https://netbird.example --email admin@example.com --name Admin --password-ref env:NB_BOOTSTRAP_PASSWORD --create-pat --pat-expire-in 30 --json
 go run ./cmd/nb locations countries --json
 go run ./cmd/nb users tokens list <user-id> --json
 go run ./cmd/nb peers list --json
@@ -89,6 +90,14 @@ go run ./cmd/nb apply <stage-id>@<revision>
 
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
+
+`setup bootstrap` is the one-shot first-run boundary for an instance reporting
+`setup_required=true`. It performs an unauthenticated guard request before the
+POST, resolves the password only from an external `env:` or `file:` reference,
+and never writes credentials to config, stages, or the mutation ledger. A
+requested personal access token is returned once in the success result. If the
+POST may have been dispatched but its outcome is unknown, the command exits
+uncertain and refuses an automatic retry.
 
 Use `--jsonl` for a bounded stream: each line is an independent
 `nb/v1/stream-event` record, and successful finite commands end with exactly

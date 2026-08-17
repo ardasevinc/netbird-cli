@@ -1499,8 +1499,9 @@
       "id": "post.api.setup",
       "method": "POST",
       "path": "/api/setup",
-      "implementation": "discovered",
-      "verification": ""
+      "availability": "bootstrap_only",
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "setup_keys.list",

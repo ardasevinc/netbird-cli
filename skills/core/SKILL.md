@@ -41,6 +41,12 @@ Password changes are capability-gated and blocking; staged requests carry only e
 Resending a user invitation is capability-gated and blocking; the empty API response is proven by exact user preimage validation and unchanged user metadata read-back, with no token persisted or emitted.
 Public invite acceptance is also staged and blocking; `invite_token_ref` and `password_ref` are resolved only for the unauthenticated acceptance request, with endpoint success as the effect proof because accepted invites no longer have pending metadata to read back.
 Setup-key creation returns the clear key once in the successful apply result and omits it from stages, receipts, logs, and errors.
+
+`nb setup bootstrap` is the one-shot first-run boundary for an instance with
+`setup_required=true`. It performs an unauthenticated guard request, resolves
+the administrator password only from an external `env:` or `file:` reference,
+and never persists it. A requested personal access token is returned once; an
+ambiguous dispatched request is uncertain and must be reconciled before retry.
 # nb core
 
 Use the installed binary as the source of truth for its current machine
