@@ -192,6 +192,15 @@ func (f *fakeRemote) UpdateAgentNetworkSettings(_ context.Context, _ json.RawMes
 	return append(json.RawMessage(nil), f.agentSettingsAfter...), nil
 }
 
+func (f *fakeRemote) CreateAgentNetworkSettings(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.agentSettingsBefore = append(json.RawMessage(nil), f.agentSettingsAfter...)
+	return append(json.RawMessage(nil), f.agentSettingsAfter...), nil
+}
+
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
 	if f.dnsZoneCollection == nil {
 		return json.RawMessage(`[]`), nil
@@ -1347,6 +1356,40 @@ func TestApplyDispatchesAgentNetworkSettingsUpdateAndConfirmsReadBack(t *testing
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected agent-network settings result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkSettingsCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{}`
+	after := `{"enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "agent_network.settings.create",
+		Request:        json.RawMessage(after),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"agent_network_settings_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating agent-network settings can enable Cloud agent routing and provider behavior; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_settings_create_requires_capability_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.agent_network_settings_create", Severity: "blocking", Message: "creating agent-network settings may enable Cloud agent behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", agentSettingsBefore: []byte(before), agentSettingsAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected agent-network settings create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

@@ -22,3 +22,11 @@ func (c *Client) UpdateAgentNetworkSettings(ctx context.Context, request json.Ra
 	}
 	return result, nil
 }
+
+func (c *Client) CreateAgentNetworkSettings(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/agent-network/settings", request, &result); err != nil {
+		return nil, fmt.Errorf("create agent-network settings: %w", err)
+	}
+	return result, nil
+}

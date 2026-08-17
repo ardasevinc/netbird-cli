@@ -411,6 +411,22 @@ func AgentNetworkSettingsUpdateImpact(before, intendedAfter []byte) (ImpactRepor
 	}, nil
 }
 
+func AgentNetworkSettingsCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network settings create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_settings_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating agent-network settings can enable Cloud agent routing and provider behavior; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_settings_create_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {
