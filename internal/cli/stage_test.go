@@ -480,6 +480,46 @@ func TestStageCreateRejectsPersistedProviderAPIKey(t *testing.T) {
 	}
 }
 
+func TestStageCreateUserPasswordRequiresExternalRefs(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"users.password.update","request":{"id":"user-1","old_password":"OldPass123!","new_password":"NewPass123!"},"before":{"id":"user-1","status":"active"},"intended_after":{"id":"user-1","status":"active"}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "old_password_ref") {
+		t.Fatalf("expected persisted password rejection, got %v", err)
+	}
+	if strings.Contains(stdout.String()+stderr.String(), "OldPass123!") || strings.Contains(stdout.String()+stderr.String(), "NewPass123!") {
+		t.Fatal("password leaked to command output")
+	}
+}
+
+func TestStageCreateUserPasswordRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"users.password.update","request":{"id":"user-1","old_password_ref":"env:OLD_PASSWORD","new_password_ref":"env:NEW_PASSWORD"},"before":{"id":"user-1","status":"active"},"intended_after":{"id":"user-1","status":"active"}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.user_password_change"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("password acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateUserLifecycleMutationsRequireAcknowledgement(t *testing.T) {
 	cases := []struct {
 		name, operation, request, before, after, finding string

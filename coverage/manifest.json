@@ -1618,11 +1618,11 @@
       "verification": ""
     },
     {
-      "id": "put.api.users.userId.password",
+      "id": "users.password.update",
       "method": "PUT",
       "path": "/api/users/{userId}/password",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.reject",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 165,
+    "implemented": 166,
     "classified": 0,
-    "discovered": 71,
-    "contract_verified": 156,
+    "discovered": 70,
+    "contract_verified": 157,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -181,6 +181,18 @@ func (c *Client) RejectUser(ctx context.Context, id string) (json.RawMessage, er
 	return result, nil
 }
 
+func (c *Client) ChangeUserPassword(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id) + "/password"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("change password for user %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListInvites(ctx context.Context) ([]UserInvite, error) {
 	var result []UserInvite
 	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/users/invites", nil, &result); err != nil {

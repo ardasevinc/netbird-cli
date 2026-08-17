@@ -41,6 +41,8 @@ type fakeRemote struct {
 	userCollection        json.RawMessage
 	userBefore            json.RawMessage
 	userAfter             json.RawMessage
+	passwordSeen          bool
+	passwordBody          json.RawMessage
 	tokenBefore           json.RawMessage
 	tokenCollection       json.RawMessage
 	tokenAfter            json.RawMessage
@@ -484,6 +486,16 @@ func (f *fakeRemote) RejectUser(_ context.Context, _ string) (json.RawMessage, e
 	}
 	f.userBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) ChangeUserPassword(_ context.Context, _ string, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.passwordSeen = true
+	f.passwordBody = append(json.RawMessage(nil), request...)
+	return json.RawMessage(`{"success":true}`), nil
 }
 
 func (f *fakeRemote) GetPersonalAccessTokenRaw(_ context.Context, _, _ string) (json.RawMessage, error) {
@@ -2079,6 +2091,51 @@ func TestApplyDispatchesUserRejectAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected user reject result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyResolvesUserPasswordRefsWithoutPersistingSecrets(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"user-1","status":"active"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.password.update", Request: json.RawMessage(`{"id":"user-1","old_password_ref":"env:OLD_PASSWORD","new_password_ref":"env:NEW_PASSWORD"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(before), Impact: json.RawMessage(`{"classification":"user_password_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["changing a user's password changes an authentication credential; the password values are resolved from external references only at dispatch and are never persisted","the management API exposes no password read-back representation; success is confirmed by the endpoint response after exact user preimage validation"],"completeness":{"state":"unknown","reason":"user_password_change_has_no_readable_credential_state"}}`), Findings: []ledger.Finding{{Code: "impact.user_password_change", Severity: "blocking", Message: "changing the user password changes an authentication credential and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		switch ref {
+		case "env:OLD_PASSWORD":
+			return "OldPass123!", nil
+		case "env:NEW_PASSWORD":
+			return "NewPass123!", nil
+		default:
+			t.Fatalf("unexpected secret ref %q", ref)
+			return "", errors.New("unexpected ref")
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || !remote.passwordSeen || remote.updates != 1 {
+		t.Fatalf("unexpected password result: %+v updates=%d seen=%v", result, remote.updates, remote.passwordSeen)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.passwordBody, &body); err != nil || body["old_password"] != "OldPass123!" || body["new_password"] != "NewPass123!" {
+		t.Fatalf("unexpected dispatched password body: %s", remote.passwordBody)
+	}
+	if strings.Contains(string(stage.Request), "OldPass123!") || strings.Contains(string(stage.Request), "NewPass123!") {
+		t.Fatal("password leaked into staged request")
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "OldPass123!") || strings.Contains(string(receipt.Result), "NewPass123!") {
+		t.Fatal("password leaked into persisted receipt")
 	}
 }
 

@@ -112,6 +112,7 @@ type Remote interface {
 	DeleteUser(context.Context, string) (json.RawMessage, error)
 	ApproveUser(context.Context, string) (json.RawMessage, error)
 	RejectUser(context.Context, string) (json.RawMessage, error)
+	ChangeUserPassword(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	GetPersonalAccessTokenRaw(context.Context, string, string) (json.RawMessage, error)
 	ListPersonalAccessTokensRaw(context.Context, string) (json.RawMessage, error)
 	CreatePersonalAccessToken(context.Context, string, json.RawMessage) (json.RawMessage, error)
@@ -277,7 +278,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	result.AttemptID = attempt.ID
-	if preimage == mutation.PreimageAlreadySatisfied {
+	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
 	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
@@ -427,7 +428,7 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAgentNetworkProviderRaw(ctx, target.ID)
 	case "users.create":
 		return remote.ListUsersRaw(ctx)
-	case "users.update", "users.delete", "users.approve", "users.reject":
+	case "users.update", "users.delete", "users.approve", "users.reject", "users.password.update":
 		return remote.GetUserRaw(ctx, target.ID)
 	case "users.tokens.delete":
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
@@ -652,6 +653,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.ApproveUser(ctx, target.ID)
 	case "users.reject":
 		return remote.RejectUser(ctx, target.ID)
+	case "users.password.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.ChangeUserPassword(ctx, target.ID, body)
 	case "users.tokens.delete":
 		return remote.DeletePersonalAccessToken(ctx, target.UserID, target.TokenID)
 	case "users.tokens.create":
@@ -861,6 +868,34 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 }
 
 func prepareSecretRequest(operation string, request json.RawMessage, resolve func(string) (string, error)) (json.RawMessage, error) {
+	if operation == "users.password.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode password request: %w", err)
+		}
+		for _, field := range []string{"old_password", "new_password"} {
+			if _, ok := object[field]; ok {
+				return nil, fmt.Errorf("password field %s cannot be persisted; use %s_ref", field, field)
+			}
+			ref, ok := object[field+"_ref"].(string)
+			delete(object, field+"_ref")
+			if !ok || strings.TrimSpace(ref) == "" {
+				return nil, fmt.Errorf("password request requires %s_ref", field)
+			}
+			if resolve == nil {
+				return nil, errors.New("password refs require a configured secret resolver")
+			}
+			secret, err := resolve(ref)
+			if err != nil {
+				return nil, fmt.Errorf("password ref %s could not be resolved", field)
+			}
+			if strings.TrimSpace(secret) == "" {
+				return nil, fmt.Errorf("password ref %s resolved to an empty secret", field)
+			}
+			object[field] = secret
+		}
+		return json.Marshal(object)
+	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
 		return request, nil
 	}
@@ -983,6 +1018,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserApproveImpact(before)
 	case "users.reject":
 		return analysis.UserRejectImpact(before)
+	case "users.password.update":
+		return analysis.UserPasswordUpdateImpact(before, intendedAfter)
 	case "users.tokens.delete":
 		return analysis.UserTokenDeleteImpact(before)
 	case "users.tokens.create":

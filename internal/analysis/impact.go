@@ -333,6 +333,17 @@ func UserRejectImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "user_reject", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"rejecting a pending user removes a pending account-access edge; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_reject_requires_capability_analysis"}}, nil
 }
 
+func UserPasswordUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user password preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user password intent: %w", err)
+	}
+	return ImpactReport{Classification: "user_password_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"changing a user's password changes an authentication credential; the password values are resolved from external references only at dispatch and are never persisted", "the management API exposes no password read-back representation; success is confirmed by the endpoint response after exact user preimage validation"}, Completeness: map[string]any{"state": "unknown", "reason": "user_password_change_has_no_readable_credential_state"}}, nil
+}
+
 func UserTokenDeleteImpact(before []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(before, &object); err != nil {

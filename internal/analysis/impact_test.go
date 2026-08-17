@@ -636,6 +636,16 @@ func TestUserTokenDeleteImpactIsComplete(t *testing.T) {
 	}
 }
 
+func TestUserPasswordUpdateImpactIsConservative(t *testing.T) {
+	report, err := UserPasswordUpdateImpact([]byte(`{"id":"user-1","status":"active"}`), []byte(`{"id":"user-1","status":"active"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "user_password_change" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected password report: %+v", report)
+	}
+}
+
 func TestUserTokenCreateImpactIsComplete(t *testing.T) {
 	report, err := UserTokenCreateImpact([]byte(`{"id":"token-1","name":"agent"}`))
 	if err != nil {

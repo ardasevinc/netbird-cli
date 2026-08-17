@@ -66,6 +66,7 @@ var definitions = map[string]Definition{
 	"users.delete":                      {Name: "users.delete", Method: "DELETE", Path: "/api/users/{userId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.approve":                     {Name: "users.approve", Method: "POST", Path: "/api/users/{userId}/approve", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.reject":                      {Name: "users.reject", Method: "DELETE", Path: "/api/users/{userId}/reject", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"users.password.update":             {Name: "users.password.update", Method: "PUT", Path: "/api/users/{userId}/password", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"networks.resources.list":           {Name: "networks.resources.list", Method: "GET", Path: "/api/networks/{networkId}/resources", Mutation: ReadOnly},
 	"networks.resources.get":            {Name: "networks.resources.get", Method: "GET", Path: "/api/networks/{networkId}/resources/{resourceId}", Mutation: ReadOnly},
 	"networks.resources.create":         {Name: "networks.resources.create", Method: "POST", Path: "/api/networks/{networkId}/resources", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
