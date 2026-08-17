@@ -520,6 +520,46 @@ func TestStageCreateUserPasswordRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateInviteAcceptRequiresExternalRefs(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"users.invites.accept","request":{"invite_token":"nbi-secret","password":"NewPass123!"},"before":{"email":"a@example.com","valid":true},"intended_after":{"success":true}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "invite_token_ref") {
+		t.Fatalf("expected persisted invite secret rejection, got %v", err)
+	}
+	if strings.Contains(stdout.String()+stderr.String(), "nbi-secret") || strings.Contains(stdout.String()+stderr.String(), "NewPass123!") {
+		t.Fatal("invite acceptance secret leaked to command output")
+	}
+}
+
+func TestStageCreateInviteAcceptRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"users.invites.accept","request":{"invite_token_ref":"env:INVITE_TOKEN","password_ref":"env:INVITE_PASSWORD"},"before":{"email":"a@example.com","valid":true},"intended_after":{"success":true}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.invite_accept"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("invite acceptance finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateUserLifecycleMutationsRequireAcknowledgement(t *testing.T) {
 	cases := []struct {
 		name, operation, request, before, after, finding string

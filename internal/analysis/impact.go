@@ -403,6 +403,17 @@ func InviteDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "invite_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"deleting an invite removes a pending enrollment edge; already-created users require separate account analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "invite_delete_requires_enrollment_analysis"}}, nil
 }
 
+func InviteAcceptImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite acceptance preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite acceptance intent: %w", err)
+	}
+	return ImpactReport{Classification: "invite_accept", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"accepting an invite creates an account-access edge from a public token; the invite token and password are resolved from external references only at dispatch and are never persisted", "the unauthenticated endpoint's success response is the only available effect proof because the accepted invite is no longer readable as pending metadata"}, Completeness: map[string]any{"state": "unknown", "reason": "invite_accept_has_no_pending_invite_readback"}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

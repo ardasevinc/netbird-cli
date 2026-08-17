@@ -24,6 +24,18 @@ type stagePlan struct {
 }
 
 func validatePersistedSecretSafety(operation string, request json.RawMessage) error {
+	if operation == "users.invites.accept" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode invite acceptance request: %w", err)
+		}
+		for _, field := range []string{"invite_token", "password"} {
+			if _, ok := object[field]; ok {
+				return fmt.Errorf("invite acceptance field %s cannot be persisted in a stage; use %s_ref", field, field)
+			}
+		}
+		return nil
+	}
 	if operation == "users.password.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -45,6 +57,19 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 	}
 	if _, ok := object["api_key"]; ok {
 		return errors.New("provider api_key cannot be persisted in a stage; use api_key_ref")
+	}
+	return nil
+}
+
+func validateInvitePreimageSafety(before json.RawMessage) error {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return fmt.Errorf("decode invite preimage: %w", err)
+	}
+	for _, field := range []string{"token", "invite_token", "password"} {
+		if _, ok := object[field]; ok {
+			return fmt.Errorf("invite preimage field %s cannot be persisted", field)
+		}
 	}
 	return nil
 }
@@ -86,10 +111,15 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err := validatePersistedSecretSafety(plan.Operation, plan.Request); err != nil {
 				return fail(2, err)
 			}
+			if plan.Operation == "users.invites.accept" {
+				if err := validateInvitePreimageSafety(plan.Before); err != nil {
+					return fail(2, err)
+				}
+			}
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -195,6 +225,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.InviteDeleteImpact(plan.Before)
 				case "users.invites.regenerate":
 					report, err = analysis.InviteRegenerateImpact(plan.Before, plan.IntendedAfter)
+				case "users.invites.accept":
+					report, err = analysis.InviteAcceptImpact(plan.Before, plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -389,6 +421,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "users.invites.regenerate" && report.Classification == "invite_regenerate":
 					findingCode = "impact.invite_regenerate"
 					findingMessage = "regenerating the invite invalidates its previous token and returns a new one-time token; exact acknowledgement is required"
+				case plan.Operation == "users.invites.accept" && report.Classification == "invite_accept":
+					findingCode = "impact.invite_accept"
+					findingMessage = "accepting the invite creates account access from a public token and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

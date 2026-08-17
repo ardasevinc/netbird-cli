@@ -698,3 +698,13 @@ func TestInviteMutationsAreConservative(t *testing.T) {
 		t.Fatalf("unexpected invite classifications: %q %q %q", create.Classification, regenerate.Classification, remove.Classification)
 	}
 }
+
+func TestInviteAcceptImpactIsConservative(t *testing.T) {
+	report, err := InviteAcceptImpact([]byte(`{"email":"a@example.com","name":"New","valid":true}`), []byte(`{"success":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "invite_accept" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected invite acceptance report: %+v", report)
+	}
+}

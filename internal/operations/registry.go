@@ -117,6 +117,7 @@ var definitions = map[string]Definition{
 	"users.invites.create":              {Name: "users.invites.create", Method: "POST", Path: "/api/users/invites", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.invites.delete":              {Name: "users.invites.delete", Method: "DELETE", Path: "/api/users/invites/{inviteId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.invites.regenerate":          {Name: "users.invites.regenerate", Method: "POST", Path: "/api/users/invites/{inviteId}/regenerate", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"users.invites.accept":              {Name: "users.invites.accept", Method: "POST", Path: "/api/users/invites/{token}/accept", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
 	"groups.list":                       {Name: "groups.list", Method: "GET", Path: "/api/groups", Mutation: ReadOnly},
 	"groups.get":                        {Name: "groups.get", Method: "GET", Path: "/api/groups/{groupId}", Mutation: ReadOnly},
 	"groups.create":                     {Name: "groups.create", Method: "POST", Path: "/api/groups", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

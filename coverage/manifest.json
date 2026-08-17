@@ -1583,11 +1583,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites.token.accept",
+      "id": "users.invites.accept",
       "method": "POST",
       "path": "/api/users/invites/{token}/accept",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 166,
+    "implemented": 167,
     "classified": 0,
-    "discovered": 70,
-    "contract_verified": 157,
+    "discovered": 69,
+    "contract_verified": 158,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

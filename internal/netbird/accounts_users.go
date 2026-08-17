@@ -47,6 +47,14 @@ type UserInvite struct {
 	Expired    bool     `json:"expired"`
 }
 
+type PublicUserInvite struct {
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	ExpiresAt string `json:"expires_at"`
+	Valid     bool   `json:"valid"`
+	InvitedBy string `json:"invited_by"`
+}
+
 func (c *Client) ListAccounts(ctx context.Context) ([]Account, error) {
 	var result []Account
 	if err := c.transport.GetJSON(ctx, "/api/accounts", &result); err != nil {
@@ -265,4 +273,39 @@ func (c *Client) RegenerateInvite(ctx context.Context, id string, request json.R
 		return nil, fmt.Errorf("regenerate user invite %q: %w", id, err)
 	}
 	return result, nil
+}
+
+func (c *Client) GetPublicInviteRaw(ctx context.Context, token string) (json.RawMessage, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, fmt.Errorf("invite token is required")
+	}
+	path := "/api/users/invites/" + url.PathEscape(token)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get public user invite: %w", err)
+	}
+	return sanitizePublicInvite(result)
+}
+
+func (c *Client) AcceptInvite(ctx context.Context, token string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(token) == "" {
+		return nil, fmt.Errorf("invite token is required")
+	}
+	path := "/api/users/invites/" + url.PathEscape(token) + "/accept"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("accept user invite: %w", err)
+	}
+	return result, nil
+}
+
+func sanitizePublicInvite(raw json.RawMessage) (json.RawMessage, error) {
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, fmt.Errorf("decode public user invite: %w", err)
+	}
+	for _, field := range []string{"token", "invite_token", "password"} {
+		delete(object, field)
+	}
+	return json.Marshal(object)
 }

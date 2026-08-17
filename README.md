@@ -21,6 +21,7 @@ Personal access token creation is capability-gated and blocking; the token value
 Setup-key deletion is capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and absence confirmation; setup-key creation remains one-time-secret gated.
 Authenticated invite create, delete, and regenerate mutations are capability-gated and blocking; invite tokens are returned once only and never persisted in stages, receipts, logs, or errors.
 Password changes are capability-gated and blocking; staged requests carry only external `old_password_ref` and `new_password_ref` values, resolved in memory immediately before dispatch.
+Public invite acceptance is also staged and blocking; `invite_token_ref` and `password_ref` are resolved only for the unauthenticated acceptance request, with endpoint success as the effect proof because accepted invites no longer have pending metadata to read back.
 Setup-key creation returns the clear key once in the successful apply result and omits it from stages, receipts, logs, and errors.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable

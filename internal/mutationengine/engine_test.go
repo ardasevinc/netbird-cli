@@ -52,6 +52,10 @@ type fakeRemote struct {
 	inviteBefore          json.RawMessage
 	inviteCollection      json.RawMessage
 	inviteAfter           json.RawMessage
+	publicInviteBefore    json.RawMessage
+	publicInviteToken     string
+	publicInviteAccepted  bool
+	publicInviteBody      json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -612,6 +616,24 @@ func (f *fakeRemote) RegenerateInvite(_ context.Context, _ string, _ json.RawMes
 		f.inviteBefore = append(json.RawMessage(nil), f.inviteAfter...)
 	}
 	return json.RawMessage(`{"invite_token":"replacement-invite"}`), nil
+}
+
+func (f *fakeRemote) GetPublicInviteRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.publicInviteBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.publicInviteBefore...), nil
+}
+
+func (f *fakeRemote) AcceptInvite(_ context.Context, token string, request json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.publicInviteAccepted = true
+	f.publicInviteToken = token
+	f.publicInviteBody = append(json.RawMessage(nil), request...)
+	return json.RawMessage(`{"success":true}`), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -2136,6 +2158,52 @@ func TestApplyResolvesUserPasswordRefsWithoutPersistingSecrets(t *testing.T) {
 	}
 	if strings.Contains(string(receipt.Result), "OldPass123!") || strings.Contains(string(receipt.Result), "NewPass123!") {
 		t.Fatal("password leaked into persisted receipt")
+	}
+}
+
+func TestApplyAcceptsInviteWithExternalRefsWithoutPersistingSecrets(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"email":"a@example.com","name":"New","valid":true}`
+	after := `{"success":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.invites.accept", Request: json.RawMessage(`{"invite_token_ref":"env:INVITE_TOKEN","password_ref":"env:INVITE_PASSWORD"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"invite_accept","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["accepting an invite creates an account-access edge from a public token; the invite token and password are resolved from external references only at dispatch and are never persisted","the unauthenticated endpoint's success response is the only available effect proof because the accepted invite is no longer readable as pending metadata"],"completeness":{"state":"unknown","reason":"invite_accept_has_no_pending_invite_readback"}}`), Findings: []ledger.Finding{{Code: "impact.invite_accept", Severity: "blocking", Message: "accepting the invite creates account access from a public token and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", publicInviteBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		switch ref {
+		case "env:INVITE_TOKEN":
+			return "nbi-token-secret", nil
+		case "env:INVITE_PASSWORD":
+			return "NewPass123!", nil
+		default:
+			t.Fatalf("unexpected secret ref %q", ref)
+			return "", errors.New("unexpected ref")
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || !remote.publicInviteAccepted || remote.publicInviteToken != "nbi-token-secret" || remote.updates != 1 {
+		t.Fatalf("unexpected invite acceptance result: %+v updates=%d token=%q accepted=%v", result, remote.updates, remote.publicInviteToken, remote.publicInviteAccepted)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.publicInviteBody, &body); err != nil || body["password"] != "NewPass123!" {
+		t.Fatalf("unexpected invite acceptance body: %s", remote.publicInviteBody)
+	}
+	if strings.Contains(string(stage.Request), "nbi-token-secret") || strings.Contains(string(stage.Request), "NewPass123!") {
+		t.Fatal("invite acceptance secret leaked into staged request")
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "nbi-token-secret") || strings.Contains(string(receipt.Result), "NewPass123!") {
+		t.Fatal("invite acceptance secret leaked into persisted receipt")
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ardasevinc/netbird-cli/internal/transport"
@@ -77,6 +78,10 @@ func TestInviteMutationMethodsUseDeclaredRoutes(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPost && r.URL.EscapedPath() == "/api/users/invites/invite%2Fone/regenerate":
 			_ = json.NewEncoder(w).Encode(map[string]any{"invite_token": "replacement-invite"})
+		case r.Method == http.MethodGet && r.URL.EscapedPath() == "/api/users/invites/token%2Fone":
+			_ = json.NewEncoder(w).Encode(map[string]any{"email": "a@example.com", "valid": true, "invite_token": "must-not-leak"})
+		case r.Method == http.MethodPost && r.URL.EscapedPath() == "/api/users/invites/token%2Fone/accept":
+			_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
 		default:
 			http.NotFound(w, r)
 		}
@@ -98,6 +103,13 @@ func TestInviteMutationMethodsUseDeclaredRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := client.RegenerateInvite(ctx, "invite/one", json.RawMessage(`{"expires_in":3600}`)); err != nil {
+		t.Fatal(err)
+	}
+	public, err := client.GetPublicInviteRaw(ctx, "token/one")
+	if err != nil || strings.Contains(string(public), "must-not-leak") {
+		t.Fatalf("public invite=%s err=%v", public, err)
+	}
+	if _, err := client.AcceptInvite(ctx, "token/one", json.RawMessage(`{"password":"NewPass123!"}`)); err != nil {
 		t.Fatal(err)
 	}
 }

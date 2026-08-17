@@ -126,6 +126,8 @@ type Remote interface {
 	CreateInvite(context.Context, json.RawMessage) (json.RawMessage, error)
 	DeleteInvite(context.Context, string) (json.RawMessage, error)
 	RegenerateInvite(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetPublicInviteRaw(context.Context, string) (json.RawMessage, error)
+	AcceptInvite(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -147,12 +149,14 @@ type ApplyInput struct {
 }
 
 type requestTarget struct {
-	ID        string `json:"id"`
-	NetworkID string `json:"network_id"`
-	ZoneID    string `json:"zone_id"`
-	UserID    string `json:"user_id"`
-	TokenID   string `json:"token_id"`
-	InviteID  string `json:"invite_id"`
+	ID             string `json:"id"`
+	NetworkID      string `json:"network_id"`
+	ZoneID         string `json:"zone_id"`
+	UserID         string `json:"user_id"`
+	TokenID        string `json:"token_id"`
+	InviteID       string `json:"invite_id"`
+	InviteTokenRef string `json:"invite_token_ref"`
+	InviteToken    string `json:"-"`
 }
 
 type Result struct {
@@ -205,7 +209,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation) && stage.Operation != "users.tokens.create" && stage.Operation != "users.invites.delete" && stage.Operation != "users.invites.regenerate") {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation) && stage.Operation != "users.tokens.create" && stage.Operation != "users.invites.delete" && stage.Operation != "users.invites.regenerate" && stage.Operation != "users.invites.accept") {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
 	if (isUserTokenDeleteOperation(stage.Operation) || stage.Operation == "users.tokens.create") && request.UserID == "" {
@@ -216,6 +220,19 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if (stage.Operation == "users.invites.delete" || stage.Operation == "users.invites.regenerate") && request.InviteID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires invite_id", stage.Operation)}
+	}
+	if stage.Operation == "users.invites.accept" {
+		if strings.TrimSpace(request.InviteTokenRef) == "" {
+			return result, &ApplyError{Result: result, Err: errors.New("users.invites.accept stage request requires invite_token_ref")}
+		}
+		if input.SecretResolver == nil {
+			return result, &ApplyError{Result: result, Err: errors.New("users.invites.accept requires a configured secret resolver")}
+		}
+		token, err := input.SecretResolver(request.InviteTokenRef)
+		if err != nil || strings.TrimSpace(token) == "" {
+			return result, &ApplyError{Result: result, Err: errors.New("users.invites.accept invite_token_ref could not be resolved")}
+		}
+		request.InviteToken = token
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
@@ -324,6 +341,15 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote "+strings.TrimSuffix(stage.Operation, ".delete")+" is absent after delete")
+	}
+	if stage.Operation == "users.invites.accept" {
+		var response struct {
+			Success bool `json:"success"`
+		}
+		if err := json.Unmarshal(dispatchResult, &response); err != nil || !response.Success {
+			return finish(ctx, store, result, mutation.Unknown, "invite acceptance response did not confirm success")
+		}
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "invite acceptance endpoint confirmed account creation")
 	}
 	liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
 	if err != nil {
@@ -442,6 +468,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
 		return remote.GetInviteRaw(ctx, target.InviteID)
+	case "users.invites.accept":
+		return remote.GetPublicInviteRaw(ctx, target.InviteToken)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -689,6 +717,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.RegenerateInvite(ctx, target.InviteID, body)
+	case "users.invites.accept":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.AcceptInvite(ctx, target.InviteToken, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -864,10 +898,40 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	delete(object, "user_id")
 	delete(object, "token_id")
 	delete(object, "invite_id")
+	delete(object, "invite_token_ref")
+	delete(object, "invite_token")
+	delete(object, "password_ref")
 	return json.Marshal(object)
 }
 
 func prepareSecretRequest(operation string, request json.RawMessage, resolve func(string) (string, error)) (json.RawMessage, error) {
+	if operation == "users.invites.accept" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode invite acceptance request: %w", err)
+		}
+		if _, ok := object["invite_token"]; ok {
+			return nil, errors.New("invite token cannot be persisted; use invite_token_ref")
+		}
+		if _, ok := object["password"]; ok {
+			return nil, errors.New("invite password cannot be persisted; use password_ref")
+		}
+		ref, ok := object["password_ref"].(string)
+		delete(object, "password_ref")
+		delete(object, "invite_token_ref")
+		if !ok || strings.TrimSpace(ref) == "" {
+			return nil, errors.New("invite acceptance requires password_ref")
+		}
+		if resolve == nil {
+			return nil, errors.New("invite password_ref requires a configured secret resolver")
+		}
+		secret, err := resolve(ref)
+		if err != nil || strings.TrimSpace(secret) == "" {
+			return nil, errors.New("invite password_ref could not be resolved")
+		}
+		object["password"] = secret
+		return json.Marshal(object)
+	}
 	if operation == "users.password.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -1034,6 +1098,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.InviteRegenerateImpact(before, intendedAfter)
 	case "users.invites.delete":
 		return analysis.InviteDeleteImpact(before)
+	case "users.invites.accept":
+		return analysis.InviteAcceptImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
