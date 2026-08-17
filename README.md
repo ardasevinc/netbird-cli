@@ -25,6 +25,8 @@ Setup-key updates and deletion are capability-gated and blocking, with enrollmen
 Temporary-access peer creation is capability-gated and blocking, with scoped-access impact evidence, exact target-peer preimage verification, and response-based proof because the ephemeral peer has no durable read-back surface.
 
 Event-streaming integration create, update, and delete are capability-gated and blocking. Plans carry only `config_ref`; resolved receiver configuration exists in memory for dispatch, while masked server metadata is used for read-back.
+
+Identity-provider create, update, and delete are capability-gated and blocking. Plans carry only `client_secret_ref`; the client secret is resolved in memory for dispatch and never persisted.
 Authenticated invite create, delete, and regenerate mutations are capability-gated and blocking; invite tokens are returned once only and never persisted in stages, receipts, logs, or errors.
 Password changes are capability-gated and blocking; staged requests carry only external `old_password_ref` and `new_password_ref` values, resolved in memory immediately before dispatch.
 Resending a user invitation is capability-gated and blocking; the empty API response is proven by exact user preimage validation and unchanged user metadata read-back, with no token persisted or emitted.

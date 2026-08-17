@@ -64,6 +64,22 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 		}
 		return nil
 	}
+	if operation == "identity_providers.create" || operation == "identity_providers.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode identity provider request: %w", err)
+		}
+		if _, ok := object["client_secret"]; ok {
+			return errors.New("identity provider client_secret cannot be persisted in a stage; use client_secret_ref")
+		}
+		if operation == "identity_providers.create" {
+			ref, ok := object["client_secret_ref"].(string)
+			if !ok || strings.TrimSpace(ref) == "" {
+				return errors.New("identity provider create requires client_secret_ref")
+			}
+		}
+		return nil
+	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
 		return nil
 	}
@@ -135,7 +151,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -277,6 +293,12 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.EventStreamingUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "event_streaming.delete":
 					report, err = analysis.EventStreamingDeleteImpact(plan.Before)
+				case "identity_providers.create":
+					report, err = analysis.IdentityProviderCreateImpact(plan.IntendedAfter)
+				case "identity_providers.update":
+					report, err = analysis.IdentityProviderUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "identity_providers.delete":
+					report, err = analysis.IdentityProviderDeleteImpact(plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -513,6 +535,15 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "event_streaming.delete" && report.Classification == "event_streaming_delete":
 					findingCode = "impact.event_streaming_delete"
 					findingMessage = "deleting the event-streaming integration stops external activity delivery and requires exact acknowledgement"
+				case plan.Operation == "identity_providers.create" && report.Classification == "identity_provider_create":
+					findingCode = "impact.identity_provider_create"
+					findingMessage = "creating the identity provider changes authentication ingress and requires exact acknowledgement"
+				case plan.Operation == "identity_providers.update" && report.Classification == "identity_provider_change":
+					findingCode = "impact.identity_provider_change"
+					findingMessage = "changing the identity provider may alter authentication behavior and requires exact acknowledgement"
+				case plan.Operation == "identity_providers.delete" && report.Classification == "identity_provider_delete":
+					findingCode = "impact.identity_provider_delete"
+					findingMessage = "deleting the identity provider may strand users at authentication and requires exact acknowledgement"
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"

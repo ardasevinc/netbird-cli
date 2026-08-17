@@ -449,18 +449,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.identity_providers",
+      "id": "identity_providers.create",
       "method": "POST",
       "path": "/api/identity-providers",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.identity_providers.idpId",
+      "id": "identity_providers.delete",
       "method": "DELETE",
       "path": "/api/identity-providers/{idpId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "identity_providers.get",
@@ -470,11 +470,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.identity_providers.idpId",
+      "id": "identity_providers.update",
       "method": "PUT",
       "path": "/api/identity-providers/{idpId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "ingress.peers.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 178,
+    "implemented": 181,
     "classified": 0,
-    "discovered": 58,
-    "contract_verified": 169,
+    "discovered": 55,
+    "contract_verified": 172,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

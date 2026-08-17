@@ -771,6 +771,29 @@ func TestEventStreamingImpactsAreConservative(t *testing.T) {
 	}
 }
 
+func TestIdentityProviderImpactsAreConservative(t *testing.T) {
+	create, err := IdentityProviderCreateImpact([]byte(`{"id":"idp-1","name":"zitadel"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := IdentityProviderUpdateImpact([]byte(`{"id":"idp-1","name":"zitadel"}`), []byte(`{"id":"idp-1","name":"zitadel-v2"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := IdentityProviderDeleteImpact([]byte(`{"id":"idp-1","name":"zitadel"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Classification != "identity_provider_create" || change.Classification != "identity_provider_change" || remove.Classification != "identity_provider_delete" {
+		t.Fatalf("unexpected classifications: %q %q %q", create.Classification, change.Classification, remove.Classification)
+	}
+	for _, report := range []ImpactReport{create, change, remove} {
+		if report.Confidence != "high" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected identity provider impact: %+v", report)
+		}
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {

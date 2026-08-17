@@ -992,6 +992,33 @@ func EventStreamingDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "event_streaming_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an event-streaming integration stops an external account-activity delivery path"}, Completeness: map[string]any{"state": "unknown", "reason": "event_streaming_external_delivery"}}, nil
 }
 
+func IdentityProviderCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode identity provider create intent: %w", err)
+	}
+	return ImpactReport{Classification: "identity_provider_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating an identity provider changes account authentication ingress; client secrets are resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "identity_provider_authentication_boundary"}}, nil
+}
+
+func IdentityProviderUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode identity provider update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode identity provider update intent: %w", err)
+	}
+	return ImpactReport{Classification: "identity_provider_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating an identity provider can change account authentication behavior or redirect trust; client secrets are resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "identity_provider_authentication_boundary"}}, nil
+}
+
+func IdentityProviderDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode identity provider delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "identity_provider_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an identity provider removes an account authentication ingress and may strand users relying on it"}, Completeness: map[string]any{"state": "unknown", "reason": "identity_provider_authentication_boundary"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

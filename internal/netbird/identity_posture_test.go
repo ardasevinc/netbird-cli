@@ -126,3 +126,33 @@ func TestDeletePostureCheckUsesDELETE(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestIdentityProviderMutationsUseDeclaredRoutes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/identity-providers":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "idp-1", "name": "zitadel"})
+		case r.Method == http.MethodPut && r.URL.EscapedPath() == "/api/identity-providers/idp%2Fone":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "idp/one", "name": "zitadel-v2"})
+		case r.Method == http.MethodDelete && r.URL.EscapedPath() == "/api/identity-providers/idp%2Fone":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nb := NewClient(client)
+	if _, err := nb.CreateIdentityProvider(context.Background(), json.RawMessage(`{"type":"oidc","name":"zitadel","issuer":"https://idp.example","client_id":"client-1","client_secret":"secret"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nb.UpdateIdentityProvider(context.Background(), "idp/one", json.RawMessage(`{"name":"zitadel-v2"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nb.DeleteIdentityProvider(context.Background(), "idp/one"); err != nil {
+		t.Fatal(err)
+	}
+}

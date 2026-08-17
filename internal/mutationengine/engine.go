@@ -144,6 +144,11 @@ type Remote interface {
 	CreateEventStreamingIntegration(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateEventStreamingIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteEventStreamingIntegration(context.Context, string) (json.RawMessage, error)
+	ListIdentityProvidersRaw(context.Context) (json.RawMessage, error)
+	GetIdentityProviderRaw(context.Context, string) (json.RawMessage, error)
+	CreateIdentityProvider(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateIdentityProvider(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteIdentityProvider(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -537,6 +542,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListEventStreamingIntegrationsRaw(ctx)
 	case "event_streaming.update", "event_streaming.delete":
 		return remote.GetEventStreamingIntegrationRaw(ctx, target.ID)
+	case "identity_providers.create":
+		return remote.ListIdentityProvidersRaw(ctx)
+	case "identity_providers.update", "identity_providers.delete":
+		return remote.GetIdentityProviderRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -816,6 +825,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateEventStreamingIntegration(ctx, target.ID, body)
 	case "event_streaming.delete":
 		return remote.DeleteEventStreamingIntegration(ctx, target.ID)
+	case "identity_providers.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateIdentityProvider(ctx, body)
+	case "identity_providers.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateIdentityProvider(ctx, target.ID, body)
+	case "identity_providers.delete":
+		return remote.DeleteIdentityProvider(ctx, target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -904,7 +927,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1134,6 +1157,32 @@ func prepareSecretRequest(operation string, request json.RawMessage, resolve fun
 		object["config"] = config
 		return json.Marshal(object)
 	}
+	if operation == "identity_providers.create" || operation == "identity_providers.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode identity provider request: %w", err)
+		}
+		if _, ok := object["client_secret"]; ok {
+			return nil, errors.New("identity provider client_secret cannot be persisted; use client_secret_ref")
+		}
+		ref, hasRef := object["client_secret_ref"].(string)
+		delete(object, "client_secret_ref")
+		if !hasRef || strings.TrimSpace(ref) == "" {
+			if operation == "identity_providers.create" {
+				return nil, errors.New("identity provider create requires client_secret_ref")
+			}
+			return json.Marshal(object)
+		}
+		if resolve == nil {
+			return nil, errors.New("identity provider client_secret_ref requires a configured secret resolver")
+		}
+		secret, err := resolve(ref)
+		if err != nil || strings.TrimSpace(secret) == "" {
+			return nil, errors.New("identity provider client_secret_ref could not be resolved")
+		}
+		object["client_secret"] = secret
+		return json.Marshal(object)
+	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
 		return request, nil
 	}
@@ -1300,6 +1349,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.EventStreamingUpdateImpact(before, intendedAfter)
 	case "event_streaming.delete":
 		return analysis.EventStreamingDeleteImpact(before)
+	case "identity_providers.create":
+		return analysis.IdentityProviderCreateImpact(intendedAfter)
+	case "identity_providers.update":
+		return analysis.IdentityProviderUpdateImpact(before, intendedAfter)
+	case "identity_providers.delete":
+		return analysis.IdentityProviderDeleteImpact(before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1343,7 +1398,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

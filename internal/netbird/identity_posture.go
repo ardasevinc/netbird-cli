@@ -43,6 +43,58 @@ func (c *Client) GetIdentityProvider(ctx context.Context, id string) (IdentityPr
 	return result, nil
 }
 
+func (c *Client) ListIdentityProvidersRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/identity-providers", nil, &result); err != nil {
+		return nil, fmt.Errorf("list identity providers: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetIdentityProviderRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("identity provider id is required")
+	}
+	path := "/api/identity-providers/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get identity provider %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateIdentityProvider(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/identity-providers", request, &result); err != nil {
+		return nil, fmt.Errorf("create identity provider: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateIdentityProvider(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("identity provider id is required")
+	}
+	path := "/api/identity-providers/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update identity provider %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteIdentityProvider(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("identity provider id is required")
+	}
+	path := "/api/identity-providers/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete identity provider %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListPostureChecks(ctx context.Context) ([]PostureCheck, error) {
 	var result []PostureCheck
 	if err := c.transport.GetJSON(ctx, "/api/posture-checks", &result); err != nil {

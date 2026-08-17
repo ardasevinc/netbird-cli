@@ -13,90 +13,94 @@ import (
 )
 
 type fakeRemote struct {
-	identity              string
-	account               string
-	accountBefore         json.RawMessage
-	accountAfter          json.RawMessage
-	postureCollection     json.RawMessage
-	postureBefore         json.RawMessage
-	postureAfter          json.RawMessage
-	ingressCollection     json.RawMessage
-	ingressBefore         json.RawMessage
-	ingressAfter          json.RawMessage
-	agentSettingsBefore   json.RawMessage
-	agentSettingsAfter    json.RawMessage
-	budgetCollection      json.RawMessage
-	budgetBefore          json.RawMessage
-	budgetAfter           json.RawMessage
-	guardrailCollection   json.RawMessage
-	guardrailBefore       json.RawMessage
-	guardrailAfter        json.RawMessage
-	agentPolicyCollection json.RawMessage
-	agentPolicyBefore     json.RawMessage
-	agentPolicyAfter      json.RawMessage
-	providerCollection    json.RawMessage
-	providerBefore        json.RawMessage
-	providerAfter         json.RawMessage
-	providerSecretSeen    bool
-	userCollection        json.RawMessage
-	userBefore            json.RawMessage
-	userAfter             json.RawMessage
-	passwordSeen          bool
-	passwordBody          json.RawMessage
-	inviteResendSeen      bool
-	tokenBefore           json.RawMessage
-	tokenCollection       json.RawMessage
-	tokenAfter            json.RawMessage
-	setupKeyBefore        json.RawMessage
-	setupKeyCollection    json.RawMessage
-	setupKeyAfter         json.RawMessage
-	setupKeyBody          json.RawMessage
-	inviteBefore          json.RawMessage
-	inviteCollection      json.RawMessage
-	inviteAfter           json.RawMessage
-	publicInviteBefore    json.RawMessage
-	publicInviteToken     string
-	publicInviteAccepted  bool
-	publicInviteBody      json.RawMessage
-	ingressPortCollection json.RawMessage
-	ingressPortBefore     json.RawMessage
-	ingressPortAfter      json.RawMessage
-	ingressPortBody       json.RawMessage
-	before                json.RawMessage
-	after                 json.RawMessage
-	groupCollection       json.RawMessage
-	policyBefore          json.RawMessage
-	policyAfter           json.RawMessage
-	policyCollection      json.RawMessage
-	routeBefore           json.RawMessage
-	routeAfter            json.RawMessage
-	routeCollection       json.RawMessage
-	peerBefore            json.RawMessage
-	peerAfter             json.RawMessage
-	eventStreamingBefore  json.RawMessage
-	eventStreamingAfter   json.RawMessage
-	eventStreamingList    json.RawMessage
-	eventStreamingBody    json.RawMessage
-	temporaryAccessBody   json.RawMessage
-	temporaryAccessResult json.RawMessage
-	edrBypassed           json.RawMessage
-	networkBefore         json.RawMessage
-	networkAfter          json.RawMessage
-	networkCollection     json.RawMessage
-	dnsZoneCollection     json.RawMessage
-	nameserverCollection  json.RawMessage
-	nameserverBefore      json.RawMessage
-	nameserverAfter       json.RawMessage
-	dnsSettingsBefore     json.RawMessage
-	dnsSettingsAfter      json.RawMessage
-	resourceBefore        json.RawMessage
-	resourceAfter         json.RawMessage
-	resourceCollection    json.RawMessage
-	routerBefore          json.RawMessage
-	routerAfter           json.RawMessage
-	routerCollection      json.RawMessage
-	updateErr             error
-	updates               int
+	identity               string
+	account                string
+	accountBefore          json.RawMessage
+	accountAfter           json.RawMessage
+	postureCollection      json.RawMessage
+	postureBefore          json.RawMessage
+	postureAfter           json.RawMessage
+	ingressCollection      json.RawMessage
+	ingressBefore          json.RawMessage
+	ingressAfter           json.RawMessage
+	agentSettingsBefore    json.RawMessage
+	agentSettingsAfter     json.RawMessage
+	budgetCollection       json.RawMessage
+	budgetBefore           json.RawMessage
+	budgetAfter            json.RawMessage
+	guardrailCollection    json.RawMessage
+	guardrailBefore        json.RawMessage
+	guardrailAfter         json.RawMessage
+	agentPolicyCollection  json.RawMessage
+	agentPolicyBefore      json.RawMessage
+	agentPolicyAfter       json.RawMessage
+	providerCollection     json.RawMessage
+	providerBefore         json.RawMessage
+	providerAfter          json.RawMessage
+	providerSecretSeen     bool
+	userCollection         json.RawMessage
+	userBefore             json.RawMessage
+	userAfter              json.RawMessage
+	passwordSeen           bool
+	passwordBody           json.RawMessage
+	inviteResendSeen       bool
+	tokenBefore            json.RawMessage
+	tokenCollection        json.RawMessage
+	tokenAfter             json.RawMessage
+	setupKeyBefore         json.RawMessage
+	setupKeyCollection     json.RawMessage
+	setupKeyAfter          json.RawMessage
+	setupKeyBody           json.RawMessage
+	inviteBefore           json.RawMessage
+	inviteCollection       json.RawMessage
+	inviteAfter            json.RawMessage
+	publicInviteBefore     json.RawMessage
+	publicInviteToken      string
+	publicInviteAccepted   bool
+	publicInviteBody       json.RawMessage
+	ingressPortCollection  json.RawMessage
+	ingressPortBefore      json.RawMessage
+	ingressPortAfter       json.RawMessage
+	ingressPortBody        json.RawMessage
+	before                 json.RawMessage
+	after                  json.RawMessage
+	groupCollection        json.RawMessage
+	policyBefore           json.RawMessage
+	policyAfter            json.RawMessage
+	policyCollection       json.RawMessage
+	routeBefore            json.RawMessage
+	routeAfter             json.RawMessage
+	routeCollection        json.RawMessage
+	peerBefore             json.RawMessage
+	peerAfter              json.RawMessage
+	eventStreamingBefore   json.RawMessage
+	eventStreamingAfter    json.RawMessage
+	eventStreamingList     json.RawMessage
+	eventStreamingBody     json.RawMessage
+	identityProviderBefore json.RawMessage
+	identityProviderAfter  json.RawMessage
+	identityProviderList   json.RawMessage
+	identityProviderBody   json.RawMessage
+	temporaryAccessBody    json.RawMessage
+	temporaryAccessResult  json.RawMessage
+	edrBypassed            json.RawMessage
+	networkBefore          json.RawMessage
+	networkAfter           json.RawMessage
+	networkCollection      json.RawMessage
+	dnsZoneCollection      json.RawMessage
+	nameserverCollection   json.RawMessage
+	nameserverBefore       json.RawMessage
+	nameserverAfter        json.RawMessage
+	dnsSettingsBefore      json.RawMessage
+	dnsSettingsAfter       json.RawMessage
+	resourceBefore         json.RawMessage
+	resourceAfter          json.RawMessage
+	resourceCollection     json.RawMessage
+	routerBefore           json.RawMessage
+	routerAfter            json.RawMessage
+	routerCollection       json.RawMessage
+	updateErr              error
+	updates                int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -1071,6 +1075,55 @@ func (f *fakeRemote) DeleteEventStreamingIntegration(_ context.Context, _ string
 		return nil, f.updateErr
 	}
 	f.eventStreamingBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListIdentityProvidersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.identityProviderList == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.identityProviderList...), nil
+}
+
+func (f *fakeRemote) GetIdentityProviderRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.identityProviderBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.identityProviderBefore...), nil
+}
+
+func (f *fakeRemote) CreateIdentityProvider(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.identityProviderBody = append(json.RawMessage(nil), body...)
+	if f.identityProviderAfter == nil {
+		return nil, errors.New("missing identity provider")
+	}
+	f.identityProviderList = json.RawMessage("[" + string(f.identityProviderAfter) + "]")
+	return append(json.RawMessage(nil), f.identityProviderAfter...), nil
+}
+
+func (f *fakeRemote) UpdateIdentityProvider(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.identityProviderBody = append(json.RawMessage(nil), body...)
+	if f.identityProviderAfter == nil {
+		return nil, errors.New("missing identity provider")
+	}
+	f.identityProviderBefore = append(json.RawMessage(nil), f.identityProviderAfter...)
+	return append(json.RawMessage(nil), f.identityProviderAfter...), nil
+}
+
+func (f *fakeRemote) DeleteIdentityProvider(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.identityProviderBefore = nil
 	return nil, nil
 }
 
@@ -2679,6 +2732,33 @@ func TestApplyEventStreamingResolvesConfigOnlyAtDispatch(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.eventStreamingBody), "real-secret") {
 		t.Fatalf("unexpected event-streaming result: %+v body=%s", result, remote.eventStreamingBody)
+	}
+}
+
+func TestApplyIdentityProviderResolvesClientSecretOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"idp-1","name":"zitadel","type":"oidc","issuer":"https://idp.example","client_id":"client-1"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "identity_providers.create", Request: json.RawMessage(`{"type":"oidc","name":"zitadel","issuer":"https://idp.example","client_id":"client-1","client_secret_ref":"pa:idp-secret"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"identity_provider_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating an identity provider changes account authentication ingress; client secrets are resolved in memory and never persisted"],"completeness":{"state":"unknown","reason":"identity_provider_authentication_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.identity_provider_create", Severity: "blocking", Message: "creating the identity provider changes authentication ingress and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", identityProviderList: []byte(before), identityProviderAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:idp-secret" {
+			t.Fatalf("unexpected secret ref: %s", ref)
+		}
+		return "real-client-secret", nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-client-secret") || !strings.Contains(string(remote.identityProviderBody), "real-client-secret") {
+		t.Fatalf("unexpected identity provider result: %+v body=%s", result, remote.identityProviderBody)
 	}
 }
 
