@@ -28,6 +28,7 @@ type fakeRemote struct {
 	networkBefore      json.RawMessage
 	networkAfter       json.RawMessage
 	networkCollection  json.RawMessage
+	dnsZoneCollection  json.RawMessage
 	resourceBefore     json.RawMessage
 	resourceAfter      json.RawMessage
 	resourceCollection json.RawMessage
@@ -45,6 +46,25 @@ func (f *fakeRemote) AccountScope(_ context.Context, account string) error {
 		return errors.New("wrong account")
 	}
 	return nil
+}
+
+func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.dnsZoneCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.dnsZoneCollection...), nil
+}
+
+func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.after == nil {
+		return nil, errors.New("missing created dns zone")
+	}
+	f.dnsZoneCollection = json.RawMessage("[" + string(f.after) + "]")
+	return append(json.RawMessage(nil), f.after...), nil
 }
 
 func (f *fakeRemote) GetGroup(_ context.Context, _ string) (json.RawMessage, error) {
@@ -408,6 +428,41 @@ func TestApplyDispatchesGroupCreateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected group create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesDNSZoneCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"name":"office","domain":"office.internal","enabled":true}`
+	created := `{"id":"zone-1","name":"office","domain":"office.internal","enabled":true,"distribution_groups":[],"records":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.zones.create",
+		Request:        json.RawMessage(intended),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"dns_zone_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a DNS zone can change name-resolution behavior for distributed peers; affected peers and records require live analysis"],"completeness":{"state":"unknown","reason":"dns_zone_create_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_zone_create", Severity: "blocking", Message: "creating the DNS zone may alter name resolution and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", dnsZoneCollection: []byte(before), after: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected dns zone create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

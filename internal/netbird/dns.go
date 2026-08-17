@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -141,6 +142,22 @@ func (c *Client) ListDNSZones(ctx context.Context) ([]DNSZone, error) {
 		normalized[i] = zone.normalized()
 	}
 	return normalized, nil
+}
+
+func (c *Client) ListDNSZonesRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/dns/zones", nil, &result); err != nil {
+		return nil, fmt.Errorf("list dns zones: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateDNSZone(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/dns/zones", request, &result); err != nil {
+		return nil, fmt.Errorf("create dns zone: %w", err)
+	}
+	return result, nil
 }
 
 func (c *Client) GetDNSZone(ctx context.Context, id string) (DNSZone, error) {

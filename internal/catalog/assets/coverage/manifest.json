@@ -288,11 +288,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.dns.zones",
+      "id": "dns.zones.create",
       "method": "POST",
       "path": "/api/dns/zones",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.dns.zones.zoneId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 120,
+    "implemented": 121,
     "classified": 0,
-    "discovered": 116,
-    "contract_verified": 111,
+    "discovered": 115,
+    "contract_verified": 112,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -32,6 +32,7 @@ var definitions = map[string]Definition{
 	"dns.settings":              {Name: "dns.settings", Method: "GET", Path: "/api/dns/settings", Mutation: ReadOnly},
 	"dns.zones.list":            {Name: "dns.zones.list", Method: "GET", Path: "/api/dns/zones", Mutation: ReadOnly},
 	"dns.zones.get":             {Name: "dns.zones.get", Method: "GET", Path: "/api/dns/zones/{zoneId}", Mutation: ReadOnly},
+	"dns.zones.create":          {Name: "dns.zones.create", Method: "POST", Path: "/api/dns/zones", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"identity_providers.list":   {Name: "identity_providers.list", Method: "GET", Path: "/api/identity-providers", Mutation: ReadOnly},
 	"identity_providers.get":    {Name: "identity_providers.get", Method: "GET", Path: "/api/identity-providers/{idpId}", Mutation: ReadOnly},
 	"posture_checks.list":       {Name: "posture_checks.list", Method: "GET", Path: "/api/posture-checks", Mutation: ReadOnly},

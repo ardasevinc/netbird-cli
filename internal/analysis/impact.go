@@ -83,6 +83,22 @@ func PolicyCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func DNSZoneCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode dns zone create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "dns_zone_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating a DNS zone can change name-resolution behavior for distributed peers; affected peers and records require live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "dns_zone_create_requires_dns_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

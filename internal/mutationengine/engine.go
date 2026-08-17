@@ -51,6 +51,8 @@ type Remote interface {
 	CreateNetworkRouter(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	UpdateNetworkRouter(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNetworkRouter(context.Context, string, string) (json.RawMessage, error)
+	ListDNSZonesRaw(context.Context) (json.RawMessage, error)
+	CreateDNSZone(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -249,6 +251,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPolicyRaw(ctx, target.ID)
 	case "policies.create":
 		return remote.ListPoliciesRaw(ctx)
+	case "dns.zones.create":
+		return remote.ListDNSZonesRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -304,6 +308,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreatePolicy(ctx, body)
+	case "dns.zones.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateDNSZone(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -362,7 +372,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -458,6 +468,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PolicyDeleteImpact(before)
 	case "policies.create":
 		return analysis.PolicyCreateImpact(intendedAfter)
+	case "dns.zones.create":
+		return analysis.DNSZoneCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
