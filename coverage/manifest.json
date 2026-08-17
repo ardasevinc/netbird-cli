@@ -578,27 +578,31 @@
       "id": "post.api.integrations.billing.aws.marketplace.activate",
       "method": "POST",
       "path": "/api/integrations/billing/aws/marketplace/activate",
-      "implementation": "discovered",
-      "verification": ""
+      "availability": "cloud_entitled",
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.billing.aws.marketplace.enrich",
       "method": "POST",
       "path": "/api/integrations/billing/aws/marketplace/enrich",
-      "implementation": "discovered",
-      "verification": ""
+      "availability": "cloud_entitled",
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.billing.checkout",
       "method": "POST",
       "path": "/api/integrations/billing/checkout",
-      "implementation": "discovered",
-      "verification": ""
+      "availability": "cloud_entitled",
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.invoices",
       "method": "GET",
       "path": "/api/integrations/billing/invoices",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -606,6 +610,7 @@
       "id": "get.api.integrations.billing.invoices.id.csv",
       "method": "GET",
       "path": "/api/integrations/billing/invoices/{id}/csv",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -613,6 +618,7 @@
       "id": "get.api.integrations.billing.invoices.id.pdf",
       "method": "GET",
       "path": "/api/integrations/billing/invoices/{id}/pdf",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -620,6 +626,7 @@
       "id": "get.api.integrations.billing.plans",
       "method": "GET",
       "path": "/api/integrations/billing/plans",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -627,6 +634,7 @@
       "id": "get.api.integrations.billing.portal",
       "method": "GET",
       "path": "/api/integrations/billing/portal",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -634,6 +642,7 @@
       "id": "get.api.integrations.billing.subscription",
       "method": "GET",
       "path": "/api/integrations/billing/subscription",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },
@@ -641,13 +650,15 @@
       "id": "put.api.integrations.billing.subscription",
       "method": "PUT",
       "path": "/api/integrations/billing/subscription",
-      "implementation": "discovered",
-      "verification": ""
+      "availability": "cloud_entitled",
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.billing.usage",
       "method": "GET",
       "path": "/api/integrations/billing/usage",
+      "availability": "cloud_entitled",
       "implementation": "implemented",
       "verification": "contract_verified"
     },

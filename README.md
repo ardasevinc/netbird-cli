@@ -267,3 +267,11 @@ MSP tenant stages cover tenant creation, delegated metadata changes, DNS
 verification, invitation flow, subscription changes, and unlinking. They use
 blocking tenant-account impact findings, exact tenant preimages, collection
 read-back, and explicit absence proof for unlinking.
+
+Billing stages cover AWS Marketplace activation and enrichment, external
+checkout-session creation, and subscription changes. These operations are
+Cloud-entitlement gated: apply probes the billing subscription capability before
+dispatch, fails closed on unsupported self-hosted servers, and requires a
+blocking entitlement finding. Subscription mutations use exact subscription
+preimages and read-back; checkout returns only the response-proven session id
+and URL.

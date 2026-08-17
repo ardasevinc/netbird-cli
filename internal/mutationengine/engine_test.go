@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ardasevinc/netbird-cli/internal/analysis"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
 	"github.com/ardasevinc/netbird-cli/internal/mutation"
 	"github.com/ardasevinc/netbird-cli/internal/transport"
@@ -123,6 +124,10 @@ type fakeRemote struct {
 	mspTenantBefore        json.RawMessage
 	mspTenantAfter         json.RawMessage
 	mspTenantBody          json.RawMessage
+	billingBefore          json.RawMessage
+	billingAfter           json.RawMessage
+	billingCheckout        json.RawMessage
+	billingBody            json.RawMessage
 }
 
 type notificationChannelState struct {
@@ -1703,6 +1708,50 @@ func (f *fakeRemote) mspTenantAction() (json.RawMessage, error) {
 	f.mspTenantBefore = append(json.RawMessage(nil), f.mspTenantAfter...)
 	f.mspTenantCollection = json.RawMessage("[" + string(f.mspTenantAfter) + "]")
 	return append(json.RawMessage(nil), f.mspTenantAfter...), nil
+}
+
+func (f *fakeRemote) GetBillingSubscriptionRaw(_ context.Context) (json.RawMessage, error) {
+	if f.billingBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "billing unavailable"}
+	}
+	return append(json.RawMessage(nil), f.billingBefore...), nil
+}
+
+func (f *fakeRemote) ActivateAWSMarketplaceBilling(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	return f.billingUpdate(body)
+}
+
+func (f *fakeRemote) EnrichAWSMarketplaceBilling(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	return f.billingUpdate(body)
+}
+
+func (f *fakeRemote) CreateBillingCheckout(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.billingBody = append(json.RawMessage(nil), body...)
+	if f.billingCheckout == nil {
+		f.billingCheckout = json.RawMessage(`{"session_id":"cs_test_123","url":"https://checkout.example/cs_test_123"}`)
+	}
+	return append(json.RawMessage(nil), f.billingCheckout...), nil
+}
+
+func (f *fakeRemote) UpdateBillingSubscription(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	return f.billingUpdate(body)
+}
+
+func (f *fakeRemote) billingUpdate(body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.billingBody = append(json.RawMessage(nil), body...)
+	if f.billingAfter == nil {
+		return nil, errors.New("missing billing subscription")
+	}
+	f.billingBefore = append(json.RawMessage(nil), f.billingAfter...)
+	return append(json.RawMessage(nil), f.billingAfter...), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -3677,6 +3726,62 @@ func TestApplyMSPTenantCreateAndUnlinkConfirmBoundaries(t *testing.T) {
 	var body map[string]any
 	if err := json.Unmarshal(remote.mspTenantBody, &body); err != nil || body["owner"] != "owner-1" || body["id"] != nil {
 		t.Fatalf("unexpected unlink body: %s", remote.mspTenantBody)
+	}
+}
+
+func TestApplyBillingMutationsUseSubscriptionPreimageAndCheckoutResponse(t *testing.T) {
+	before := json.RawMessage(`{"active":true,"plan_tier":"basic","price_id":"price_basic"}`)
+	after := json.RawMessage(`{"active":true,"plan_tier":"business","price_id":"price_business"}`)
+	cases := []struct {
+		name      string
+		operation string
+		request   json.RawMessage
+		intended  json.RawMessage
+		impact    analysis.ImpactReport
+	}{
+		{name: "activate", operation: "billing.aws_marketplace.activate", request: json.RawMessage(`{"plan_tier":"business"}`), intended: after},
+		{name: "enrich", operation: "billing.aws_marketplace.enrich", request: json.RawMessage(`{"aws_user_id":"aws-user"}`), intended: after},
+		{name: "subscription", operation: "billing.subscription.update", request: json.RawMessage(`{"priceID":"price_business","plan_tier":"business"}`), intended: after},
+		{name: "checkout", operation: "billing.checkout.create", request: json.RawMessage(`{"baseURL":"https://app.example/success","priceID":"price_business","enableTrial":true}`), intended: json.RawMessage(`{"session_id":"cs_test_123","url":"https://checkout.example/cs_test_123"}`)},
+	}
+	for i := range cases {
+		t.Run(cases[i].name, func(t *testing.T) {
+			var err error
+			switch cases[i].operation {
+			case "billing.aws_marketplace.activate":
+				cases[i].impact, err = analysis.BillingAWSMarketplaceImpact("activate", before, cases[i].intended)
+			case "billing.aws_marketplace.enrich":
+				cases[i].impact, err = analysis.BillingAWSMarketplaceImpact("enrich", before, cases[i].intended)
+			case "billing.subscription.update":
+				cases[i].impact, err = analysis.BillingSubscriptionUpdateImpact(before, cases[i].intended)
+			case "billing.checkout.create":
+				cases[i].impact, err = analysis.BillingCheckoutImpact(cases[i].intended)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			impact, err := json.Marshal(cases[i].impact)
+			if err != nil {
+				t.Fatal(err)
+			}
+			store, err := ledger.Open(t.TempDir() + "/ledger.db")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: cases[i].operation, Request: cases[i].request, Before: before, IntendedAfter: cases[i].intended, Impact: impact, Findings: []ledger.Finding{{Code: "impact." + cases[i].impact.Classification, Severity: "blocking", Message: "billing mutation requires exact acknowledgement"}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			remote := &fakeRemote{identity: "https://nb.test", account: "account-1", billingBefore: before, billingAfter: after}
+			result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+				t.Fatalf("unexpected billing result: %+v updates=%d", result, remote.updates)
+			}
+		})
 	}
 }
 

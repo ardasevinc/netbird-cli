@@ -17,3 +17,15 @@ func TestUnknownOperationIsNotAdmitted(t *testing.T) {
 		t.Fatal("unknown operation was admitted")
 	}
 }
+
+func TestBillingOperationsAreCloudEntitlementGated(t *testing.T) {
+	for _, name := range []string{"billing.aws_marketplace.activate", "billing.aws_marketplace.enrich", "billing.checkout.create", "billing.subscription.update"} {
+		definition, err := Lookup(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if definition.Availability != "cloud_entitled" {
+			t.Fatalf("%s availability = %q", name, definition.Availability)
+		}
+	}
+}

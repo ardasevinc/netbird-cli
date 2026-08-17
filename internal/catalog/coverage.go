@@ -9,6 +9,7 @@ type Operation struct {
 	ID             string `json:"id"`
 	Method         string `json:"method"`
 	Path           string `json:"path"`
+	Availability   string `json:"availability,omitempty"`
 	Implementation string `json:"implementation"`
 	Verification   string `json:"verification"`
 }

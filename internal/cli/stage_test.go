@@ -78,6 +78,27 @@ func TestStageCreatePolicyRuleChangeRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateBillingCheckoutRequiresCloudEntitlementAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"billing.checkout.create","request":{"baseURL":"https://app.example/success","priceID":"price_business","enableTrial":true},"before":{"active":true,"plan_tier":"basic","price_id":"price_basic"},"intended_after":{"session_id":"cs_test_123","url":"https://checkout.example/cs_test_123"}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	output := stdout.String()
+	if !strings.Contains(output, `"code":"impact.billing_checkout_create"`) || !strings.Contains(output, `"availability":"cloud_entitled"`) {
+		t.Fatalf("billing checkout stage evidence missing: %s", output)
+	}
+}
+
 func TestStageCreateAccountUpdateRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

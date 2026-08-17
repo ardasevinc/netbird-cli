@@ -199,6 +199,11 @@ type Remote interface {
 	RespondMSPTenantInvite(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	CreateMSPTenantSubscription(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	UnlinkMSPTenant(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	GetBillingSubscriptionRaw(context.Context) (json.RawMessage, error)
+	ActivateAWSMarketplaceBilling(context.Context, json.RawMessage) (json.RawMessage, error)
+	EnrichAWSMarketplaceBilling(context.Context, json.RawMessage) (json.RawMessage, error)
+	CreateBillingCheckout(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateBillingSubscription(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -386,7 +391,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	result.AttemptID = attempt.ID
-	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" && stage.Operation != "scim.token" && stage.Operation != "okta_scim.token" && !isMSPActionOperation(stage.Operation) {
+	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" && stage.Operation != "scim.token" && stage.Operation != "okta_scim.token" && !isMSPActionOperation(stage.Operation) && !isBillingActionOperation(stage.Operation) {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
 	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
@@ -414,6 +419,16 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		}
 		result.OneTimeSecret = secret
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "SCIM token regeneration endpoint confirmed success")
+	}
+	if stage.Operation == "billing.checkout.create" {
+		matches, err := objectContains(dispatchResult, stage.IntendedAfter)
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "billing checkout response could not be compared with intent")
+		}
+		if !matches {
+			return finish(ctx, store, result, mutation.Partial, "billing checkout response differs from intended state")
+		}
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "billing checkout response matches intended state")
 	}
 	if isCreateOperation(stage.Operation) {
 		if stage.Operation == "peers.temporary_access.create" {
@@ -777,6 +792,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListMSPTenantsRaw(ctx)
 	case "msp.tenants.update", "msp.tenants.dns", "msp.tenants.invite", "msp.tenants.invite.respond", "msp.tenants.subscription", "msp.tenants.unlink":
 		return remote.GetMSPTenantRaw(ctx, target.ID)
+	case "billing.aws_marketplace.activate", "billing.aws_marketplace.enrich", "billing.checkout.create", "billing.subscription.update":
+		return remote.GetBillingSubscriptionRaw(ctx)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -1238,6 +1255,30 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.UnlinkMSPTenant(ctx, target.ID, body)
+	case "billing.aws_marketplace.activate":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.ActivateAWSMarketplaceBilling(ctx, body)
+	case "billing.aws_marketplace.enrich":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.EnrichAWSMarketplaceBilling(ctx, body)
+	case "billing.checkout.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateBillingCheckout(ctx, body)
+	case "billing.subscription.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateBillingSubscription(ctx, body)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1344,8 +1385,17 @@ func isMSPActionOperation(operation string) bool {
 	}
 }
 
+func isBillingActionOperation(operation string) bool {
+	switch operation {
+	case "billing.aws_marketplace.activate", "billing.aws_marketplace.enrich", "billing.checkout.create":
+		return true
+	default:
+		return false
+	}
+}
+
 func isTargetlessOperation(operation string) bool {
-	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete" || strings.HasPrefix(operation, "edr.")
+	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete" || strings.HasPrefix(operation, "edr.") || strings.HasPrefix(operation, "billing.")
 }
 
 func isUserTokenDeleteOperation(operation string) bool {
@@ -2042,6 +2092,14 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.MSPTenantActionImpact("subscription", before)
 	case "msp.tenants.unlink":
 		return analysis.MSPTenantActionImpact("unlink", before)
+	case "billing.aws_marketplace.activate":
+		return analysis.BillingAWSMarketplaceImpact("activate", before, intendedAfter)
+	case "billing.aws_marketplace.enrich":
+		return analysis.BillingAWSMarketplaceImpact("enrich", before, intendedAfter)
+	case "billing.checkout.create":
+		return analysis.BillingCheckoutImpact(intendedAfter)
+	case "billing.subscription.update":
+		return analysis.BillingSubscriptionUpdateImpact(before, intendedAfter)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":

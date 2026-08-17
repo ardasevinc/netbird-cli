@@ -25,6 +25,10 @@ Personal access token deletion is capability-gated, blocking, and requires exact
 Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
 Setup-key updates and deletion are capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and read-back or absence proof; setup-key creation remains one-time-secret gated.
 
+Billing stages are Cloud-entitlement gated and blocking. AWS Marketplace actions
+and subscription changes require an exact subscription preimage and read-back;
+checkout creates an external payment session and returns its response proof only.
+
 Temporary-access peer creation is capability-gated and blocking, with scoped-access impact evidence, exact target-peer preimage verification, and response-based proof because the ephemeral peer has no durable read-back surface.
 
 Event-streaming integration create, update, and delete are capability-gated and blocking. Plans carry only `config_ref`; resolved receiver configuration exists in memory for dispatch, while masked server metadata is used for read-back.

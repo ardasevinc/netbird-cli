@@ -1283,6 +1283,36 @@ func MSPTenantActionImpact(kind string, before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "msp_tenant_" + kind, Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"the MSP tenant " + kind + " action changes external customer-account administration and requires tenant read-back or absence proof"}, Completeness: map[string]any{"state": "unknown", "reason": "msp_tenant_action_boundary"}}, nil
 }
 
+func BillingAWSMarketplaceImpact(action string, before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode billing AWS Marketplace %s preimage: %w", action, err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode billing AWS Marketplace %s intent: %w", action, err)
+	}
+	return ImpactReport{Classification: "billing_aws_marketplace_" + action, Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"the AWS Marketplace billing action changes external subscription entitlement and is available only on entitled NetBird Cloud accounts; the subscription read-back is the authoritative postcondition"}, Completeness: map[string]any{"state": "unknown", "reason": "billing_cloud_entitlement_boundary"}}, nil
+}
+
+func BillingCheckoutImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode billing checkout intent: %w", err)
+	}
+	return ImpactReport{Classification: "billing_checkout_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a billing checkout session creates an external payment flow; the returned session_id and url are the sole response proof and the checkout URL is never persisted by nb"}, Completeness: map[string]any{"state": "unknown", "reason": "billing_external_checkout_boundary"}}, nil
+}
+
+func BillingSubscriptionUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode billing subscription preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode billing subscription intent: %w", err)
+	}
+	return ImpactReport{Classification: "billing_subscription_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"changing the billing subscription changes external payment entitlement and may alter account feature access; the subscription read-back is the authoritative postcondition"}, Completeness: map[string]any{"state": "unknown", "reason": "billing_cloud_entitlement_boundary"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

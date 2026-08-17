@@ -241,7 +241,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "edr.intune.create", "edr.intune.update", "edr.intune.delete", "edr.sentinelone.create", "edr.sentinelone.update", "edr.sentinelone.delete", "edr.falcon.create", "edr.falcon.update", "edr.falcon.delete", "edr.huntress.create", "edr.huntress.update", "edr.huntress.delete", "edr.fleetdm.create", "edr.fleetdm.update", "edr.fleetdm.delete", "scim.create", "scim.update", "scim.delete", "scim.token", "okta_scim.create", "okta_scim.update", "okta_scim.delete", "okta_scim.token", "msp.tenants.create", "msp.tenants.update", "msp.tenants.dns", "msp.tenants.invite", "msp.tenants.invite.respond", "msp.tenants.subscription", "msp.tenants.unlink", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "edr.intune.create", "edr.intune.update", "edr.intune.delete", "edr.sentinelone.create", "edr.sentinelone.update", "edr.sentinelone.delete", "edr.falcon.create", "edr.falcon.update", "edr.falcon.delete", "edr.huntress.create", "edr.huntress.update", "edr.huntress.delete", "edr.fleetdm.create", "edr.fleetdm.update", "edr.fleetdm.delete", "scim.create", "scim.update", "scim.delete", "scim.token", "okta_scim.create", "okta_scim.update", "okta_scim.delete", "okta_scim.token", "msp.tenants.create", "msp.tenants.update", "msp.tenants.dns", "msp.tenants.invite", "msp.tenants.invite.respond", "msp.tenants.subscription", "msp.tenants.unlink", "billing.aws_marketplace.activate", "billing.aws_marketplace.enrich", "billing.checkout.create", "billing.subscription.update", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -457,6 +457,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.MSPTenantActionImpact("subscription", plan.Before)
 				case "msp.tenants.unlink":
 					report, err = analysis.MSPTenantActionImpact("unlink", plan.Before)
+				case "billing.aws_marketplace.activate":
+					report, err = analysis.BillingAWSMarketplaceImpact("activate", plan.Before, plan.IntendedAfter)
+				case "billing.aws_marketplace.enrich":
+					report, err = analysis.BillingAWSMarketplaceImpact("enrich", plan.Before, plan.IntendedAfter)
+				case "billing.checkout.create":
+					report, err = analysis.BillingCheckoutImpact(plan.IntendedAfter)
+				case "billing.subscription.update":
+					report, err = analysis.BillingSubscriptionUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -825,6 +833,18 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "msp.tenants.unlink" && report.Classification == "msp_tenant_unlink":
 					findingCode = "impact.msp_tenant_unlink"
 					findingMessage = "unlinking the MSP tenant removes delegated management and requires exact acknowledgement"
+				case plan.Operation == "billing.aws_marketplace.activate" && report.Classification == "billing_aws_marketplace_activate":
+					findingCode = "impact.billing_aws_marketplace_activate"
+					findingMessage = "activating AWS Marketplace billing changes external subscription entitlement and requires exact acknowledgement"
+				case plan.Operation == "billing.aws_marketplace.enrich" && report.Classification == "billing_aws_marketplace_enrich":
+					findingCode = "impact.billing_aws_marketplace_enrich"
+					findingMessage = "enriching AWS Marketplace billing changes external subscription linkage and requires exact acknowledgement"
+				case plan.Operation == "billing.checkout.create" && report.Classification == "billing_checkout_create":
+					findingCode = "impact.billing_checkout_create"
+					findingMessage = "creating a payment checkout session starts an external billing flow and requires exact acknowledgement"
+				case plan.Operation == "billing.subscription.update" && report.Classification == "billing_subscription_change":
+					findingCode = "impact.billing_subscription_change"
+					findingMessage = "changing the billing subscription alters external entitlement and requires exact acknowledgement"
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"
@@ -880,7 +900,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation, "mutation": definition.Mutation, "dispatcher_admitted": definition.DispatcherAdmitted, "impact": json.RawMessage(stage.Impact), "findings": stage.Findings}
+			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "digest": stage.Digest, "applicability": "local_stage_only", "operation": stage.Operation, "mutation": definition.Mutation, "availability": definition.Availability, "dispatcher_admitted": definition.DispatcherAdmitted, "impact": json.RawMessage(stage.Impact), "findings": stage.Findings}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/stage-result", "ok": true, "operation": "stage.create", "data": data})
 			}
@@ -911,7 +931,11 @@ func stageShowCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "profile": stage.Profile, "server_identity": stage.ServerIdentity, "account_id": stage.AccountID, "operation": stage.Operation, "request": json.RawMessage(stage.Request), "before": json.RawMessage(stage.Before), "intended_after": json.RawMessage(stage.IntendedAfter), "impact": json.RawMessage(stage.Impact), "digest": stage.Digest, "findings": stage.Findings, "cancelled": stage.Cancelled, "created_at": stage.CreatedAt}
+			definition, err := operations.Lookup(stage.Operation)
+			if err != nil {
+				return fail(2, err)
+			}
+			data := map[string]any{"stage_id": stage.ID, "revision": stage.Revision, "profile": stage.Profile, "server_identity": stage.ServerIdentity, "account_id": stage.AccountID, "operation": stage.Operation, "availability": definition.Availability, "request": json.RawMessage(stage.Request), "before": json.RawMessage(stage.Before), "intended_after": json.RawMessage(stage.IntendedAfter), "impact": json.RawMessage(stage.Impact), "digest": stage.Digest, "findings": stage.Findings, "cancelled": stage.Cancelled, "created_at": stage.CreatedAt}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/stage-result", "ok": true, "operation": "stage.show", "data": data})
 			}

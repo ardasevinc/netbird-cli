@@ -17,6 +17,7 @@ type Definition struct {
 	Name               string
 	Method             string
 	Path               string
+	Availability       string
 	Mutation           MutationClass
 	RequiresPreimage   bool
 	RequiresReadBack   bool
@@ -95,6 +96,10 @@ var definitions = map[string]Definition{
 	"msp.tenants.invite.respond":        {Name: "msp.tenants.invite.respond", Method: "PUT", Path: "/api/integrations/msp/tenants/{id}/invite", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"msp.tenants.subscription":          {Name: "msp.tenants.subscription", Method: "POST", Path: "/api/integrations/msp/tenants/{id}/subscription", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"msp.tenants.unlink":                {Name: "msp.tenants.unlink", Method: "POST", Path: "/api/integrations/msp/tenants/{id}/unlink", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"billing.aws_marketplace.activate":  {Name: "billing.aws_marketplace.activate", Method: "POST", Path: "/api/integrations/billing/aws/marketplace/activate", Availability: "cloud_entitled", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"billing.aws_marketplace.enrich":    {Name: "billing.aws_marketplace.enrich", Method: "POST", Path: "/api/integrations/billing/aws/marketplace/enrich", Availability: "cloud_entitled", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"billing.checkout.create":           {Name: "billing.checkout.create", Method: "POST", Path: "/api/integrations/billing/checkout", Availability: "cloud_entitled", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
+	"billing.subscription.update":       {Name: "billing.subscription.update", Method: "PUT", Path: "/api/integrations/billing/subscription", Availability: "cloud_entitled", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"posture_checks.list":               {Name: "posture_checks.list", Method: "GET", Path: "/api/posture-checks", Mutation: ReadOnly},
 	"posture_checks.get":                {Name: "posture_checks.get", Method: "GET", Path: "/api/posture-checks/{postureCheckId}", Mutation: ReadOnly},
 	"posture_checks.create":             {Name: "posture_checks.create", Method: "POST", Path: "/api/posture-checks", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
