@@ -126,6 +126,8 @@ Nameserver-group updates are always treated as blocking
 confirmation.
 Nameserver-group deletion is staged with blocking `impact.dns_nameserver_delete`
 acknowledgement and the same required 404 absence proof.
+DNS-settings updates are targetless but still require exact settings preimage,
+blocking `impact.dns_settings_change` acknowledgement, and read-back proof.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.

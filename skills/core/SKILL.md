@@ -76,6 +76,7 @@ DNS record deletion is blocking and requires the same absence proof.
 Nameserver-group creation is blocking and requires collection preimage and read-back proof.
 Nameserver-group updates are blocking and require exact preimage and read-back proof.
 Nameserver-group deletion is blocking and requires the same absence proof.
+DNS-settings updates are blocking and require exact preimage and read-back proof.
 Network resource deletion is blocking and requires the same absence proof.
 Network resource address, enablement, or group changes are blocking.
 Network resource creation is blocking and requires collection preimage and read-back proof.

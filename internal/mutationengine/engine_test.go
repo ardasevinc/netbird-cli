@@ -32,6 +32,8 @@ type fakeRemote struct {
 	nameserverCollection json.RawMessage
 	nameserverBefore     json.RawMessage
 	nameserverAfter      json.RawMessage
+	dnsSettingsBefore    json.RawMessage
+	dnsSettingsAfter     json.RawMessage
 	resourceBefore       json.RawMessage
 	resourceAfter        json.RawMessage
 	resourceCollection   json.RawMessage
@@ -100,6 +102,22 @@ func (f *fakeRemote) DeleteNameserverGroup(_ context.Context, _ string) (json.Ra
 	}
 	f.nameserverBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) GetDNSSettingsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.dnsSettingsBefore == nil {
+		return json.RawMessage(`{"disabled_management_groups":[]}`), nil
+	}
+	return append(json.RawMessage(nil), f.dnsSettingsBefore...), nil
+}
+
+func (f *fakeRemote) UpdateDNSSettings(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.dnsSettingsBefore = append(json.RawMessage(nil), f.dnsSettingsAfter...)
+	return append(json.RawMessage(nil), f.dnsSettingsAfter...), nil
 }
 
 func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
@@ -853,6 +871,40 @@ func TestApplyDispatchesNameserverGroupDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected nameserver delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesDNSSettingsUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"disabled_management_groups":["g1"]}`
+	after := `{"disabled_management_groups":["g1","g2"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.settings.update",
+		Request:        json.RawMessage(after),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"dns_settings_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating DNS settings can change resolver behavior for distributed peers; affected peers and domains require live analysis"],"completeness":{"state":"unknown","reason":"dns_settings_update_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_settings_change", Severity: "blocking", Message: "the proposed DNS settings change may alter resolver behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", dnsSettingsBefore: []byte(before), dnsSettingsAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected dns settings update result: %+v updates=%d", result, remote.updates)
 	}
 }
 

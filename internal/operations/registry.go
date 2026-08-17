@@ -33,6 +33,7 @@ var definitions = map[string]Definition{
 	"dns.nameservers.update":    {Name: "dns.nameservers.update", Method: "PUT", Path: "/api/dns/nameservers/{nsgroupId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"dns.nameservers.delete":    {Name: "dns.nameservers.delete", Method: "DELETE", Path: "/api/dns/nameservers/{nsgroupId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"dns.settings":              {Name: "dns.settings", Method: "GET", Path: "/api/dns/settings", Mutation: ReadOnly},
+	"dns.settings.update":       {Name: "dns.settings.update", Method: "PUT", Path: "/api/dns/settings", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"dns.zones.list":            {Name: "dns.zones.list", Method: "GET", Path: "/api/dns/zones", Mutation: ReadOnly},
 	"dns.zones.get":             {Name: "dns.zones.get", Method: "GET", Path: "/api/dns/zones/{zoneId}", Mutation: ReadOnly},
 	"dns.zones.create":          {Name: "dns.zones.create", Method: "POST", Path: "/api/dns/zones", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

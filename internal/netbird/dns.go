@@ -184,6 +184,22 @@ func (c *Client) GetDNSSettings(ctx context.Context) (DNSSettings, error) {
 	return result, nil
 }
 
+func (c *Client) GetDNSSettingsRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/dns/settings", nil, &result); err != nil {
+		return nil, fmt.Errorf("get dns settings: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateDNSSettings(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, "/api/dns/settings", request, &result); err != nil {
+		return nil, fmt.Errorf("update dns settings: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListDNSZones(ctx context.Context) ([]DNSZone, error) {
 	var result []dnsZoneWire
 	if err := c.transport.GetJSON(ctx, "/api/dns/zones", &result); err != nil {

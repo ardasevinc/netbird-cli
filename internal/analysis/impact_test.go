@@ -151,6 +151,19 @@ func TestDNSNameserverDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSSettingsUpdateImpactIsConservative(t *testing.T) {
+	report, err := DNSSettingsUpdateImpact(
+		[]byte(`{"disabled_management_groups":["g1"]}`),
+		[]byte(`{"disabled_management_groups":["g1","g2"]}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_settings_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),

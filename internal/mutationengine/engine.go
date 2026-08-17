@@ -66,6 +66,8 @@ type Remote interface {
 	GetNameserverGroupRaw(context.Context, string) (json.RawMessage, error)
 	UpdateNameserverGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNameserverGroup(context.Context, string) (json.RawMessage, error)
+	GetDNSSettingsRaw(context.Context) (json.RawMessage, error)
+	UpdateDNSSettings(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -140,7 +142,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation)) {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation)) {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
@@ -286,6 +288,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetNameserverGroupRaw(ctx, target.ID)
 	case "dns.nameservers.delete":
 		return remote.GetNameserverGroupRaw(ctx, target.ID)
+	case "dns.settings.update":
+		return remote.GetDNSSettingsRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -379,6 +383,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateNameserverGroup(ctx, target.ID, body)
 	case "dns.nameservers.delete":
 		return remote.DeleteNameserverGroup(ctx, target.ID)
+	case "dns.settings.update":
+		return remote.UpdateDNSSettings(ctx, request)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -438,6 +444,10 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 
 func isCreateOperation(operation string) bool {
 	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create"
+}
+
+func isTargetlessOperation(operation string) bool {
+	return operation == "dns.settings.update"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -552,6 +562,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSNameserverUpdateImpact(before, intendedAfter)
 	case "dns.nameservers.delete":
 		return analysis.DNSNameserverDeleteImpact(before)
+	case "dns.settings.update":
+		return analysis.DNSSettingsUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

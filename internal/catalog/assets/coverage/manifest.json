@@ -274,11 +274,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.dns.settings",
+      "id": "dns.settings.update",
       "method": "PUT",
       "path": "/api/dns/settings",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "dns.zones.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 129,
+    "implemented": 130,
     "classified": 0,
-    "discovered": 107,
-    "contract_verified": 120,
+    "discovered": 106,
+    "contract_verified": 121,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
