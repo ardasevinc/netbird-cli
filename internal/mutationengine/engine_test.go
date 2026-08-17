@@ -81,6 +81,10 @@ type fakeRemote struct {
 	identityProviderAfter  json.RawMessage
 	identityProviderList   json.RawMessage
 	identityProviderBody   json.RawMessage
+	proxyTokenBefore       json.RawMessage
+	proxyTokenCollection   json.RawMessage
+	proxyTokenAfter        json.RawMessage
+	proxyTokenBody         json.RawMessage
 	temporaryAccessBody    json.RawMessage
 	temporaryAccessResult  json.RawMessage
 	edrBypassed            json.RawMessage
@@ -1124,6 +1128,36 @@ func (f *fakeRemote) DeleteIdentityProvider(_ context.Context, _ string) (json.R
 		return nil, f.updateErr
 	}
 	f.identityProviderBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListReverseProxyTokensRaw(_ context.Context) (json.RawMessage, error) {
+	if f.proxyTokenCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.proxyTokenCollection...), nil
+}
+
+func (f *fakeRemote) CreateReverseProxyToken(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyTokenBody = append(json.RawMessage(nil), body...)
+	if f.proxyTokenAfter == nil {
+		return nil, errors.New("missing proxy token")
+	}
+	f.proxyTokenCollection = json.RawMessage("[" + string(f.proxyTokenAfter) + "]")
+	return json.RawMessage(`{"id":"token-1","name":"byop","plain_token":"one-time-proxy-token"}`), nil
+}
+
+func (f *fakeRemote) DeleteReverseProxyToken(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyTokenBefore = nil
+	f.proxyTokenCollection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -2759,6 +2793,28 @@ func TestApplyIdentityProviderResolvesClientSecretOnlyAtDispatch(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-client-secret") || !strings.Contains(string(remote.identityProviderBody), "real-client-secret") {
 		t.Fatalf("unexpected identity provider result: %+v body=%s", result, remote.identityProviderBody)
+	}
+}
+
+func TestApplyReturnsReverseProxyTokenOnceWithoutPersistingIt(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"token-1","name":"byop","expires_at":null}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "reverse_proxy_tokens.create", Request: json.RawMessage(`{"name":"byop","expires_in":0}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"reverse_proxy_token_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a reverse proxy token grants an external proxy credential; the clear token is returned once after dispatch and is never persisted"],"completeness":{"state":"unknown","reason":"reverse_proxy_token_external_credential"}}`), Findings: []ledger.Finding{{Code: "impact.reverse_proxy_token_create", Severity: "blocking", Message: "creating the reverse proxy token grants an external proxy credential and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", proxyTokenCollection: []byte(before), proxyTokenAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "one-time-proxy-token" || remote.updates != 1 || strings.Contains(string(stage.Request), "one-time-proxy-token") {
+		t.Fatalf("unexpected reverse proxy token result: %+v updates=%d", result, remote.updates)
 	}
 }
 

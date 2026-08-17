@@ -1019,6 +1019,22 @@ func IdentityProviderDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "identity_provider_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an identity provider removes an account authentication ingress and may strand users relying on it"}, Completeness: map[string]any{"state": "unknown", "reason": "identity_provider_authentication_boundary"}}, nil
 }
 
+func ReverseProxyTokenCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy token create intent: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_token_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a reverse proxy token grants an external proxy credential; the clear token is returned once after dispatch and is never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_token_external_credential"}}, nil
+}
+
+func ReverseProxyTokenDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy token delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_token_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a reverse proxy token revokes the credential and disconnects proxies using it"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_token_external_credential"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

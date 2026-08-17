@@ -1401,18 +1401,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.reverse_proxies.proxy_tokens",
+      "id": "reverse_proxy_tokens.create",
       "method": "POST",
       "path": "/api/reverse-proxies/proxy-tokens",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.reverse_proxies.proxy_tokens.tokenId",
+      "id": "reverse_proxy_tokens.delete",
       "method": "DELETE",
       "path": "/api/reverse-proxies/proxy-tokens/{tokenId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.reverse_proxies.services",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 181,
+    "implemented": 183,
     "classified": 0,
-    "discovered": 55,
-    "contract_verified": 172,
+    "discovered": 53,
+    "contract_verified": 174,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

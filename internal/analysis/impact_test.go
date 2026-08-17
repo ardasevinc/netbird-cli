@@ -794,6 +794,25 @@ func TestIdentityProviderImpactsAreConservative(t *testing.T) {
 	}
 }
 
+func TestReverseProxyTokenImpactsAreConservative(t *testing.T) {
+	create, err := ReverseProxyTokenCreateImpact([]byte(`{"id":"token-1","name":"byop"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := ReverseProxyTokenDeleteImpact([]byte(`{"id":"token-1","name":"byop"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Classification != "reverse_proxy_token_create" || remove.Classification != "reverse_proxy_token_delete" {
+		t.Fatalf("unexpected classifications: %q %q", create.Classification, remove.Classification)
+	}
+	for _, report := range []ImpactReport{create, remove} {
+		if report.Confidence != "high" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected reverse proxy token impact: %+v", report)
+		}
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {
