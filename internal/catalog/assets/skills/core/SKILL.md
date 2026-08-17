@@ -22,6 +22,7 @@ User create/update/delete and approval/rejection mutations are capability-gated,
 Personal access token deletion is capability-gated, blocking, and requires exact token preimage plus absence proof; token values are never represented by the owned metadata model.
 Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
 Setup-key deletion is capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and absence proof; setup-key creation remains one-time-secret gated.
+Authenticated invite create, delete, and regenerate mutations are capability-gated and blocking; invite tokens are returned once only and never persisted in stages, receipts, logs, or errors.
 Setup-key creation returns the clear key once in the successful apply result and omits it from stages, receipts, logs, and errors.
 # nb core
 

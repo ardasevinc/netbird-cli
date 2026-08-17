@@ -1149,3 +1149,34 @@ func TestStageCreateNetworkRouterChangeRequiresAcknowledgement(t *testing.T) {
 		t.Fatalf("network router impact acknowledgement finding missing: %s", stdout.String())
 	}
 }
+
+func TestStageCreateInviteMutationsRequireAcknowledgement(t *testing.T) {
+	cases := []struct {
+		name, operation, request, before, after, finding string
+	}{
+		{"create", "users.invites.create", `{"email":"a@example.com","name":"New","role":"user","auto_groups":[]}`, `[]`, `{"id":"invite-1","email":"a@example.com","name":"New","role":"user","auto_groups":[],"expired":false}`, "impact.invite_create"},
+		{"delete", "users.invites.delete", `{"invite_id":"invite-1"}`, `{"id":"invite-1","email":"a@example.com"}`, `{}`, "impact.invite_delete"},
+		{"regenerate", "users.invites.regenerate", `{"invite_id":"invite-1","expires_in":3600}`, `{"id":"invite-1","email":"a@example.com"}`, `{"id":"invite-1","email":"a@example.com","expires_at":"later"}`, "impact.invite_regenerate"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			temp := t.TempDir()
+			configPath := filepath.Join(temp, "config.toml")
+			statePath := filepath.Join(temp, "ledger.db")
+			if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+			var stdout, stderr bytes.Buffer
+			root := newRoot(state, &stdout, &stderr, version.Current())
+			root.SetArgs([]string{"stage", "create", "--from-json"})
+			root.SetIn(strings.NewReader(fmt.Sprintf(`{"operation":%q,"request":%s,"before":%s,"intended_after":%s}`, tc.operation, tc.request, tc.before, tc.after)))
+			if err := root.ExecuteContext(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(stdout.String(), `"code":"`+tc.finding+`"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+				t.Fatalf("invite acknowledgement finding missing: %s", stdout.String())
+			}
+		})
+	}
+}

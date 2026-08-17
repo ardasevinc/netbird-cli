@@ -665,3 +665,26 @@ func TestSetupKeyCreateImpactIsConservative(t *testing.T) {
 		t.Fatalf("unexpected setup key create report: %+v", report)
 	}
 }
+
+func TestInviteMutationsAreConservative(t *testing.T) {
+	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	regenerate, err := InviteRegenerateImpact([]byte(`{"id":"invite-1"}`), []byte(`{"id":"invite-1","expires_at":"later"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := InviteDeleteImpact([]byte(`{"id":"invite-1"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range []ImpactReport{create, regenerate, remove} {
+		if report.Classification == "" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected invite report: %+v", report)
+		}
+	}
+	if create.Classification != "invite_create" || regenerate.Classification != "invite_regenerate" || remove.Classification != "invite_delete" {
+		t.Fatalf("unexpected invite classifications: %q %q %q", create.Classification, regenerate.Classification, remove.Classification)
+	}
+}

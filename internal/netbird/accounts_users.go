@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/ardasevinc/netbird-cli/internal/transport"
 )
 
 // ManagedUser is the stable, non-secret user inventory view. Passwords and
@@ -183,6 +185,72 @@ func (c *Client) ListInvites(ctx context.Context) ([]UserInvite, error) {
 	var result []UserInvite
 	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/users/invites", nil, &result); err != nil {
 		return nil, fmt.Errorf("list user invites: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) ListInvitesRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/users/invites", nil, &result); err != nil {
+		return nil, fmt.Errorf("list user invites: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetInviteRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("invite id is required")
+	}
+	collection, err := c.ListInvitesRaw(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var invites []json.RawMessage
+	if err := json.Unmarshal(collection, &invites); err != nil {
+		return nil, fmt.Errorf("decode user invites: %w", err)
+	}
+	for _, invite := range invites {
+		var candidate struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(invite, &candidate); err != nil {
+			return nil, fmt.Errorf("decode user invite: %w", err)
+		}
+		if candidate.ID == id {
+			return invite, nil
+		}
+	}
+	return nil, &transport.RequestError{Dispatched: true, StatusCode: http.StatusNotFound, Description: "invite not found"}
+}
+
+func (c *Client) CreateInvite(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/users/invites", request, &result); err != nil {
+		return nil, fmt.Errorf("create user invite: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteInvite(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("invite id is required")
+	}
+	path := "/api/users/invites/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete user invite %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) RegenerateInvite(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("invite id is required")
+	}
+	path := "/api/users/invites/" + url.PathEscape(id) + "/regenerate"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("regenerate user invite %q: %w", id, err)
 	}
 	return result, nil
 }

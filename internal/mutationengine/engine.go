@@ -120,6 +120,11 @@ type Remote interface {
 	ListSetupKeysRaw(context.Context) (json.RawMessage, error)
 	CreateSetupKey(context.Context, json.RawMessage) (json.RawMessage, error)
 	DeleteSetupKey(context.Context, string) (json.RawMessage, error)
+	ListInvitesRaw(context.Context) (json.RawMessage, error)
+	GetInviteRaw(context.Context, string) (json.RawMessage, error)
+	CreateInvite(context.Context, json.RawMessage) (json.RawMessage, error)
+	DeleteInvite(context.Context, string) (json.RawMessage, error)
+	RegenerateInvite(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -146,6 +151,7 @@ type requestTarget struct {
 	ZoneID    string `json:"zone_id"`
 	UserID    string `json:"user_id"`
 	TokenID   string `json:"token_id"`
+	InviteID  string `json:"invite_id"`
 }
 
 type Result struct {
@@ -198,7 +204,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation) && stage.Operation != "users.tokens.create") {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation) && stage.Operation != "users.tokens.create" && stage.Operation != "users.invites.delete" && stage.Operation != "users.invites.regenerate") {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
 	if (isUserTokenDeleteOperation(stage.Operation) || stage.Operation == "users.tokens.create") && request.UserID == "" {
@@ -206,6 +212,9 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if isUserTokenDeleteOperation(stage.Operation) && request.TokenID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires token_id", stage.Operation)}
+	}
+	if (stage.Operation == "users.invites.delete" || stage.Operation == "users.invites.regenerate") && request.InviteID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires invite_id", stage.Operation)}
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
@@ -300,10 +309,10 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		if !matches {
 			return finish(ctx, store, result, mutation.Partial, "created resource differs from intended state after create")
 		}
-		if stage.Operation == "users.tokens.create" || stage.Operation == "setup_keys.create" {
+		if stage.Operation == "users.tokens.create" || stage.Operation == "setup_keys.create" || stage.Operation == "users.invites.create" {
 			secret, err := responseSecret(dispatchResult)
 			if err != nil {
-				return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "personal access token was created but its one-time value could not be delivered")
+				return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "created resource applied but its one-time value could not be delivered")
 			}
 			result.OneTimeSecret = secret
 		}
@@ -325,6 +334,13 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if !equal {
 		return finish(ctx, store, result, mutation.Partial, "remote state differs from intended state after update")
+	}
+	if stage.Operation == "users.invites.regenerate" {
+		secret, err := responseSecret(dispatchResult)
+		if err != nil {
+			return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "invite was regenerated but its one-time value could not be delivered")
+		}
+		result.OneTimeSecret = secret
 	}
 	return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote state matches intended state")
 }
@@ -421,6 +437,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetSetupKeyRaw(ctx, target.ID)
 	case "setup_keys.create":
 		return remote.ListSetupKeysRaw(ctx)
+	case "users.invites.create":
+		return remote.ListInvitesRaw(ctx)
+	case "users.invites.delete", "users.invites.regenerate":
+		return remote.GetInviteRaw(ctx, target.InviteID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -648,6 +668,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateSetupKey(ctx, body)
+	case "users.invites.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateInvite(ctx, body)
+	case "users.invites.delete":
+		return remote.DeleteInvite(ctx, target.InviteID)
+	case "users.invites.regenerate":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.RegenerateInvite(ctx, target.InviteID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -706,7 +740,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -822,6 +856,7 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	delete(object, "zone_id")
 	delete(object, "user_id")
 	delete(object, "token_id")
+	delete(object, "invite_id")
 	return json.Marshal(object)
 }
 
@@ -956,6 +991,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.SetupKeyDeleteImpact(before)
 	case "setup_keys.create":
 		return analysis.SetupKeyCreateImpact(intendedAfter)
+	case "users.invites.create":
+		return analysis.InviteCreateImpact(intendedAfter)
+	case "users.invites.regenerate":
+		return analysis.InviteRegenerateImpact(before, intendedAfter)
+	case "users.invites.delete":
+		return analysis.InviteDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -1003,7 +1044,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

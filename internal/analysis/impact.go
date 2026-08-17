@@ -365,6 +365,33 @@ func SetupKeyCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "setup_key_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a setup key can expand peer enrollment authority; the one-time key value is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_create_requires_enrollment_analysis"}}, nil
 }
 
+func InviteCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite create intent: %w", err)
+	}
+	return ImpactReport{Classification: "invite_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating an invite can expand account enrollment authority; the one-time invite token is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "invite_create_requires_enrollment_analysis"}}, nil
+}
+
+func InviteRegenerateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite regeneration preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite regeneration intent: %w", err)
+	}
+	return ImpactReport{Classification: "invite_regenerate", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"regenerating an invite invalidates the previous enrollment token and creates a new one-time token"}, Completeness: map[string]any{"state": "unknown", "reason": "invite_regenerate_requires_enrollment_analysis"}}, nil
+}
+
+func InviteDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode invite delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "invite_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"deleting an invite removes a pending enrollment edge; already-created users require separate account analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "invite_delete_requires_enrollment_analysis"}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

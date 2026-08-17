@@ -61,6 +61,42 @@ func TestUserMutationMethodsUseDeclaredRoutes(t *testing.T) {
 	}
 }
 
+func TestInviteMutationMethodsUseDeclaredRoutes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/users/invites":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "invite-1"}})
+		case r.Method == http.MethodPost && r.URL.Path == "/api/users/invites":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "invite-1", "invite_token": "one-time-invite"})
+		case r.Method == http.MethodDelete && r.URL.EscapedPath() == "/api/users/invites/invite%2Fone":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.EscapedPath() == "/api/users/invites/invite%2Fone/regenerate":
+			_ = json.NewEncoder(w).Encode(map[string]any{"invite_token": "replacement-invite"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(transportClient)
+	ctx := context.Background()
+	if _, err := client.ListInvitesRaw(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CreateInvite(ctx, json.RawMessage(`{"email":"a@example.com"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DeleteInvite(ctx, "invite/one"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.RegenerateInvite(ctx, "invite/one", json.RawMessage(`{"expires_in":3600}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAccountReadsAndUpdatesUseAccountScopedEndpoints(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/accounts/account-1" {

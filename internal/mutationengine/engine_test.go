@@ -47,6 +47,9 @@ type fakeRemote struct {
 	setupKeyBefore        json.RawMessage
 	setupKeyCollection    json.RawMessage
 	setupKeyAfter         json.RawMessage
+	inviteBefore          json.RawMessage
+	inviteCollection      json.RawMessage
+	inviteAfter           json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -551,6 +554,52 @@ func (f *fakeRemote) CreateSetupKey(_ context.Context, _ json.RawMessage) (json.
 	}
 	f.setupKeyCollection = json.RawMessage("[" + string(f.setupKeyAfter) + "]")
 	return json.RawMessage(`{"id":"key-1","name":"bootstrap","key":"one-time-key"}`), nil
+}
+
+func (f *fakeRemote) ListInvitesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.inviteCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.inviteCollection...), nil
+}
+
+func (f *fakeRemote) GetInviteRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.inviteBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.inviteBefore...), nil
+}
+
+func (f *fakeRemote) CreateInvite(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.inviteAfter == nil {
+		return nil, errors.New("missing created invite")
+	}
+	f.inviteCollection = json.RawMessage("[" + string(f.inviteAfter) + "]")
+	return json.RawMessage(`{"id":"invite-1","invite_token":"one-time-invite"}`), nil
+}
+
+func (f *fakeRemote) DeleteInvite(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.inviteBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) RegenerateInvite(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.inviteAfter != nil {
+		f.inviteBefore = append(json.RawMessage(nil), f.inviteAfter...)
+	}
+	return json.RawMessage(`{"invite_token":"replacement-invite"}`), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -2130,6 +2179,85 @@ func TestApplyReturnsSetupKeyOnceWithoutPersistingIt(t *testing.T) {
 	}
 	if strings.Contains(string(receipt.Result), "one-time-key") || strings.Contains(string(stage.Request), "one-time-key") {
 		t.Fatal("setup key leaked into persisted state")
+	}
+}
+
+func TestApplyReturnsInviteTokenOnceWithoutPersistingIt(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"invite-1","email":"a@example.com","name":"New","role":"user","auto_groups":[],"expired":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.invites.create", Request: json.RawMessage(`{"email":"a@example.com","name":"New","role":"user","auto_groups":[]}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"invite_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an invite can expand account enrollment authority; the one-time invite token is returned only in the successful apply result and is never persisted"],"completeness":{"state":"unknown","reason":"invite_create_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.invite_create", Severity: "blocking", Message: "creating an invite expands enrollment authority and returns a one-time token; exact acknowledgement is required"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", inviteCollection: []byte(before), inviteAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "one-time-invite" || remote.updates != 1 {
+		t.Fatalf("unexpected invite create result: %+v updates=%d", result, remote.updates)
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "one-time-invite") {
+		t.Fatal("invite token leaked into persisted receipt")
+	}
+}
+
+func TestApplyDispatchesInviteDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"invite-1","email":"a@example.com"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.invites.delete", Request: json.RawMessage(`{"invite_id":"invite-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"invite_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an invite removes a pending enrollment edge; already-created users require separate account analysis"],"completeness":{"state":"unknown","reason":"invite_delete_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.invite_delete", Severity: "blocking", Message: "deleting the invite may remove pending enrollment and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", inviteBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected invite delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyReturnsRegeneratedInviteTokenOnce(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"invite-1","email":"a@example.com"}`
+	after := `{"id":"invite-1","email":"a@example.com","expires_at":"later"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.invites.regenerate", Request: json.RawMessage(`{"invite_id":"invite-1","expires_in":3600}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"invite_regenerate","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["regenerating an invite invalidates the previous enrollment token and creates a new one-time token"],"completeness":{"state":"unknown","reason":"invite_regenerate_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.invite_regenerate", Severity: "blocking", Message: "regenerating the invite invalidates its prior token and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", inviteBefore: []byte(before), inviteAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "replacement-invite" || remote.updates != 1 {
+		t.Fatalf("unexpected invite regenerate result: %+v updates=%d", result, remote.updates)
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "replacement-invite") {
+		t.Fatal("replacement invite token leaked into persisted receipt")
 	}
 }
 

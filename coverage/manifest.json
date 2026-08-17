@@ -1555,25 +1555,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites",
+      "id": "users.invites.create",
       "method": "POST",
       "path": "/api/users/invites",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.users.invites.inviteId",
+      "id": "users.invites.delete",
       "method": "DELETE",
       "path": "/api/users/invites/{inviteId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.invites.inviteId.regenerate",
+      "id": "users.invites.regenerate",
       "method": "POST",
       "path": "/api/users/invites/{inviteId}/regenerate",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.users.invites.token",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 162,
+    "implemented": 165,
     "classified": 0,
-    "discovered": 74,
-    "contract_verified": 153,
+    "discovered": 71,
+    "contract_verified": 156,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
