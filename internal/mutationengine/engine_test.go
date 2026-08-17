@@ -165,6 +165,15 @@ func (f *fakeRemote) UpdateIngressPeer(_ context.Context, _ string, _ json.RawMe
 	return append(json.RawMessage(nil), f.ingressAfter...), nil
 }
 
+func (f *fakeRemote) DeleteIngressPeer(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.ingressBefore = nil
+	return nil, nil
+}
+
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
 	if f.dnsZoneCollection == nil {
 		return json.RawMessage(`[]`), nil
@@ -1253,6 +1262,39 @@ func TestApplyDispatchesIngressPeerUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected ingress peer update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesIngressPeerDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"ing-1","peer_id":"peer-1","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "ingress.peers.delete",
+		Request:        json.RawMessage(`{"id":"ing-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"ingress_peer_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an ingress peer can remove an external reachability path; affected peers and allocations require live topology analysis"],"completeness":{"state":"unknown","reason":"ingress_peer_delete_requires_topology_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.ingress_peer_delete", Severity: "blocking", Message: "deleting the ingress peer may remove external reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", ingressBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected ingress peer delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

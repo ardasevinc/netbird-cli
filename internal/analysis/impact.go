@@ -376,6 +376,22 @@ func IngressPeerUpdateImpact(before, intendedAfter []byte) (ImpactReport, error)
 	}, nil
 }
 
+func IngressPeerDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress peer delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "ingress_peer_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an ingress peer can remove an external reachability path; affected peers and allocations require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "ingress_peer_delete_requires_topology_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

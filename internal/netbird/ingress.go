@@ -118,6 +118,17 @@ func (c *Client) UpdateIngressPeer(ctx context.Context, id string, request json.
 	return result, nil
 }
 
+func (c *Client) DeleteIngressPeer(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("ingress peer id is required")
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, "/api/ingress/peers/"+url.PathEscape(id), nil, &result); err != nil {
+		return nil, fmt.Errorf("delete ingress peer %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) ListIngressPortAllocations(ctx context.Context, peerID string) ([]IngressPortAllocation, error) {
 	path, err := ingressPortsPath(peerID, "")
 	if err != nil {
