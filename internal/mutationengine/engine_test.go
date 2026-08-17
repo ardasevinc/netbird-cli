@@ -12,52 +12,55 @@ import (
 )
 
 type fakeRemote struct {
-	identity             string
-	account              string
-	accountBefore        json.RawMessage
-	accountAfter         json.RawMessage
-	postureCollection    json.RawMessage
-	postureBefore        json.RawMessage
-	postureAfter         json.RawMessage
-	ingressCollection    json.RawMessage
-	ingressBefore        json.RawMessage
-	ingressAfter         json.RawMessage
-	agentSettingsBefore  json.RawMessage
-	agentSettingsAfter   json.RawMessage
-	budgetCollection     json.RawMessage
-	budgetBefore         json.RawMessage
-	budgetAfter          json.RawMessage
-	guardrailCollection  json.RawMessage
-	guardrailBefore      json.RawMessage
-	guardrailAfter       json.RawMessage
-	before               json.RawMessage
-	after                json.RawMessage
-	groupCollection      json.RawMessage
-	policyBefore         json.RawMessage
-	policyAfter          json.RawMessage
-	policyCollection     json.RawMessage
-	routeBefore          json.RawMessage
-	routeAfter           json.RawMessage
-	routeCollection      json.RawMessage
-	peerBefore           json.RawMessage
-	peerAfter            json.RawMessage
-	networkBefore        json.RawMessage
-	networkAfter         json.RawMessage
-	networkCollection    json.RawMessage
-	dnsZoneCollection    json.RawMessage
-	nameserverCollection json.RawMessage
-	nameserverBefore     json.RawMessage
-	nameserverAfter      json.RawMessage
-	dnsSettingsBefore    json.RawMessage
-	dnsSettingsAfter     json.RawMessage
-	resourceBefore       json.RawMessage
-	resourceAfter        json.RawMessage
-	resourceCollection   json.RawMessage
-	routerBefore         json.RawMessage
-	routerAfter          json.RawMessage
-	routerCollection     json.RawMessage
-	updateErr            error
-	updates              int
+	identity              string
+	account               string
+	accountBefore         json.RawMessage
+	accountAfter          json.RawMessage
+	postureCollection     json.RawMessage
+	postureBefore         json.RawMessage
+	postureAfter          json.RawMessage
+	ingressCollection     json.RawMessage
+	ingressBefore         json.RawMessage
+	ingressAfter          json.RawMessage
+	agentSettingsBefore   json.RawMessage
+	agentSettingsAfter    json.RawMessage
+	budgetCollection      json.RawMessage
+	budgetBefore          json.RawMessage
+	budgetAfter           json.RawMessage
+	guardrailCollection   json.RawMessage
+	guardrailBefore       json.RawMessage
+	guardrailAfter        json.RawMessage
+	agentPolicyCollection json.RawMessage
+	agentPolicyBefore     json.RawMessage
+	agentPolicyAfter      json.RawMessage
+	before                json.RawMessage
+	after                 json.RawMessage
+	groupCollection       json.RawMessage
+	policyBefore          json.RawMessage
+	policyAfter           json.RawMessage
+	policyCollection      json.RawMessage
+	routeBefore           json.RawMessage
+	routeAfter            json.RawMessage
+	routeCollection       json.RawMessage
+	peerBefore            json.RawMessage
+	peerAfter             json.RawMessage
+	networkBefore         json.RawMessage
+	networkAfter          json.RawMessage
+	networkCollection     json.RawMessage
+	dnsZoneCollection     json.RawMessage
+	nameserverCollection  json.RawMessage
+	nameserverBefore      json.RawMessage
+	nameserverAfter       json.RawMessage
+	dnsSettingsBefore     json.RawMessage
+	dnsSettingsAfter      json.RawMessage
+	resourceBefore        json.RawMessage
+	resourceAfter         json.RawMessage
+	resourceCollection    json.RawMessage
+	routerBefore          json.RawMessage
+	routerAfter           json.RawMessage
+	routerCollection      json.RawMessage
+	updateErr             error
+	updates               int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -301,6 +304,50 @@ func (f *fakeRemote) DeleteAgentNetworkGuardrail(_ context.Context, _ string) (j
 		return nil, f.updateErr
 	}
 	f.guardrailBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListAgentNetworkPoliciesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.agentPolicyCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.agentPolicyCollection...), nil
+}
+
+func (f *fakeRemote) GetAgentNetworkPolicyRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.agentPolicyBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.agentPolicyBefore...), nil
+}
+
+func (f *fakeRemote) CreateAgentNetworkPolicy(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.agentPolicyAfter == nil {
+		return nil, errors.New("missing created agent-network policy")
+	}
+	f.agentPolicyCollection = json.RawMessage("[" + string(f.agentPolicyAfter) + "]")
+	return append(json.RawMessage(nil), f.agentPolicyAfter...), nil
+}
+
+func (f *fakeRemote) UpdateAgentNetworkPolicy(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.agentPolicyBefore = append(json.RawMessage(nil), f.agentPolicyAfter...)
+	return append(json.RawMessage(nil), f.agentPolicyAfter...), nil
+}
+
+func (f *fakeRemote) DeleteAgentNetworkPolicy(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.agentPolicyBefore = nil
 	return nil, nil
 }
 
@@ -1686,6 +1733,71 @@ func TestApplyDispatchesAgentNetworkGuardrailDeleteAndConfirmsAbsence(t *testing
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected guardrail delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkPolicyCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"policy-1","name":"engineering","enabled":true,"source_groups":["group-1"],"destination_provider_ids":["provider-1"],"guardrail_ids":[],"limits":{"token_limit":{"enabled":false},"budget_limit":{"enabled":false}}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.policies.create", Request: json.RawMessage(`{"name":"engineering"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"agent_network_policy_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an agent-network policy can add provider reachability and admission limits for source groups; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_policy_create_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_policy_create", Severity: "blocking", Message: "creating the agent-network policy may add provider reachability and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", agentPolicyCollection: []byte(before), agentPolicyAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected agent policy create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkPolicyUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"policy-1","name":"engineering","enabled":true}`
+	after := `{"id":"policy-1","name":"engineering","enabled":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.policies.update", Request: json.RawMessage(after), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"agent_network_policy_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating an agent-network policy can alter provider reachability, guardrails, or admission limits for source groups; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_policy_update_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_policy_change", Severity: "blocking", Message: "the proposed agent-network policy change may alter provider reachability and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", agentPolicyBefore: []byte(before), agentPolicyAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected agent policy update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkPolicyDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"policy-1","name":"engineering","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.policies.delete", Request: json.RawMessage(`{"id":"policy-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"agent_network_policy_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an agent-network policy can remove provider reachability and admission limits for source groups; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_policy_delete_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_policy_delete", Severity: "blocking", Message: "deleting the agent-network policy may remove provider reachability and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", agentPolicyBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected agent policy delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

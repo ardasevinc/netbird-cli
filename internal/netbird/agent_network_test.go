@@ -166,3 +166,44 @@ func TestAgentNetworkGuardrailMethodsUseDeclaredRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAgentNetworkPolicyMethodsUseDeclaredRoutes(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/agent-network/policies":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "policy-1"}})
+		case r.Method == http.MethodGet && r.URL.EscapedPath() == "/api/agent-network/policies/policy%2Fone":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "policy/one"})
+		case r.Method == http.MethodPost && r.URL.Path == "/api/agent-network/policies":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "policy-1"})
+		case r.Method == http.MethodPut && r.URL.EscapedPath() == "/api/agent-network/policies/policy%2Fone":
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "policy/one", "enabled": false})
+		case r.Method == http.MethodDelete && r.URL.EscapedPath() == "/api/agent-network/policies/policy%2Fone":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := NewClient(transportClient)
+	ctx := context.Background()
+	if _, err := client.ListAgentNetworkPoliciesRaw(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.GetAgentNetworkPolicyRaw(ctx, "policy/one"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.CreateAgentNetworkPolicy(ctx, json.RawMessage(`{"name":"engineering"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.UpdateAgentNetworkPolicy(ctx, "policy/one", json.RawMessage(`{"enabled":false}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.DeleteAgentNetworkPolicy(ctx, "policy/one"); err != nil {
+		t.Fatal(err)
+	}
+}

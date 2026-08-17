@@ -545,6 +545,57 @@ func AgentNetworkGuardrailDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func AgentNetworkPolicyCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network policy create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_policy_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating an agent-network policy can add provider reachability and admission limits for source groups; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_policy_create_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkPolicyUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network policy impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network policy impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_policy_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an agent-network policy can alter provider reachability, guardrails, or admission limits for source groups; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_policy_update_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkPolicyDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network policy delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_policy_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an agent-network policy can remove provider reachability and admission limits for source groups; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_policy_delete_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

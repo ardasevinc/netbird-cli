@@ -95,6 +95,11 @@ type Remote interface {
 	CreateAgentNetworkGuardrail(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateAgentNetworkGuardrail(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteAgentNetworkGuardrail(context.Context, string) (json.RawMessage, error)
+	ListAgentNetworkPoliciesRaw(context.Context) (json.RawMessage, error)
+	GetAgentNetworkPolicyRaw(context.Context, string) (json.RawMessage, error)
+	CreateAgentNetworkPolicy(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateAgentNetworkPolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteAgentNetworkPolicy(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -351,6 +356,12 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAgentNetworkGuardrailRaw(ctx, target.ID)
 	case "agent_network.guardrails.delete":
 		return remote.GetAgentNetworkGuardrailRaw(ctx, target.ID)
+	case "agent_network.policies.create":
+		return remote.ListAgentNetworkPoliciesRaw(ctx)
+	case "agent_network.policies.update":
+		return remote.GetAgentNetworkPolicyRaw(ctx, target.ID)
+	case "agent_network.policies.delete":
+		return remote.GetAgentNetworkPolicyRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -516,6 +527,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateAgentNetworkGuardrail(ctx, target.ID, body)
 	case "agent_network.guardrails.delete":
 		return remote.DeleteAgentNetworkGuardrail(ctx, target.ID)
+	case "agent_network.policies.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateAgentNetworkPolicy(ctx, body)
+	case "agent_network.policies.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateAgentNetworkPolicy(ctx, target.ID, body)
+	case "agent_network.policies.delete":
+		return remote.DeleteAgentNetworkPolicy(ctx, target.ID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -574,7 +599,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -729,6 +754,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AgentNetworkGuardrailUpdateImpact(before, intendedAfter)
 	case "agent_network.guardrails.delete":
 		return analysis.AgentNetworkGuardrailDeleteImpact(before)
+	case "agent_network.policies.create":
+		return analysis.AgentNetworkPolicyCreateImpact(intendedAfter)
+	case "agent_network.policies.update":
+		return analysis.AgentNetworkPolicyUpdateImpact(before, intendedAfter)
+	case "agent_network.policies.delete":
+		return analysis.AgentNetworkPolicyDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -776,7 +807,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {
