@@ -53,6 +53,18 @@ func (c *Client) CreateSetupKey(ctx context.Context, request json.RawMessage) (j
 	return result, nil
 }
 
+func (c *Client) UpdateSetupKey(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("setup key id is required")
+	}
+	path := "/api/setup-keys/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update setup key %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetSetupKey(ctx context.Context, id string) (SetupKey, error) {
 	if strings.TrimSpace(id) == "" {
 		return SetupKey{}, fmt.Errorf("setup key id is required")

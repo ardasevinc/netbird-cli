@@ -751,6 +751,26 @@ func TestStageCreateSetupKeyCreateRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateSetupKeyUpdateRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"setup_keys.update","request":{"id":"key-1","revoked":true,"auto_groups":[]},"before":{"id":"key-1","revoked":false,"auto_groups":[]},"intended_after":{"id":"key-1","revoked":true,"auto_groups":[]}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	output := stdout.String()
+	if !strings.Contains(output, "impact.setup_key_change") || !strings.Contains(output, "blocking") {
+		t.Fatalf("unexpected stage output: %s", output)
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

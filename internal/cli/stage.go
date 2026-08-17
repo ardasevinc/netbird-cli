@@ -119,7 +119,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.edr.bypass.create", "peers.edr.bypass.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.edr.bypass.create", "peers.edr.bypass.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -231,6 +231,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.SetupKeyDeleteImpact(plan.Before)
 				case "setup_keys.create":
 					report, err = analysis.SetupKeyCreateImpact(plan.IntendedAfter)
+				case "setup_keys.update":
+					report, err = analysis.SetupKeyUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "users.invites.create":
 					report, err = analysis.InviteCreateImpact(plan.IntendedAfter)
 				case "users.invites.delete":
@@ -442,6 +444,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "setup_keys.create" && report.Classification == "setup_key_create":
 					findingCode = "impact.setup_key_create"
 					findingMessage = "creating the setup key expands peer enrollment authority and requires exact acknowledgement"
+				case plan.Operation == "setup_keys.update" && report.Classification == "setup_key_change":
+					findingCode = "impact.setup_key_change"
+					findingMessage = "changing the setup key may alter peer enrollment authority and requires exact acknowledgement"
 				case plan.Operation == "users.invites.create" && report.Classification == "invite_create":
 					findingCode = "impact.invite_create"
 					findingMessage = "creating the invite expands enrollment authority and returns a one-time token; exact acknowledgement is required"

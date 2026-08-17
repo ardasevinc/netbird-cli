@@ -23,7 +23,7 @@ Agent-network provider mutations are capability-gated, blocking, and require exa
 User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 Personal access token deletion is capability-gated, blocking, and requires exact token preimage plus absence proof; token values are never represented by the owned metadata model.
 Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
-Setup-key deletion is capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and absence proof; setup-key creation remains one-time-secret gated.
+Setup-key updates and deletion are capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and read-back or absence proof; setup-key creation remains one-time-secret gated.
 Authenticated invite create, delete, and regenerate mutations are capability-gated and blocking; invite tokens are returned once only and never persisted in stages, receipts, logs, or errors.
 Password changes are capability-gated and blocking; staged requests carry only external `old_password_ref` and `new_password_ref` values, resolved in memory immediately before dispatch.
 Resending a user invitation is capability-gated and blocking; the empty API response is proven by exact user preimage validation and unchanged user metadata read-back, with no token persisted or emitted.

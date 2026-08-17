@@ -50,6 +50,7 @@ type fakeRemote struct {
 	setupKeyBefore        json.RawMessage
 	setupKeyCollection    json.RawMessage
 	setupKeyAfter         json.RawMessage
+	setupKeyBody          json.RawMessage
 	inviteBefore          json.RawMessage
 	inviteCollection      json.RawMessage
 	inviteAfter           json.RawMessage
@@ -631,6 +632,19 @@ func (f *fakeRemote) CreateSetupKey(_ context.Context, _ json.RawMessage) (json.
 	}
 	f.setupKeyCollection = json.RawMessage("[" + string(f.setupKeyAfter) + "]")
 	return json.RawMessage(`{"id":"key-1","name":"bootstrap","key":"one-time-key"}`), nil
+}
+
+func (f *fakeRemote) UpdateSetupKey(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.setupKeyBody = append(json.RawMessage(nil), body...)
+	if f.setupKeyAfter == nil {
+		return nil, errors.New("missing updated setup key")
+	}
+	f.setupKeyBefore = append(json.RawMessage(nil), f.setupKeyAfter...)
+	return append(json.RawMessage(nil), f.setupKeyAfter...), nil
 }
 
 func (f *fakeRemote) ListInvitesRaw(_ context.Context) (json.RawMessage, error) {
@@ -2519,6 +2533,32 @@ func TestApplyReturnsSetupKeyOnceWithoutPersistingIt(t *testing.T) {
 	}
 	if strings.Contains(string(receipt.Result), "one-time-key") || strings.Contains(string(stage.Request), "one-time-key") {
 		t.Fatal("setup key leaked into persisted state")
+	}
+}
+
+func TestApplyDispatchesSetupKeyUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"key-1","name":"bootstrap","revoked":false,"auto_groups":[]}`
+	after := `{"id":"key-1","name":"bootstrap","revoked":true,"auto_groups":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "setup_keys.update", Request: json.RawMessage(`{"id":"key-1","revoked":true,"auto_groups":[]}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"setup_key_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating a setup key can change revocation or auto-group enrollment authority; already-enrolled peers require separate live analysis"],"completeness":{"state":"unknown","reason":"setup_key_update_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.setup_key_change", Severity: "blocking", Message: "changing the setup key may alter peer enrollment authority and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", setupKeyBefore: []byte(before), setupKeyAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.setupKeyBody, &body); err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["revoked"] != true || body["auto_groups"] == nil {
+		t.Fatalf("unexpected setup key update result: %+v updates=%d body=%s", result, remote.updates, remote.setupKeyBody)
 	}
 }
 

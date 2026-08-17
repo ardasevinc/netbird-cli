@@ -1520,11 +1520,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.setup_keys.keyId",
+      "id": "setup_keys.update",
       "method": "PUT",
       "path": "/api/setup-keys/{keyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 173,
+    "implemented": 174,
     "classified": 0,
-    "discovered": 63,
-    "contract_verified": 164,
+    "discovered": 62,
+    "contract_verified": 165,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

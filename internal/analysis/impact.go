@@ -387,6 +387,17 @@ func SetupKeyCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "setup_key_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a setup key can expand peer enrollment authority; the one-time key value is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_create_requires_enrollment_analysis"}}, nil
 }
 
+func SetupKeyUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode setup key update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode setup key update intent: %w", err)
+	}
+	return ImpactReport{Classification: "setup_key_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"updating a setup key can change revocation or auto-group enrollment authority; already-enrolled peers require separate live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_update_requires_enrollment_analysis"}}, nil
+}
+
 func InviteCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

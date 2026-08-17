@@ -728,6 +728,16 @@ func TestSetupKeyCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestSetupKeyUpdateImpactIsConservative(t *testing.T) {
+	report, err := SetupKeyUpdateImpact([]byte(`{"id":"key-1","revoked":false}`), []byte(`{"id":"key-1","revoked":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "setup_key_change" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected setup key update report: %+v", report)
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {

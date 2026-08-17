@@ -83,3 +83,24 @@ func TestCreateSetupKeyUsesDeclaredRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUpdateSetupKeyUsesDeclaredRoute(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.EscapedPath() != "/api/setup-keys/key%2Fone" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.EscapedPath())
+		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["revoked"] != true {
+			t.Fatalf("unexpected body: %v", body)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "key/one", "revoked": true, "auto_groups": []string{}})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).UpdateSetupKey(context.Background(), "key/one", json.RawMessage(`{"revoked":true,"auto_groups":[]}`)); err != nil {
+		t.Fatal(err)
+	}
+}

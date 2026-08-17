@@ -129,6 +129,7 @@ type Remote interface {
 	GetSetupKeyRaw(context.Context, string) (json.RawMessage, error)
 	ListSetupKeysRaw(context.Context) (json.RawMessage, error)
 	CreateSetupKey(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateSetupKey(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteSetupKey(context.Context, string) (json.RawMessage, error)
 	ListInvitesRaw(context.Context) (json.RawMessage, error)
 	GetInviteRaw(context.Context, string) (json.RawMessage, error)
@@ -505,7 +506,7 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
 	case "users.tokens.create":
 		return remote.ListPersonalAccessTokensRaw(ctx, target.UserID)
-	case "setup_keys.delete":
+	case "setup_keys.update", "setup_keys.delete":
 		return remote.GetSetupKeyRaw(ctx, target.ID)
 	case "setup_keys.create":
 		return remote.ListSetupKeysRaw(ctx)
@@ -760,6 +761,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.CreatePersonalAccessToken(ctx, target.UserID, body)
 	case "setup_keys.delete":
 		return remote.DeleteSetupKey(ctx, target.ID)
+	case "setup_keys.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateSetupKey(ctx, target.ID, body)
 	case "setup_keys.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1184,6 +1191,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserTokenDeleteImpact(before)
 	case "users.tokens.create":
 		return analysis.UserTokenCreateImpact(intendedAfter)
+	case "setup_keys.update":
+		return analysis.SetupKeyUpdateImpact(before, intendedAfter)
 	case "setup_keys.delete":
 		return analysis.SetupKeyDeleteImpact(before)
 	case "setup_keys.create":

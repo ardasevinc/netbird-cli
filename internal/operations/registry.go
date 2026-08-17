@@ -54,6 +54,7 @@ var definitions = map[string]Definition{
 	"setup_keys.list":                   {Name: "setup_keys.list", Method: "GET", Path: "/api/setup-keys", Mutation: ReadOnly},
 	"setup_keys.get":                    {Name: "setup_keys.get", Method: "GET", Path: "/api/setup-keys/{keyId}", Mutation: ReadOnly},
 	"setup_keys.create":                 {Name: "setup_keys.create", Method: "POST", Path: "/api/setup-keys", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"setup_keys.update":                 {Name: "setup_keys.update", Method: "PUT", Path: "/api/setup-keys/{keyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"setup_keys.delete":                 {Name: "setup_keys.delete", Method: "DELETE", Path: "/api/setup-keys/{keyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"locations.countries":               {Name: "locations.countries", Method: "GET", Path: "/api/locations/countries", Mutation: ReadOnly},
 	"locations.cities":                  {Name: "locations.cities", Method: "GET", Path: "/api/locations/countries/{country}/cities", Mutation: ReadOnly},
