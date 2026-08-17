@@ -190,6 +190,15 @@ type Remote interface {
 	UpdateSCIMIntegration(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteSCIMIntegration(context.Context, string, string) (json.RawMessage, error)
 	RegenerateSCIMToken(context.Context, string, string) (json.RawMessage, error)
+	ListMSPTenantsRaw(context.Context) (json.RawMessage, error)
+	GetMSPTenantRaw(context.Context, string) (json.RawMessage, error)
+	CreateMSPTenant(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateMSPTenant(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	VerifyMSPTenantDNS(context.Context, string) (json.RawMessage, error)
+	InviteMSPTenant(context.Context, string) (json.RawMessage, error)
+	RespondMSPTenantInvite(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	CreateMSPTenantSubscription(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	UnlinkMSPTenant(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -377,7 +386,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	result.AttemptID = attempt.ID
-	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" && stage.Operation != "scim.token" && stage.Operation != "okta_scim.token" {
+	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" && stage.Operation != "scim.token" && stage.Operation != "okta_scim.token" && !isMSPActionOperation(stage.Operation) {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
 	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
@@ -565,6 +574,19 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote "+strings.TrimSuffix(stage.Operation, ".delete")+" is absent after delete")
 	}
+	if stage.Operation == "msp.tenants.unlink" {
+		liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
+		if isNotFound(err) {
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "MSP tenant is absent after unlink")
+		}
+		if err != nil {
+			return finish(ctx, store, result, mutation.Unknown, "tenant unlink may have applied, but tenant absence could not be confirmed")
+		}
+		if liveAfter != nil {
+			return finish(ctx, store, result, mutation.Partial, "MSP tenant remains linked after unlink")
+		}
+		return finish(ctx, store, result, mutation.Unknown, "tenant unlink absence was inconclusive")
+	}
 	if stage.Operation == "users.invites.accept" {
 		var response struct {
 			Success bool `json:"success"`
@@ -751,6 +773,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListSCIMIntegrationsRaw(ctx, "okta_scim")
 	case "okta_scim.update", "okta_scim.delete", "okta_scim.token":
 		return remote.GetSCIMIntegrationRaw(ctx, "okta_scim", target.ID)
+	case "msp.tenants.create":
+		return remote.ListMSPTenantsRaw(ctx)
+	case "msp.tenants.update", "msp.tenants.dns", "msp.tenants.invite", "msp.tenants.invite.respond", "msp.tenants.subscription", "msp.tenants.unlink":
+		return remote.GetMSPTenantRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -1178,6 +1204,40 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.DeleteSCIMIntegration(ctx, "okta_scim", target.ID)
 	case "okta_scim.token":
 		return remote.RegenerateSCIMToken(ctx, "okta_scim", target.ID)
+	case "msp.tenants.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateMSPTenant(ctx, body)
+	case "msp.tenants.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateMSPTenant(ctx, target.ID, body)
+	case "msp.tenants.dns":
+		return remote.VerifyMSPTenantDNS(ctx, target.ID)
+	case "msp.tenants.invite":
+		return remote.InviteMSPTenant(ctx, target.ID)
+	case "msp.tenants.invite.respond":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.RespondMSPTenantInvite(ctx, target.ID, body)
+	case "msp.tenants.subscription":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateMSPTenantSubscription(ctx, target.ID, body)
+	case "msp.tenants.unlink":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UnlinkMSPTenant(ctx, target.ID, body)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1272,7 +1332,16 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create" || operation == "scim.create" || operation == "okta_scim.create" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".create"))
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create" || operation == "scim.create" || operation == "okta_scim.create" || operation == "msp.tenants.create" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".create"))
+}
+
+func isMSPActionOperation(operation string) bool {
+	switch operation {
+	case "msp.tenants.dns", "msp.tenants.invite", "msp.tenants.invite.respond", "msp.tenants.subscription", "msp.tenants.unlink":
+		return true
+	default:
+		return false
+	}
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1959,6 +2028,20 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.SCIMDeleteImpact(strings.Split(operation, ".")[0], before)
 	case "scim.token", "okta_scim.token":
 		return analysis.SCIMTokenImpact(strings.Split(operation, ".")[0], before)
+	case "msp.tenants.create":
+		return analysis.MSPTenantCreateImpact(intendedAfter)
+	case "msp.tenants.update":
+		return analysis.MSPTenantUpdateImpact(before, intendedAfter)
+	case "msp.tenants.dns":
+		return analysis.MSPTenantActionImpact("dns", before)
+	case "msp.tenants.invite":
+		return analysis.MSPTenantActionImpact("invite", before)
+	case "msp.tenants.invite.respond":
+		return analysis.MSPTenantActionImpact("invite_respond", before)
+	case "msp.tenants.subscription":
+		return analysis.MSPTenantActionImpact("subscription", before)
+	case "msp.tenants.unlink":
+		return analysis.MSPTenantActionImpact("unlink", before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":

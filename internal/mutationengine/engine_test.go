@@ -119,6 +119,10 @@ type fakeRemote struct {
 	googleIDP              googleIDPState
 	edr                    map[string]edrIntegrationState
 	scim                   map[string]scimIntegrationState
+	mspTenantCollection    json.RawMessage
+	mspTenantBefore        json.RawMessage
+	mspTenantAfter         json.RawMessage
+	mspTenantBody          json.RawMessage
 }
 
 type notificationChannelState struct {
@@ -1615,6 +1619,90 @@ func (f *fakeRemote) RegenerateSCIMToken(_ context.Context, provider, _ string) 
 	}
 	f.scim[provider] = *state
 	return json.RawMessage(`{"auth_token":"nbs-one-time"}`), nil
+}
+
+func (f *fakeRemote) ListMSPTenantsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.mspTenantCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.mspTenantCollection...), nil
+}
+
+func (f *fakeRemote) GetMSPTenantRaw(_ context.Context, id string) (json.RawMessage, error) {
+	if f.mspTenantBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	var object struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(f.mspTenantBefore, &object); err != nil || object.ID != id {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.mspTenantBefore...), nil
+}
+
+func (f *fakeRemote) CreateMSPTenant(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.mspTenantBody = append(json.RawMessage(nil), body...)
+	if f.mspTenantAfter == nil {
+		return nil, errors.New("missing MSP tenant")
+	}
+	f.mspTenantBefore = append(json.RawMessage(nil), f.mspTenantAfter...)
+	f.mspTenantCollection = json.RawMessage("[" + string(f.mspTenantAfter) + "]")
+	return append(json.RawMessage(nil), f.mspTenantAfter...), nil
+}
+
+func (f *fakeRemote) UpdateMSPTenant(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.mspTenantBody = append(json.RawMessage(nil), body...)
+	f.mspTenantBefore = append(json.RawMessage(nil), f.mspTenantAfter...)
+	f.mspTenantCollection = json.RawMessage("[" + string(f.mspTenantAfter) + "]")
+	return append(json.RawMessage(nil), f.mspTenantAfter...), nil
+}
+
+func (f *fakeRemote) VerifyMSPTenantDNS(_ context.Context, _ string) (json.RawMessage, error) {
+	return f.mspTenantAction()
+}
+
+func (f *fakeRemote) InviteMSPTenant(_ context.Context, _ string) (json.RawMessage, error) {
+	return f.mspTenantAction()
+}
+
+func (f *fakeRemote) RespondMSPTenantInvite(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.mspTenantBody = append(json.RawMessage(nil), body...)
+	return f.mspTenantAction()
+}
+
+func (f *fakeRemote) CreateMSPTenantSubscription(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.mspTenantBody = append(json.RawMessage(nil), body...)
+	return f.mspTenantAction()
+}
+
+func (f *fakeRemote) UnlinkMSPTenant(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.mspTenantBody = append(json.RawMessage(nil), body...)
+	f.mspTenantBefore = nil
+	f.mspTenantCollection = json.RawMessage(`[]`)
+	return json.RawMessage(`{"ok":true}`), nil
+}
+
+func (f *fakeRemote) mspTenantAction() (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.mspTenantBefore = append(json.RawMessage(nil), f.mspTenantAfter...)
+	f.mspTenantCollection = json.RawMessage("[" + string(f.mspTenantAfter) + "]")
+	return append(json.RawMessage(nil), f.mspTenantAfter...), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -3557,6 +3645,38 @@ func TestApplySCIMCreateConfirmsCollectionAndTokenIsOneTime(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "nbs-one-time" || strings.Contains(string(receipt.Result), "nbs-one-time") {
 		t.Fatalf("unexpected SCIM token result: %+v receipt=%s", result, receipt.Result)
+	}
+}
+
+func TestApplyMSPTenantCreateAndUnlinkConfirmBoundaries(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"tenant-1","name":"Acme","domain":"acme.test","groups":[],"status":"active"}`
+	create, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "msp.tenants.create", Request: json.RawMessage(`{"name":"Acme","domain":"acme.test","groups":[]}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"msp_tenant_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating an MSP tenant provisions a new customer account and expands the operator's administrative and billing surface"],"completeness":{"state":"unknown","reason":"msp_tenant_provisioning_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.msp_tenant_create", Severity: "blocking", Message: "creating the MSP tenant provisions a customer account and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", mspTenantCollection: []byte(before), mspTenantAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: create.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil || result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected MSP tenant create result: %+v updates=%d err=%v", result, remote.updates, err)
+	}
+
+	unlink, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "msp.tenants.unlink", Request: json.RawMessage(`{"id":"tenant-1","owner":"owner-1"}`), Before: json.RawMessage(after), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"msp_tenant_unlink","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["the MSP tenant unlink action changes external customer-account administration and requires tenant read-back or absence proof"],"completeness":{"state":"unknown","reason":"msp_tenant_action_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.msp_tenant_unlink", Severity: "blocking", Message: "unlinking the MSP tenant removes delegated management and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = Apply(context.Background(), store, remote, ApplyInput{StageID: unlink.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil || result.State != mutation.ConfirmedSuccess || remote.updates != 2 {
+		t.Fatalf("unexpected MSP tenant unlink result: %+v updates=%d err=%v", result, remote.updates, err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.mspTenantBody, &body); err != nil || body["owner"] != "owner-1" || body["id"] != nil {
+		t.Fatalf("unexpected unlink body: %s", remote.mspTenantBody)
 	}
 }
 

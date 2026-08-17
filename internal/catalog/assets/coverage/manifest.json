@@ -851,50 +851,50 @@
       "id": "post.api.integrations.msp.tenants",
       "method": "POST",
       "path": "/api/integrations/msp/tenants",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.msp.tenants.id",
       "method": "PUT",
       "path": "/api/integrations/msp/tenants/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.msp.tenants.id.dns",
       "method": "POST",
       "path": "/api/integrations/msp/tenants/{id}/dns",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.msp.tenants.id.invite",
       "method": "POST",
       "path": "/api/integrations/msp/tenants/{id}/invite",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "put.api.integrations.msp.tenants.id.invite",
       "method": "PUT",
       "path": "/api/integrations/msp/tenants/{id}/invite",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.msp.tenants.id.subscription",
       "method": "POST",
       "path": "/api/integrations/msp/tenants/{id}/subscription",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.integrations.msp.tenants.id.unlink",
       "method": "POST",
       "path": "/api/integrations/msp/tenants/{id}/unlink",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.notifications.channels",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 224,
+    "implemented": 231,
     "classified": 0,
-    "discovered": 12,
-    "contract_verified": 215,
+    "discovered": 5,
+    "contract_verified": 222,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

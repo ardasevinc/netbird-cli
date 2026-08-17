@@ -262,3 +262,8 @@ SCIM and Okta SCIM integration stages are blocking provisioning effects with
 exact preimages and read-back or absence confirmation. Token regeneration
 requires a fresh integration preimage and returns the replacement `auth_token`
 once without persisting it.
+
+MSP tenant stages cover tenant creation, delegated metadata changes, DNS
+verification, invitation flow, subscription changes, and unlinking. They use
+blocking tenant-account impact findings, exact tenant preimages, collection
+read-back, and explicit absence proof for unlinking.

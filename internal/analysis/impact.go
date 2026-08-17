@@ -1256,6 +1256,33 @@ func SCIMTokenImpact(provider string, before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "scim_" + provider + "_token", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"regenerating the SCIM token revokes the prior external provisioning credential; the replacement token is returned once and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "scim_token_credential_boundary"}}, nil
 }
 
+func MSPTenantCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode MSP tenant create intent: %w", err)
+	}
+	return ImpactReport{Classification: "msp_tenant_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating an MSP tenant provisions a new customer account and expands the operator's administrative and billing surface"}, Completeness: map[string]any{"state": "unknown", "reason": "msp_tenant_provisioning_boundary"}}, nil
+}
+
+func MSPTenantUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode MSP tenant update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode MSP tenant update intent: %w", err)
+	}
+	return ImpactReport{Classification: "msp_tenant_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating an MSP tenant changes delegated access or customer-account metadata"}, Completeness: map[string]any{"state": "unknown", "reason": "msp_tenant_delegation_boundary"}}, nil
+}
+
+func MSPTenantActionImpact(kind string, before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode MSP tenant %s preimage: %w", kind, err)
+	}
+	return ImpactReport{Classification: "msp_tenant_" + kind, Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"the MSP tenant " + kind + " action changes external customer-account administration and requires tenant read-back or absence proof"}, Completeness: map[string]any{"state": "unknown", "reason": "msp_tenant_action_boundary"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

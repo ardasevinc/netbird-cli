@@ -232,6 +232,13 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["PUT /api/integrations/google-idp/{id}"] = operation{ID: "google_idp.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/integrations/google-idp/{id}"] = operation{ID: "google_idp.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/google-idp/{id}/sync"] = operation{ID: "google_idp.sync", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/msp/tenants"] = operation{ID: "msp.tenants.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/integrations/msp/tenants/{id}"] = operation{ID: "msp.tenants.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/msp/tenants/{id}/dns"] = operation{ID: "msp.tenants.dns", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/msp/tenants/{id}/invite"] = operation{ID: "msp.tenants.invite", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/integrations/msp/tenants/{id}/invite"] = operation{ID: "msp.tenants.invite.respond", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/msp/tenants/{id}/subscription"] = operation{ID: "msp.tenants.subscription", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/msp/tenants/{id}/unlink"] = operation{ID: "msp.tenants.unlink", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/edr/intune"] = operation{ID: "edr.intune.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/integrations/edr/intune"] = operation{ID: "edr.intune.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/integrations/edr/intune"] = operation{ID: "edr.intune.delete", Implementation: "implemented", Verification: "contract_verified"}
