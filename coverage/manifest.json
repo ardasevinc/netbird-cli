@@ -99,18 +99,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.agent_network.guardrails",
+      "id": "agent_network.guardrails.create",
       "method": "POST",
       "path": "/api/agent-network/guardrails",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.agent_network.guardrails.guardrailId",
+      "id": "agent_network.guardrails.delete",
       "method": "DELETE",
       "path": "/api/agent-network/guardrails/{guardrailId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.guardrails.guardrailId",
@@ -120,11 +120,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.agent_network.guardrails.guardrailId",
+      "id": "agent_network.guardrails.update",
       "method": "PUT",
       "path": "/api/agent-network/guardrails/{guardrailId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.policies",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 144,
+    "implemented": 147,
     "classified": 0,
-    "discovered": 92,
-    "contract_verified": 135,
+    "discovered": 89,
+    "contract_verified": 138,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -494,6 +494,57 @@ func AgentNetworkBudgetRuleDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func AgentNetworkGuardrailCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network guardrail create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_guardrail_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating an agent-network guardrail can alter model and prompt admission for attached policies; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_guardrail_create_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkGuardrailUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network guardrail impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network guardrail impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_guardrail_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an agent-network guardrail can alter model and prompt admission for attached policies; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_guardrail_update_requires_capability_analysis"},
+	}, nil
+}
+
+func AgentNetworkGuardrailDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network guardrail delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_guardrail_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting an agent-network guardrail can remove model and prompt admission controls from attached policies; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_guardrail_delete_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -121,6 +121,12 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.AgentNetworkBudgetRuleUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "agent_network.budget_rules.delete":
 					report, err = analysis.AgentNetworkBudgetRuleDeleteImpact(plan.Before)
+				case "agent_network.guardrails.create":
+					report, err = analysis.AgentNetworkGuardrailCreateImpact(plan.IntendedAfter)
+				case "agent_network.guardrails.update":
+					report, err = analysis.AgentNetworkGuardrailUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "agent_network.guardrails.delete":
+					report, err = analysis.AgentNetworkGuardrailDeleteImpact(plan.Before)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -249,6 +255,15 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "agent_network.budget_rules.delete" && report.Classification == "agent_network_budget_rule_delete":
 					findingCode = "impact.agent_network_budget_rule_delete"
 					findingMessage = "deleting the agent-network budget rule may remove spend and token limits and requires exact acknowledgement"
+				case plan.Operation == "agent_network.guardrails.create" && report.Classification == "agent_network_guardrail_create":
+					findingCode = "impact.agent_network_guardrail_create"
+					findingMessage = "creating the agent-network guardrail may alter policy admission and requires exact acknowledgement"
+				case plan.Operation == "agent_network.guardrails.update" && report.Classification == "agent_network_guardrail_change":
+					findingCode = "impact.agent_network_guardrail_change"
+					findingMessage = "the proposed agent-network guardrail change may alter policy admission and requires exact acknowledgement"
+				case plan.Operation == "agent_network.guardrails.delete" && report.Classification == "agent_network_guardrail_delete":
+					findingCode = "impact.agent_network_guardrail_delete"
+					findingMessage = "deleting the agent-network guardrail may remove policy admission controls and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

@@ -27,6 +27,9 @@ type fakeRemote struct {
 	budgetCollection     json.RawMessage
 	budgetBefore         json.RawMessage
 	budgetAfter          json.RawMessage
+	guardrailCollection  json.RawMessage
+	guardrailBefore      json.RawMessage
+	guardrailAfter       json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -254,6 +257,50 @@ func (f *fakeRemote) DeleteAgentNetworkBudgetRule(_ context.Context, _ string) (
 		return nil, f.updateErr
 	}
 	f.budgetBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListAgentNetworkGuardrailsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.guardrailCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.guardrailCollection...), nil
+}
+
+func (f *fakeRemote) GetAgentNetworkGuardrailRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.guardrailBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.guardrailBefore...), nil
+}
+
+func (f *fakeRemote) CreateAgentNetworkGuardrail(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.guardrailAfter == nil {
+		return nil, errors.New("missing created agent-network guardrail")
+	}
+	f.guardrailCollection = json.RawMessage("[" + string(f.guardrailAfter) + "]")
+	return append(json.RawMessage(nil), f.guardrailAfter...), nil
+}
+
+func (f *fakeRemote) UpdateAgentNetworkGuardrail(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.guardrailBefore = append(json.RawMessage(nil), f.guardrailAfter...)
+	return append(json.RawMessage(nil), f.guardrailAfter...), nil
+}
+
+func (f *fakeRemote) DeleteAgentNetworkGuardrail(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.guardrailBefore = nil
 	return nil, nil
 }
 
@@ -1574,6 +1621,71 @@ func TestApplyDispatchesAgentNetworkBudgetRuleDeleteAndConfirmsAbsence(t *testin
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected budget rule delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkGuardrailCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"guard-1","name":"strict","checks":{"model_allowlist":{"enabled":true}}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.guardrails.create", Request: json.RawMessage(`{"name":"strict"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"agent_network_guardrail_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating an agent-network guardrail can alter model and prompt admission for attached policies; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_guardrail_create_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_guardrail_create", Severity: "blocking", Message: "creating the agent-network guardrail may alter policy admission and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", guardrailCollection: []byte(before), guardrailAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected guardrail create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkGuardrailUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"guard-1","name":"strict","checks":{"model_allowlist":{"enabled":true}}}`
+	after := `{"id":"guard-1","name":"strict","checks":{"model_allowlist":{"enabled":false}}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.guardrails.update", Request: json.RawMessage(after), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"agent_network_guardrail_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating an agent-network guardrail can alter model and prompt admission for attached policies; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_guardrail_update_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_guardrail_change", Severity: "blocking", Message: "the proposed agent-network guardrail change may alter policy admission and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", guardrailBefore: []byte(before), guardrailAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected guardrail update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkGuardrailDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"guard-1","name":"strict","checks":{"model_allowlist":{"enabled":true}}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "agent_network.guardrails.delete", Request: json.RawMessage(`{"id":"guard-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"agent_network_guardrail_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting an agent-network guardrail can remove model and prompt admission controls from attached policies; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_guardrail_delete_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.agent_network_guardrail_delete", Severity: "blocking", Message: "deleting the agent-network guardrail may remove policy admission controls and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", guardrailBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected guardrail delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

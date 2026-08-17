@@ -15,6 +15,7 @@ Agent-network settings updates are capability-gated, blocking, and require exact
 Agent-network settings creation is capability-gated, blocking, and requires exact preimage and read-back proof.
 Agent-network settings deletion is capability-gated, blocking, and requires exact preimage and absence proof.
 Agent-network budget-rule mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
+Agent-network guardrail mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

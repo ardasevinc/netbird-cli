@@ -12,6 +12,7 @@ Agent-network settings updates are capability-gated, blocking `impact.agent_netw
 Agent-network settings creation is capability-gated, blocking `impact.agent_network_settings_create` changes and requires exact preimage and read-back confirmation.
 Agent-network settings deletion is capability-gated, blocking `impact.agent_network_settings_delete` changes and requires exact preimage and absence confirmation.
 Agent-network budget-rule mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
+Agent-network guardrail mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.

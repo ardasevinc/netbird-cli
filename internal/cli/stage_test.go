@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -354,6 +355,42 @@ func TestStageCreateAgentNetworkBudgetRuleDeleteRequiresAcknowledgement(t *testi
 	}
 	if !strings.Contains(stdout.String(), `"code":"impact.agent_network_budget_rule_delete"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
 		t.Fatalf("agent-network budget rule delete acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
+func TestStageCreateAgentNetworkGuardrailMutationsRequireAcknowledgement(t *testing.T) {
+	cases := []struct {
+		name      string
+		operation string
+		request   string
+		before    string
+		after     string
+		finding   string
+	}{
+		{name: "create", operation: "agent_network.guardrails.create", request: `{"name":"strict"}`, before: `[]`, after: `{"id":"guard-1","name":"strict","checks":{}}`, finding: "impact.agent_network_guardrail_create"},
+		{name: "update", operation: "agent_network.guardrails.update", request: `{"id":"guard-1","name":"strict"}`, before: `{"id":"guard-1","name":"old","checks":{}}`, after: `{"id":"guard-1","name":"strict","checks":{}}`, finding: "impact.agent_network_guardrail_change"},
+		{name: "delete", operation: "agent_network.guardrails.delete", request: `{"id":"guard-1"}`, before: `{"id":"guard-1","name":"strict","checks":{}}`, after: `{}`, finding: "impact.agent_network_guardrail_delete"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			temp := t.TempDir()
+			configPath := filepath.Join(temp, "config.toml")
+			statePath := filepath.Join(temp, "ledger.db")
+			if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+			var stdout, stderr bytes.Buffer
+			root := newRoot(state, &stdout, &stderr, version.Current())
+			root.SetArgs([]string{"stage", "create", "--from-json"})
+			root.SetIn(strings.NewReader(fmt.Sprintf(`{"operation":%q,"request":%s,"before":%s,"intended_after":%s}`, tc.operation, tc.request, tc.before, tc.after)))
+			if err := root.ExecuteContext(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(stdout.String(), `"code":"`+tc.finding+`"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+				t.Fatalf("guardrail acknowledgement finding missing: %s", stdout.String())
+			}
+		})
 	}
 }
 
