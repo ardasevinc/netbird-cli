@@ -66,3 +66,20 @@ func TestDeletePersonalAccessTokenUsesDeclaredRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreatePersonalAccessTokenUsesDeclaredRoute(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/users/user-1/tokens" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"plain_token": "one-time", "personal_access_token": map[string]any{"id": "token-1", "name": "agent"}})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).CreatePersonalAccessToken(context.Background(), "user-1", json.RawMessage(`{"name":"agent","expires_in":30}`)); err != nil {
+		t.Fatal(err)
+	}
+}

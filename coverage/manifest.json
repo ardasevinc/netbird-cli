@@ -1639,11 +1639,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.tokens",
+      "id": "users.tokens.create",
       "method": "POST",
       "path": "/api/users/{userId}/tokens",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.tokens.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 159,
+    "implemented": 160,
     "classified": 0,
-    "discovered": 77,
-    "contract_verified": 150,
+    "discovered": 76,
+    "contract_verified": 151,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

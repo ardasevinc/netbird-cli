@@ -64,9 +64,16 @@ func applyCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				return fail(applyExit(result.State), err)
 			}
 			if state.json {
-				return writeJSON(stdout, map[string]any{"schema": "nb/v1/apply-result", "ok": true, "operation": "apply", "data": result})
+				data := map[string]any{"stage_id": result.StageID, "revision": result.Revision, "attempt_id": result.AttemptID, "state": result.State, "reason": result.Reason}
+				if result.OneTimeSecret != "" {
+					data["one_time_secret"] = result.OneTimeSecret
+				}
+				return writeJSON(stdout, map[string]any{"schema": "nb/v1/apply-result", "ok": true, "operation": "apply", "data": data})
 			}
 			_, err = fmt.Fprintf(stdout, "apply %s@%d\nstate: %s\nattempt: %s\nreason: %s\n", result.StageID, result.Revision, result.State, result.AttemptID, result.Reason)
+			if err == nil && result.OneTimeSecret != "" {
+				_, err = fmt.Fprintf(stdout, "one_time_secret: %s\n", result.OneTimeSecret)
+			}
 			return err
 		},
 	}

@@ -58,6 +58,7 @@ var definitions = map[string]Definition{
 	"users.tokens.list":                 {Name: "users.tokens.list", Method: "GET", Path: "/api/users/{userId}/tokens", Mutation: ReadOnly},
 	"users.tokens.get":                  {Name: "users.tokens.get", Method: "GET", Path: "/api/users/{userId}/tokens/{tokenId}", Mutation: ReadOnly},
 	"users.tokens.delete":               {Name: "users.tokens.delete", Method: "DELETE", Path: "/api/users/{userId}/tokens/{tokenId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"users.tokens.create":               {Name: "users.tokens.create", Method: "POST", Path: "/api/users/{userId}/tokens", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.create":                      {Name: "users.create", Method: "POST", Path: "/api/users", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.update":                      {Name: "users.update", Method: "PUT", Path: "/api/users/{userId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"users.delete":                      {Name: "users.delete", Method: "DELETE", Path: "/api/users/{userId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

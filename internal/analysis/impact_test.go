@@ -635,3 +635,13 @@ func TestUserTokenDeleteImpactIsComplete(t *testing.T) {
 		t.Fatalf("unexpected token delete report: %+v", report)
 	}
 }
+
+func TestUserTokenCreateImpactIsComplete(t *testing.T) {
+	report, err := UserTokenCreateImpact([]byte(`{"id":"token-1","name":"agent"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "user_token_create" || report.Reachability != "unchanged" || report.Confidence != "high" || report.Completeness["state"] != "complete" {
+		t.Fatalf("unexpected token create report: %+v", report)
+	}
+}

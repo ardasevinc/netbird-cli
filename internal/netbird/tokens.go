@@ -36,6 +36,30 @@ func (c *Client) ListPersonalAccessTokens(ctx context.Context, userID string) ([
 	return result, nil
 }
 
+func (c *Client) ListPersonalAccessTokensRaw(ctx context.Context, userID string) (json.RawMessage, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(userID) + "/tokens"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("list tokens for user %q: %w", userID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreatePersonalAccessToken(ctx context.Context, userID string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(userID) + "/tokens"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create token for user %q: %w", userID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetPersonalAccessToken(ctx context.Context, userID, tokenID string) (PersonalAccessToken, error) {
 	if strings.TrimSpace(userID) == "" {
 		return PersonalAccessToken{}, fmt.Errorf("user id is required")

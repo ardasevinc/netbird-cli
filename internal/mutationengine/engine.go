@@ -113,6 +113,8 @@ type Remote interface {
 	ApproveUser(context.Context, string) (json.RawMessage, error)
 	RejectUser(context.Context, string) (json.RawMessage, error)
 	GetPersonalAccessTokenRaw(context.Context, string, string) (json.RawMessage, error)
+	ListPersonalAccessTokensRaw(context.Context, string) (json.RawMessage, error)
+	CreatePersonalAccessToken(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePersonalAccessToken(context.Context, string, string) (json.RawMessage, error)
 }
 
@@ -143,11 +145,12 @@ type requestTarget struct {
 }
 
 type Result struct {
-	StageID   string                 `json:"stage_id"`
-	Revision  int                    `json:"revision"`
-	AttemptID string                 `json:"attempt_id,omitempty"`
-	State     mutation.DispatchState `json:"state"`
-	Reason    string                 `json:"reason,omitempty"`
+	StageID       string                 `json:"stage_id"`
+	Revision      int                    `json:"revision"`
+	AttemptID     string                 `json:"attempt_id,omitempty"`
+	State         mutation.DispatchState `json:"state"`
+	Reason        string                 `json:"reason,omitempty"`
+	OneTimeSecret string                 `json:"-"`
 }
 
 type ApplyError struct {
@@ -191,11 +194,14 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	var request requestTarget
-	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation)) {
+	if err := json.Unmarshal(stage.Request, &request); err != nil || (request.ID == "" && !isCreateOperation(stage.Operation) && !isTargetlessOperation(stage.Operation) && !isUserTokenDeleteOperation(stage.Operation) && stage.Operation != "users.tokens.create") {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires a target id", stage.Operation)}
 	}
-	if isUserTokenDeleteOperation(stage.Operation) && (request.UserID == "" || request.TokenID == "") {
-		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires user_id and token_id", stage.Operation)}
+	if (isUserTokenDeleteOperation(stage.Operation) || stage.Operation == "users.tokens.create") && request.UserID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires user_id", stage.Operation)}
+	}
+	if isUserTokenDeleteOperation(stage.Operation) && request.TokenID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires token_id", stage.Operation)}
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
@@ -275,7 +281,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		if err != nil {
 			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but the created resource id could not be confirmed")
 		}
-		liveAfter, err := readPreimage(ctx, remote, stage.Operation, requestTarget{NetworkID: request.NetworkID, ZoneID: request.ZoneID, ID: createdID})
+		liveAfter, err := readPreimage(ctx, remote, stage.Operation, requestTarget{NetworkID: request.NetworkID, ZoneID: request.ZoneID, UserID: request.UserID, ID: createdID})
 		if err != nil {
 			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but read-back was inconclusive")
 		}
@@ -289,6 +295,13 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		}
 		if !matches {
 			return finish(ctx, store, result, mutation.Partial, "created resource differs from intended state after create")
+		}
+		if stage.Operation == "users.tokens.create" {
+			secret, err := responseSecret(dispatchResult)
+			if err != nil {
+				return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "personal access token was created but its one-time value could not be delivered")
+			}
+			result.OneTimeSecret = secret
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "created resource matches intended state")
 	}
@@ -398,6 +411,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetUserRaw(ctx, target.ID)
 	case "users.tokens.delete":
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
+	case "users.tokens.create":
+		return remote.ListPersonalAccessTokensRaw(ctx, target.UserID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -611,6 +626,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.RejectUser(ctx, target.ID)
 	case "users.tokens.delete":
 		return remote.DeletePersonalAccessToken(ctx, target.UserID, target.TokenID)
+	case "users.tokens.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreatePersonalAccessToken(ctx, target.UserID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -669,7 +690,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -682,12 +703,31 @@ func isUserTokenDeleteOperation(operation string) bool {
 
 func responseID(response json.RawMessage) (string, error) {
 	var object struct {
-		ID string `json:"id"`
+		ID                  string `json:"id"`
+		PersonalAccessToken struct {
+			ID string `json:"id"`
+		} `json:"personal_access_token"`
 	}
-	if err := json.Unmarshal(response, &object); err != nil || object.ID == "" {
+	if err := json.Unmarshal(response, &object); err != nil {
 		return "", errors.New("create response has no id")
 	}
-	return object.ID, nil
+	if object.ID != "" {
+		return object.ID, nil
+	}
+	if object.PersonalAccessToken.ID != "" {
+		return object.PersonalAccessToken.ID, nil
+	}
+	return "", errors.New("create response has no id")
+}
+
+func responseSecret(response json.RawMessage) (string, error) {
+	var object struct {
+		PlainToken string `json:"plain_token"`
+	}
+	if err := json.Unmarshal(response, &object); err != nil || strings.TrimSpace(object.PlainToken) == "" {
+		return "", errors.New("create response has no one-time secret")
+	}
+	return object.PlainToken, nil
 }
 
 func collectionContainsIntent(collection, intent json.RawMessage) (bool, error) {
@@ -757,6 +797,8 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	delete(object, "id")
 	delete(object, "network_id")
 	delete(object, "zone_id")
+	delete(object, "user_id")
+	delete(object, "token_id")
 	return json.Marshal(object)
 }
 
@@ -885,6 +927,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserRejectImpact(before)
 	case "users.tokens.delete":
 		return analysis.UserTokenDeleteImpact(before)
+	case "users.tokens.create":
+		return analysis.UserTokenCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

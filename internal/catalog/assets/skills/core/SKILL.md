@@ -20,6 +20,7 @@ Agent-network policy mutations are capability-gated, blocking, and require exact
 Agent-network provider mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof. Provider API keys never persist in stages; use an external `api_key_ref` for one-time resolution at apply.
 User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 Personal access token deletion is capability-gated, blocking, and requires exact token preimage plus absence proof; token values are never represented by the owned metadata model.
+Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

@@ -42,6 +42,8 @@ type fakeRemote struct {
 	userBefore            json.RawMessage
 	userAfter             json.RawMessage
 	tokenBefore           json.RawMessage
+	tokenCollection       json.RawMessage
+	tokenAfter            json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -492,6 +494,25 @@ func (f *fakeRemote) DeletePersonalAccessToken(_ context.Context, _, _ string) (
 	}
 	f.tokenBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) ListPersonalAccessTokensRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.tokenCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.tokenCollection...), nil
+}
+
+func (f *fakeRemote) CreatePersonalAccessToken(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.tokenAfter == nil {
+		return nil, errors.New("missing created token")
+	}
+	f.tokenCollection = json.RawMessage("[" + string(f.tokenAfter) + "]")
+	return json.RawMessage(`{"plain_token":"one-time-secret","personal_access_token":` + string(f.tokenAfter) + `}`), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -1992,6 +2013,35 @@ func TestApplyDispatchesUserTokenDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected token delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyReturnsPersonalAccessTokenOnceWithoutPersistingIt(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"token-1","name":"agent","created_by":"user-1"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.tokens.create", Request: json.RawMessage(`{"user_id":"user-1","name":"agent","expires_in":30}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"user_token_create","reachability":"unchanged","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a personal access token changes credential inventory without changing data-plane reachability; the one-time token value is returned only in the successful apply result and is never persisted"],"completeness":{"state":"complete","reason":null}}`), Findings: []ledger.Finding{{Code: "impact.user_token_create", Severity: "blocking", Message: "creating the personal access token returns a one-time secret and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", tokenCollection: []byte(before), tokenAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "one-time-secret" || remote.updates != 1 {
+		t.Fatalf("unexpected token create result: %+v updates=%d", result, remote.updates)
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "one-time-secret") || strings.Contains(string(stage.Request), "one-time-secret") {
+		t.Fatal("one-time token leaked into persisted state")
 	}
 }
 

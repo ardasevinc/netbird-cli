@@ -341,6 +341,14 @@ func UserTokenDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "user_token_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a personal access token revokes the credential represented by the exact token preimage"}, Completeness: map[string]any{"state": "complete", "reason": nil}}, nil
 }
 
+func UserTokenCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode personal access token create intent: %w", err)
+	}
+	return ImpactReport{Classification: "user_token_create", Reachability: "unchanged", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a personal access token changes credential inventory without changing data-plane reachability; the one-time token value is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "complete", "reason": nil}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {
