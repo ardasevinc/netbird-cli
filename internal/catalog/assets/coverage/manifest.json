@@ -414,11 +414,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "post.api.groups",
+      "id": "groups.create",
       "method": "POST",
       "path": "/api/groups",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "groups.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 118,
+    "implemented": 119,
     "classified": 0,
-    "discovered": 118,
-    "contract_verified": 109,
+    "discovered": 117,
+    "contract_verified": 110,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

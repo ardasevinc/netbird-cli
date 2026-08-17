@@ -111,6 +111,16 @@ func TestGroupDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestGroupCreateImpactIsConservative(t *testing.T) {
+	report, err := GroupCreateImpact([]byte(`{"name":"engineering"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "group_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestPeerUpdateImpactBlocksAccessChanges(t *testing.T) {
 	report, err := PeerUpdateImpact(
 		[]byte(`{"id":"p1","name":"peer","approval_required":false,"connected":true}`),

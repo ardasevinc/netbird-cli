@@ -59,12 +59,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
 				case "groups.update":
 					report, err = analysis.GroupUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "groups.create":
+					report, err = analysis.GroupCreateImpact(plan.IntendedAfter)
 				case "groups.delete":
 					report, err = analysis.GroupDeleteImpact(plan.Before)
 				case "policies.update":
@@ -113,6 +115,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "groups.update" && report.Classification == "unknown":
 					findingCode = "impact.unknown"
 					findingMessage = "the proposed group change may affect reachability, but its impact cannot be calculated"
+				case plan.Operation == "groups.create" && report.Classification == "group_create":
+					findingCode = "impact.group_create"
+					findingMessage = "creating the group may alter policy or resource membership and requires exact acknowledgement"
 				case plan.Operation == "groups.delete" && report.Classification == "group_delete":
 					findingCode = "impact.group_delete"
 					findingMessage = "deleting the group may alter policy membership and requires exact acknowledgement"

@@ -61,6 +61,7 @@ Network topology changes are also blocking findings.
 Peer deletion is blocking and requires the same absence proof.
 Policy deletion is blocking and requires read-back confirmation of absence.
 Group deletion is blocking and requires the same absence proof.
+Group creation is blocking and requires collection preimage and read-back proof.
 Route deletion is blocking and requires the same absence proof.
 Route creation is blocking and requires collection preimage and read-back proof.
 Network deletion is blocking and requires the same absence proof.

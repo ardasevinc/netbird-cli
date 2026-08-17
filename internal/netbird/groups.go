@@ -24,6 +24,22 @@ func (c *Client) ListGroups(ctx context.Context) ([]Group, error) {
 	return groups, nil
 }
 
+func (c *Client) ListGroupsRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/groups", nil, &result); err != nil {
+		return nil, fmt.Errorf("list groups: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateGroup(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/groups", request, &result); err != nil {
+		return nil, fmt.Errorf("create group: %w", err)
+	}
+	return result, nil
+}
+
 // GetGroup returns the normalized JSON document so the mutation engine can
 // compare the complete remote preimage without losing fields at the adapter
 // boundary.

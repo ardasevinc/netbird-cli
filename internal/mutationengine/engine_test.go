@@ -16,6 +16,7 @@ type fakeRemote struct {
 	account            string
 	before             json.RawMessage
 	after              json.RawMessage
+	groupCollection    json.RawMessage
 	policyBefore       json.RawMessage
 	policyAfter        json.RawMessage
 	routeBefore        json.RawMessage
@@ -50,6 +51,25 @@ func (f *fakeRemote) GetGroup(_ context.Context, _ string) (json.RawMessage, err
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.before...), nil
+}
+
+func (f *fakeRemote) ListGroupsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.groupCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.groupCollection...), nil
+}
+
+func (f *fakeRemote) CreateGroup(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.after == nil {
+		return nil, errors.New("missing created group")
+	}
+	f.groupCollection = json.RawMessage("[" + string(f.after) + "]")
+	return append(json.RawMessage(nil), f.after...), nil
 }
 
 func (f *fakeRemote) UpdateGroup(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
@@ -333,6 +353,41 @@ func TestApplyJournalsAndConfirmsReadBack(t *testing.T) {
 	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
 	if err != nil || receipt.State != string(mutation.ConfirmedSuccess) {
 		t.Fatalf("receipt=%+v err=%v", receipt, err)
+	}
+}
+
+func TestApplyDispatchesGroupCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"name":"engineering"}`
+	created := `{"id":"g1","name":"engineering","peers_count":0,"resources_count":0}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "groups.create",
+		Request:        json.RawMessage(`{"name":"engineering"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"group_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a group can create a new policy or resource membership principal; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"group_create_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.group_create", Severity: "blocking", Message: "creating the group may alter policy or resource membership and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", groupCollection: []byte(before), after: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected group create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

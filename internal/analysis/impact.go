@@ -428,6 +428,22 @@ func GroupDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func GroupCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode group create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "group_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating a group can create a new policy or resource membership principal; affected peers and resources require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "group_create_requires_topology"},
+	}, nil
+}
+
 func changedKeys(before, after map[string]any) []string {
 	keys := make(map[string]struct{}, len(before)+len(after))
 	for key := range before {

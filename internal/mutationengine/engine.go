@@ -19,6 +19,8 @@ type Remote interface {
 	ServerIdentity() string
 	AccountScope(context.Context, string) error
 	GetGroup(context.Context, string) (json.RawMessage, error)
+	ListGroupsRaw(context.Context) (json.RawMessage, error)
+	CreateGroup(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteGroup(context.Context, string) (json.RawMessage, error)
 	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
@@ -237,6 +239,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetGroup(ctx, target.ID)
 	case "groups.delete":
 		return remote.GetGroup(ctx, target.ID)
+	case "groups.create":
+		return remote.ListGroupsRaw(ctx)
 	case "policies.update":
 		return remote.GetPolicyRaw(ctx, target.ID)
 	case "policies.delete":
@@ -280,6 +284,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateGroup(ctx, target.ID, request)
 	case "groups.delete":
 		return remote.DeleteGroup(ctx, target.ID)
+	case "groups.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateGroup(ctx, body)
 	case "policies.update":
 		return remote.UpdatePolicy(ctx, target.ID, request)
 	case "policies.delete":
@@ -342,7 +352,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -430,6 +440,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.GroupUpdateImpact(before, intendedAfter)
 	case "groups.delete":
 		return analysis.GroupDeleteImpact(before)
+	case "groups.create":
+		return analysis.GroupCreateImpact(intendedAfter)
 	case "policies.update":
 		return analysis.PolicyUpdateImpact(before, intendedAfter)
 	case "policies.delete":
