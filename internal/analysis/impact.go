@@ -344,6 +344,17 @@ func UserPasswordUpdateImpact(before, intendedAfter []byte) (ImpactReport, error
 	return ImpactReport{Classification: "user_password_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"changing a user's password changes an authentication credential; the password values are resolved from external references only at dispatch and are never persisted", "the management API exposes no password read-back representation; success is confirmed by the endpoint response after exact user preimage validation"}, Completeness: map[string]any{"state": "unknown", "reason": "user_password_change_has_no_readable_credential_state"}}, nil
 }
 
+func UserInviteResendImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user invite resend preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user invite resend intent: %w", err)
+	}
+	return ImpactReport{Classification: "user_invite_resend", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"resending a user invitation creates an external enrollment communication side effect; the endpoint returns no durable token or response body", "success is confirmed by the endpoint response plus unchanged user metadata after exact preimage validation"}, Completeness: map[string]any{"state": "unknown", "reason": "user_invite_resend_has_external_delivery_side_effect"}}, nil
+}
+
 func UserTokenDeleteImpact(before []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(before, &object); err != nil {

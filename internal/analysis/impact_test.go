@@ -646,6 +646,16 @@ func TestUserPasswordUpdateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestUserInviteResendImpactIsConservative(t *testing.T) {
+	report, err := UserInviteResendImpact([]byte(`{"id":"user-1","status":"pending"}`), []byte(`{"id":"user-1","status":"pending"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "user_invite_resend" || report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected invite resend report: %+v", report)
+	}
+}
+
 func TestUserTokenCreateImpactIsComplete(t *testing.T) {
 	report, err := UserTokenCreateImpact([]byte(`{"id":"token-1","name":"agent"}`))
 	if err != nil {

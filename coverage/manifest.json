@@ -1611,11 +1611,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.invite",
+      "id": "users.invite.resend",
       "method": "POST",
       "path": "/api/users/{userId}/invite",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.password.update",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 167,
+    "implemented": 168,
     "classified": 0,
-    "discovered": 69,
-    "contract_verified": 158,
+    "discovered": 68,
+    "contract_verified": 159,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

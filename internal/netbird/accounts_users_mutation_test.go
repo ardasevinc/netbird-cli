@@ -30,6 +30,8 @@ func TestUserMutationMethodsUseDeclaredRoutes(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPut && r.URL.EscapedPath() == "/api/users/user%2Fone/password":
 			_ = json.NewEncoder(w).Encode(map[string]any{"success": true})
+		case r.Method == http.MethodPost && r.URL.EscapedPath() == "/api/users/user%2Fone/invite":
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			http.NotFound(w, r)
 		}
@@ -60,6 +62,9 @@ func TestUserMutationMethodsUseDeclaredRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := client.ChangeUserPassword(ctx, "user/one", json.RawMessage(`{"old_password":"OldPass123!","new_password":"NewPass123!"}`)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.ResendUserInvite(ctx, "user/one"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := client.DeleteUser(ctx, "user/one"); err != nil {

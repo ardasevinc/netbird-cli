@@ -113,6 +113,7 @@ type Remote interface {
 	ApproveUser(context.Context, string) (json.RawMessage, error)
 	RejectUser(context.Context, string) (json.RawMessage, error)
 	ChangeUserPassword(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	ResendUserInvite(context.Context, string) (json.RawMessage, error)
 	GetPersonalAccessTokenRaw(context.Context, string, string) (json.RawMessage, error)
 	ListPersonalAccessTokensRaw(context.Context, string) (json.RawMessage, error)
 	CreatePersonalAccessToken(context.Context, string, json.RawMessage) (json.RawMessage, error)
@@ -295,7 +296,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	result.AttemptID = attempt.ID
-	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" {
+	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
 	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
@@ -454,7 +455,7 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAgentNetworkProviderRaw(ctx, target.ID)
 	case "users.create":
 		return remote.ListUsersRaw(ctx)
-	case "users.update", "users.delete", "users.approve", "users.reject", "users.password.update":
+	case "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend":
 		return remote.GetUserRaw(ctx, target.ID)
 	case "users.tokens.delete":
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
@@ -687,6 +688,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.ChangeUserPassword(ctx, target.ID, body)
+	case "users.invite.resend":
+		return remote.ResendUserInvite(ctx, target.ID)
 	case "users.tokens.delete":
 		return remote.DeletePersonalAccessToken(ctx, target.UserID, target.TokenID)
 	case "users.tokens.create":
@@ -1084,6 +1087,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserRejectImpact(before)
 	case "users.password.update":
 		return analysis.UserPasswordUpdateImpact(before, intendedAfter)
+	case "users.invite.resend":
+		return analysis.UserInviteResendImpact(before, intendedAfter)
 	case "users.tokens.delete":
 		return analysis.UserTokenDeleteImpact(before)
 	case "users.tokens.create":

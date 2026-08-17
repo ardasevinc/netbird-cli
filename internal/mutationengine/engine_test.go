@@ -43,6 +43,7 @@ type fakeRemote struct {
 	userAfter             json.RawMessage
 	passwordSeen          bool
 	passwordBody          json.RawMessage
+	inviteResendSeen      bool
 	tokenBefore           json.RawMessage
 	tokenCollection       json.RawMessage
 	tokenAfter            json.RawMessage
@@ -500,6 +501,15 @@ func (f *fakeRemote) ChangeUserPassword(_ context.Context, _ string, request jso
 	f.passwordSeen = true
 	f.passwordBody = append(json.RawMessage(nil), request...)
 	return json.RawMessage(`{"success":true}`), nil
+}
+
+func (f *fakeRemote) ResendUserInvite(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.inviteResendSeen = true
+	return nil, nil
 }
 
 func (f *fakeRemote) GetPersonalAccessTokenRaw(_ context.Context, _, _ string) (json.RawMessage, error) {
@@ -2158,6 +2168,27 @@ func TestApplyResolvesUserPasswordRefsWithoutPersistingSecrets(t *testing.T) {
 	}
 	if strings.Contains(string(receipt.Result), "OldPass123!") || strings.Contains(string(receipt.Result), "NewPass123!") {
 		t.Fatal("password leaked into persisted receipt")
+	}
+}
+
+func TestApplyDispatchesUserInviteResendAndConfirmsMetadata(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"user-1","status":"pending"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.invite.resend", Request: json.RawMessage(`{"id":"user-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(before), Impact: json.RawMessage(`{"classification":"user_invite_resend","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["resending a user invitation creates an external enrollment communication side effect; the endpoint returns no durable token or response body","success is confirmed by the endpoint response plus unchanged user metadata after exact preimage validation"],"completeness":{"state":"unknown","reason":"user_invite_resend_has_external_delivery_side_effect"}}`), Findings: []ledger.Finding{{Code: "impact.user_invite_resend", Severity: "blocking", Message: "resending the user invitation triggers external enrollment delivery and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || !remote.inviteResendSeen || remote.updates != 1 {
+		t.Fatalf("unexpected invite resend result: %+v updates=%d seen=%v", result, remote.updates, remote.inviteResendSeen)
 	}
 }
 
