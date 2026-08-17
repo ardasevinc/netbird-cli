@@ -128,6 +128,19 @@ func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSNameserverUpdateImpactIsConservative(t *testing.T) {
+	report, err := DNSNameserverUpdateImpact(
+		[]byte(`{"id":"ns-1","description":"old","enabled":true}`),
+		[]byte(`{"id":"ns-1","description":"new","enabled":true}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_nameserver_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),

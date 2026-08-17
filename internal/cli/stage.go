@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -87,6 +87,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.DNSRecordDeleteImpact(plan.Before)
 				case "dns.nameservers.create":
 					report, err = analysis.DNSNameserverCreateImpact(plan.IntendedAfter)
+				case "dns.nameservers.update":
+					report, err = analysis.DNSNameserverUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -164,6 +166,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "dns.nameservers.create" && report.Classification == "dns_nameserver_create":
 					findingCode = "impact.dns_nameserver_create"
 					findingMessage = "creating the nameserver group may alter resolver behavior and requires exact acknowledgement"
+				case plan.Operation == "dns.nameservers.update" && report.Classification == "dns_nameserver_change":
+					findingCode = "impact.dns_nameserver_change"
+					findingMessage = "the proposed nameserver group change may alter resolver behavior and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

@@ -121,6 +121,9 @@ acknowledgement and the same required 404 absence proof.
 Nameserver-group creation snapshots the resolver-group collection, requires
 blocking `impact.dns_nameserver_create` acknowledgement, and confirms the
 returned id and read-back fields against the intended state.
+Nameserver-group updates are always treated as blocking
+`impact.dns_nameserver_change` changes and require exact preimage/read-back
+confirmation.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.

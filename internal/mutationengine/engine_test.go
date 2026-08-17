@@ -30,6 +30,8 @@ type fakeRemote struct {
 	networkCollection    json.RawMessage
 	dnsZoneCollection    json.RawMessage
 	nameserverCollection json.RawMessage
+	nameserverBefore     json.RawMessage
+	nameserverAfter      json.RawMessage
 	resourceBefore       json.RawMessage
 	resourceAfter        json.RawMessage
 	resourceCollection   json.RawMessage
@@ -73,6 +75,22 @@ func (f *fakeRemote) CreateNameserverGroup(_ context.Context, _ json.RawMessage)
 	}
 	f.nameserverCollection = json.RawMessage("[" + string(f.after) + "]")
 	return append(json.RawMessage(nil), f.after...), nil
+}
+
+func (f *fakeRemote) GetNameserverGroupRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.nameserverBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.nameserverBefore...), nil
+}
+
+func (f *fakeRemote) UpdateNameserverGroup(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.nameserverBefore = append(json.RawMessage(nil), f.nameserverAfter...)
+	return append(json.RawMessage(nil), f.nameserverAfter...), nil
 }
 
 func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
@@ -758,6 +776,41 @@ func TestApplyDispatchesNameserverGroupCreateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected nameserver create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNameserverGroupUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"ns-1","name":"office","description":"old","domains":["office.internal"],"enabled":true,"groups":["g1"],"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}],"primary":false,"search_domains_enabled":true}`
+	after := `{"id":"ns-1","name":"office","description":"new","domains":["office.internal"],"enabled":true,"groups":["g1"],"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}],"primary":false,"search_domains_enabled":true}`
+	request := `{"id":"ns-1","description":"new"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.nameservers.update",
+		Request:        json.RawMessage(request),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"dns_nameserver_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating a nameserver group can change resolver behavior for distributed peers; affected peers and domains require live analysis"],"completeness":{"state":"unknown","reason":"dns_nameserver_update_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_nameserver_change", Severity: "blocking", Message: "the proposed nameserver group change may alter resolver behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", nameserverBefore: []byte(before), nameserverAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected nameserver update result: %+v updates=%d", result, remote.updates)
 	}
 }
 
