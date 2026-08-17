@@ -67,6 +67,22 @@ func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.R
 	return append(json.RawMessage(nil), f.after...), nil
 }
 
+func (f *fakeRemote) GetDNSZoneRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.before...), nil
+}
+
+func (f *fakeRemote) DeleteDNSZone(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.before = nil
+	return nil, nil
+}
+
 func (f *fakeRemote) GetGroup(_ context.Context, _ string) (json.RawMessage, error) {
 	if f.before == nil {
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
@@ -463,6 +479,39 @@ func TestApplyDispatchesDNSZoneCreateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected dns zone create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesDNSZoneDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"zone-1","domain":"office.internal","distribution_groups":["g1"]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.zones.delete",
+		Request:        json.RawMessage(`{"id":"zone-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"dns_zone_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a DNS zone can change name-resolution behavior for distributed peers; affected peers and records require live analysis"],"completeness":{"state":"unknown","reason":"dns_zone_delete_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_zone_delete", Severity: "blocking", Message: "deleting the DNS zone may alter name resolution and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", before: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected dns zone delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

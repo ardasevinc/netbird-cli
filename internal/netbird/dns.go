@@ -160,6 +160,30 @@ func (c *Client) CreateDNSZone(ctx context.Context, request json.RawMessage) (js
 	return result, nil
 }
 
+func (c *Client) GetDNSZoneRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := dnsPath("zones", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get dns zone %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteDNSZone(ctx context.Context, id string) (json.RawMessage, error) {
+	path, err := dnsPath("zones", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete dns zone %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetDNSZone(ctx context.Context, id string) (DNSZone, error) {
 	path, err := dnsPath("zones", id)
 	if err != nil {

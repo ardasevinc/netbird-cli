@@ -53,6 +53,8 @@ type Remote interface {
 	DeleteNetworkRouter(context.Context, string, string) (json.RawMessage, error)
 	ListDNSZonesRaw(context.Context) (json.RawMessage, error)
 	CreateDNSZone(context.Context, json.RawMessage) (json.RawMessage, error)
+	GetDNSZoneRaw(context.Context, string) (json.RawMessage, error)
+	DeleteDNSZone(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -253,6 +255,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListPoliciesRaw(ctx)
 	case "dns.zones.create":
 		return remote.ListDNSZonesRaw(ctx)
+	case "dns.zones.delete":
+		return remote.GetDNSZoneRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -314,6 +318,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateDNSZone(ctx, body)
+	case "dns.zones.delete":
+		return remote.DeleteDNSZone(ctx, target.ID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -470,6 +476,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PolicyCreateImpact(intendedAfter)
 	case "dns.zones.create":
 		return analysis.DNSZoneCreateImpact(intendedAfter)
+	case "dns.zones.delete":
+		return analysis.DNSZoneDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -517,7 +525,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

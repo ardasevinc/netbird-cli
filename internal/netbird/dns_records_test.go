@@ -74,3 +74,20 @@ func TestCreateDNSZoneUsesPOST(t *testing.T) {
 		t.Fatalf("created=%s err=%v", response, err)
 	}
 }
+
+func TestDeleteDNSZoneUsesDELETE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/dns/zones/zone-1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).DeleteDNSZone(context.Background(), "zone-1"); err != nil {
+		t.Fatal(err)
+	}
+}

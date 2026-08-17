@@ -107,6 +107,8 @@ read-back fields against the intended state.
 DNS zone creation snapshots the zone collection preimage, requires blocking
 `impact.dns_zone_create` acknowledgement, and confirms the returned id and
 read-back fields against the intended state.
+DNS zone deletion is staged with blocking `impact.dns_zone_delete`
+acknowledgement and the same required 404 absence proof.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.

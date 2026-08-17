@@ -62,6 +62,16 @@ func TestDNSZoneCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSZoneDeleteImpactIsConservative(t *testing.T) {
+	report, err := DNSZoneDeleteImpact([]byte(`{"id":"zone-1","domain":"office.internal","distribution_groups":["g1"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_zone_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),
