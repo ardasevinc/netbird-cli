@@ -1124,6 +1124,33 @@ func NotificationChannelDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "notification_channel_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a notification channel stops its external account event delivery"}, Completeness: map[string]any{"state": "unknown", "reason": "notification_channel_external_delivery"}}, nil
 }
 
+func AzureIDPCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode Azure IDP create intent: %w", err)
+	}
+	return ImpactReport{Classification: "azure_idp_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating an Azure identity integration changes external authentication and directory synchronization; the client secret is resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_authentication_and_sync_boundary"}}, nil
+}
+
+func AzureIDPUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode Azure IDP update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode Azure IDP update intent: %w", err)
+	}
+	return ImpactReport{Classification: "azure_idp_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating an Azure identity integration may alter external authentication or directory synchronization; client secrets are resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_authentication_and_sync_boundary"}}, nil
+}
+
+func AzureIDPDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode Azure IDP delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "azure_idp_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an Azure identity integration may strand users or stop directory synchronization"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_authentication_and_sync_boundary"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

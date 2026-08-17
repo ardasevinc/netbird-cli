@@ -235,3 +235,7 @@ are resolved only at dispatch and are never persisted in the ledger.
 Remote-job stages require `peer_id`, exact peer preimage, and explicit
 acknowledgement. The response proves job creation; the workload may collect
 sensitive diagnostics from the selected peer.
+
+Azure IDP stages use `client_secret_ref`; client secrets are resolved only at
+dispatch and never persisted in the stage or receipt. Create, update, and
+delete remain blocking authentication and synchronization effects.

@@ -115,9 +115,17 @@ type fakeRemote struct {
 	updateErr              error
 	updates                int
 	notification           notificationChannelState
+	azureIDP               azureIDPState
 }
 
 type notificationChannelState struct {
+	before     json.RawMessage
+	collection json.RawMessage
+	after      json.RawMessage
+	body       json.RawMessage
+}
+
+type azureIDPState struct {
 	before     json.RawMessage
 	collection json.RawMessage
 	after      json.RawMessage
@@ -1334,6 +1342,56 @@ func (f *fakeRemote) DeleteNotificationChannel(_ context.Context, _ string) (jso
 	f.notification.before = nil
 	f.notification.collection = json.RawMessage(`[]`)
 	return nil, nil
+}
+
+func (f *fakeRemote) ListAzureIDPsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.azureIDP.collection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.azureIDP.collection...), nil
+}
+
+func (f *fakeRemote) GetAzureIDPRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.azureIDP.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.azureIDP.before...), nil
+}
+
+func (f *fakeRemote) CreateAzureIDP(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.azureIDP.body = append(json.RawMessage(nil), body...)
+	if f.azureIDP.after == nil {
+		return nil, errors.New("missing Azure IDP")
+	}
+	f.azureIDP.collection = json.RawMessage("[" + string(f.azureIDP.after) + "]")
+	return append(json.RawMessage(nil), f.azureIDP.after...), nil
+}
+
+func (f *fakeRemote) UpdateAzureIDP(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.azureIDP.body = append(json.RawMessage(nil), body...)
+	if f.azureIDP.after == nil {
+		return nil, errors.New("missing Azure IDP")
+	}
+	f.azureIDP.before = append(json.RawMessage(nil), f.azureIDP.after...)
+	return append(json.RawMessage(nil), f.azureIDP.after...), nil
+}
+
+func (f *fakeRemote) DeleteAzureIDP(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.azureIDP.before = nil
+	f.azureIDP.collection = json.RawMessage(`[]`)
+	return json.RawMessage(`{}`), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -3092,6 +3150,33 @@ func TestApplyNotificationChannelResolvesTargetOnlyAtDispatch(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.notification.body), "real-secret") {
 		t.Fatalf("unexpected notification channel result: %+v body=%s", result, remote.notification.body)
+	}
+}
+
+func TestApplyAzureIDPResolvesClientSecretOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":1,"enabled":true,"client_id":"client","tenant_id":"tenant","host":"microsoft.com"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "azure_idp.create", Request: json.RawMessage(`{"client_id":"client","tenant_id":"tenant","host":"microsoft.com","client_secret_ref":"pa:azure-secret"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"azure_idp_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating an Azure identity integration changes external authentication and directory synchronization; the client secret is resolved in memory and never persisted"],"completeness":{"state":"unknown","reason":"azure_idp_authentication_and_sync_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.azure_idp_create", Severity: "blocking", Message: "creating the Azure identity integration changes external authentication and directory synchronization and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", azureIDP: azureIDPState{collection: []byte(before), after: []byte(after)}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:azure-secret" {
+			t.Fatalf("unexpected secret ref: %s", ref)
+		}
+		return "base64-secret", nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "base64-secret") || !strings.Contains(string(remote.azureIDP.body), "base64-secret") {
+		t.Fatalf("unexpected Azure IDP result: %+v body=%s", result, remote.azureIDP.body)
 	}
 }
 

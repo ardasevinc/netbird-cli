@@ -533,18 +533,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.azure_idp",
+      "id": "azure_idp.create",
       "method": "POST",
       "path": "/api/integrations/azure-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.azure_idp.id",
+      "id": "azure_idp.delete",
       "method": "DELETE",
       "path": "/api/integrations/azure-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.azure_idp.id",
@@ -554,11 +554,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.azure_idp.id",
+      "id": "azure_idp.update",
       "method": "PUT",
       "path": "/api/integrations/azure-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.azure_idp.id.logs",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 193,
+    "implemented": 196,
     "classified": 0,
-    "discovered": 43,
-    "contract_verified": 184,
+    "discovered": 40,
+    "contract_verified": 187,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

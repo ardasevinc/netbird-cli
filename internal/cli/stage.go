@@ -80,6 +80,22 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 		}
 		return nil
 	}
+	if operation == "azure_idp.create" || operation == "azure_idp.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode azure IDP request: %w", err)
+		}
+		if _, ok := object["client_secret"]; ok {
+			return errors.New("azure IDP client_secret cannot be persisted in a stage; use client_secret_ref")
+		}
+		if operation == "azure_idp.create" {
+			ref, ok := object["client_secret_ref"].(string)
+			if !ok || strings.TrimSpace(ref) == "" {
+				return errors.New("azure IDP create requires client_secret_ref")
+			}
+		}
+		return nil
+	}
 	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -177,7 +193,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -349,6 +365,12 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.NotificationChannelUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "notification_channels.delete":
 					report, err = analysis.NotificationChannelDeleteImpact(plan.Before)
+				case "azure_idp.create":
+					report, err = analysis.AzureIDPCreateImpact(plan.IntendedAfter)
+				case "azure_idp.update":
+					report, err = analysis.AzureIDPUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "azure_idp.delete":
+					report, err = analysis.AzureIDPDeleteImpact(plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -630,6 +652,15 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "notification_channels.delete" && report.Classification == "notification_channel_delete":
 					findingCode = "impact.notification_channel_delete"
 					findingMessage = "deleting the notification channel stops external account delivery and requires exact acknowledgement"
+				case plan.Operation == "azure_idp.create" && report.Classification == "azure_idp_create":
+					findingCode = "impact.azure_idp_create"
+					findingMessage = "creating the Azure identity integration changes external authentication and directory synchronization and requires exact acknowledgement"
+				case plan.Operation == "azure_idp.update" && report.Classification == "azure_idp_change":
+					findingCode = "impact.azure_idp_change"
+					findingMessage = "changing the Azure identity integration may alter authentication or directory synchronization and requires exact acknowledgement"
+				case plan.Operation == "azure_idp.delete" && report.Classification == "azure_idp_delete":
+					findingCode = "impact.azure_idp_delete"
+					findingMessage = "deleting the Azure identity integration may strand users or stop directory synchronization and requires exact acknowledgement"
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"

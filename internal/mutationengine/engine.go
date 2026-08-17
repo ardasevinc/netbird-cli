@@ -168,6 +168,11 @@ type Remote interface {
 	CreateNotificationChannel(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateNotificationChannel(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteNotificationChannel(context.Context, string) (json.RawMessage, error)
+	ListAzureIDPsRaw(context.Context) (json.RawMessage, error)
+	GetAzureIDPRaw(context.Context, string) (json.RawMessage, error)
+	CreateAzureIDP(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateAzureIDP(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteAzureIDP(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -384,6 +389,16 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 				return finish(ctx, store, result, mutation.Partial, "remote job response differs from intended state")
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote job response matches intended state")
+		}
+		if stage.Operation == "azure_idp.create" {
+			matches, err := objectContains(dispatchResult, stage.IntendedAfter)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "Azure IDP create response could not be compared with intent")
+			}
+			if !matches {
+				return finish(ctx, store, result, mutation.Partial, "Azure IDP create response differs from intended state")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "Azure IDP create response matches intended state")
 		}
 		if stage.Operation == "peers.edr.bypass.create" {
 			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
@@ -625,6 +640,10 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListNotificationChannelsRaw(ctx)
 	case "notification_channels.update", "notification_channels.delete":
 		return remote.GetNotificationChannelRaw(ctx, target.ID)
+	case "azure_idp.create":
+		return remote.ListAzureIDPsRaw(ctx)
+	case "azure_idp.update", "azure_idp.delete":
+		return remote.GetAzureIDPRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -966,6 +985,20 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateNotificationChannel(ctx, target.ID, body)
 	case "notification_channels.delete":
 		return remote.DeleteNotificationChannel(ctx, target.ID)
+	case "azure_idp.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateAzureIDP(ctx, body)
+	case "azure_idp.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateAzureIDP(ctx, target.ID, body)
+	case "azure_idp.delete":
+		return remote.DeleteAzureIDP(ctx, target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1060,7 +1093,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1368,6 +1401,32 @@ func prepareSecretRequest(operation string, request json.RawMessage, resolve fun
 		object["client_secret"] = secret
 		return json.Marshal(object)
 	}
+	if operation == "azure_idp.create" || operation == "azure_idp.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode azure IDP request: %w", err)
+		}
+		if _, ok := object["client_secret"]; ok {
+			return nil, errors.New("azure IDP client_secret cannot be persisted; use client_secret_ref")
+		}
+		ref, hasRef := object["client_secret_ref"].(string)
+		delete(object, "client_secret_ref")
+		if !hasRef || strings.TrimSpace(ref) == "" {
+			if operation == "azure_idp.create" {
+				return nil, errors.New("azure IDP create requires client_secret_ref")
+			}
+			return json.Marshal(object)
+		}
+		if resolve == nil {
+			return nil, errors.New("azure IDP client_secret_ref requires a configured secret resolver")
+		}
+		secret, err := resolve(ref)
+		if err != nil || strings.TrimSpace(secret) == "" {
+			return nil, errors.New("azure IDP client_secret_ref could not be resolved")
+		}
+		object["client_secret"] = secret
+		return json.Marshal(object)
+	}
 	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -1621,6 +1680,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.NotificationChannelUpdateImpact(before, intendedAfter)
 	case "notification_channels.delete":
 		return analysis.NotificationChannelDeleteImpact(before)
+	case "azure_idp.create":
+		return analysis.AzureIDPCreateImpact(intendedAfter)
+	case "azure_idp.update":
+		return analysis.AzureIDPUpdateImpact(before, intendedAfter)
+	case "azure_idp.delete":
+		return analysis.AzureIDPDeleteImpact(before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1664,7 +1729,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "azure_idp.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {
