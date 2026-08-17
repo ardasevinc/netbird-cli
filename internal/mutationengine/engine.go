@@ -75,6 +75,7 @@ type Remote interface {
 	CreatePostureCheck(context.Context, json.RawMessage) (json.RawMessage, error)
 	GetPostureCheckRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePostureCheck(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeletePostureCheck(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -305,6 +306,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListPostureChecksRaw(ctx)
 	case "posture_checks.update":
 		return remote.GetPostureCheckRaw(ctx, target.ID)
+	case "posture_checks.delete":
+		return remote.GetPostureCheckRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -420,6 +423,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.UpdatePostureCheck(ctx, target.ID, body)
+	case "posture_checks.delete":
+		return remote.DeletePostureCheck(ctx, target.ID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -607,6 +612,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PostureCheckCreateImpact(intendedAfter)
 	case "posture_checks.update":
 		return analysis.PostureCheckUpdateImpact(before, intendedAfter)
+	case "posture_checks.delete":
+		return analysis.PostureCheckDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -654,7 +661,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

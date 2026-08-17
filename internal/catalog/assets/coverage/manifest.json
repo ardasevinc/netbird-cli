@@ -1331,11 +1331,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "delete.api.posture_checks.postureCheckId",
+      "id": "posture_checks.delete",
       "method": "DELETE",
       "path": "/api/posture-checks/{postureCheckId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "posture_checks.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 134,
+    "implemented": 135,
     "classified": 0,
-    "discovered": 102,
-    "contract_verified": 125,
+    "discovered": 101,
+    "contract_verified": 126,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

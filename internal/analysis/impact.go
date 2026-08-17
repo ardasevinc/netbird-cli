@@ -325,6 +325,22 @@ func PostureCheckUpdateImpact(before, intendedAfter []byte) (ImpactReport, error
 	}, nil
 }
 
+func PostureCheckDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode posture check delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "posture_check_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting a posture check can change policy admission for peers; affected peers and policies require live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "posture_check_delete_requires_policy_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

@@ -118,6 +118,15 @@ func (f *fakeRemote) UpdatePostureCheck(_ context.Context, _ string, _ json.RawM
 	return append(json.RawMessage(nil), f.postureAfter...), nil
 }
 
+func (f *fakeRemote) DeletePostureCheck(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.postureBefore = nil
+	return nil, nil
+}
+
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
 	if f.dnsZoneCollection == nil {
 		return json.RawMessage(`[]`), nil
@@ -1105,6 +1114,39 @@ func TestApplyDispatchesPostureCheckUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected posture check update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPostureCheckDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"pc-1","name":"managed","checks":{}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "posture_checks.delete",
+		Request:        json.RawMessage(`{"id":"pc-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"posture_check_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a posture check can change policy admission for peers; affected peers and policies require live analysis"],"completeness":{"state":"unknown","reason":"posture_check_delete_requires_policy_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.posture_check_delete", Severity: "blocking", Message: "deleting the posture check may alter policy admission and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", postureBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected posture check delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

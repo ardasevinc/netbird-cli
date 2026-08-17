@@ -47,6 +47,7 @@ var definitions = map[string]Definition{
 	"posture_checks.get":        {Name: "posture_checks.get", Method: "GET", Path: "/api/posture-checks/{postureCheckId}", Mutation: ReadOnly},
 	"posture_checks.create":     {Name: "posture_checks.create", Method: "POST", Path: "/api/posture-checks", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"posture_checks.update":     {Name: "posture_checks.update", Method: "PUT", Path: "/api/posture-checks/{postureCheckId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"posture_checks.delete":     {Name: "posture_checks.delete", Method: "DELETE", Path: "/api/posture-checks/{postureCheckId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"events.audit":              {Name: "events.audit", Method: "GET", Path: "/api/events/audit", Mutation: ReadOnly},
 	"events.network_traffic":    {Name: "events.network_traffic", Method: "GET", Path: "/api/events/network-traffic", Mutation: ReadOnly},
 	"events.proxy":              {Name: "events.proxy", Method: "GET", Path: "/api/events/proxy", Mutation: ReadOnly},
