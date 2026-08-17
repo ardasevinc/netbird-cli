@@ -241,7 +241,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "edr.intune.create", "edr.intune.update", "edr.intune.delete", "edr.sentinelone.create", "edr.sentinelone.update", "edr.sentinelone.delete", "edr.falcon.create", "edr.falcon.update", "edr.falcon.delete", "edr.huntress.create", "edr.huntress.update", "edr.huntress.delete", "edr.fleetdm.create", "edr.fleetdm.update", "edr.fleetdm.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "edr.intune.create", "edr.intune.update", "edr.intune.delete", "edr.sentinelone.create", "edr.sentinelone.update", "edr.sentinelone.delete", "edr.falcon.create", "edr.falcon.update", "edr.falcon.delete", "edr.huntress.create", "edr.huntress.update", "edr.huntress.delete", "edr.fleetdm.create", "edr.fleetdm.update", "edr.fleetdm.delete", "scim.create", "scim.update", "scim.delete", "scim.token", "okta_scim.create", "okta_scim.update", "okta_scim.delete", "okta_scim.token", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -435,6 +435,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.EDRIntegrationUpdateImpact(strings.Split(plan.Operation, ".")[1], plan.Before, plan.IntendedAfter)
 				case "edr.intune.delete", "edr.sentinelone.delete", "edr.falcon.delete", "edr.huntress.delete", "edr.fleetdm.delete":
 					report, err = analysis.EDRIntegrationDeleteImpact(strings.Split(plan.Operation, ".")[1], plan.Before)
+				case "scim.create", "okta_scim.create":
+					report, err = analysis.SCIMCreateImpact(strings.Split(plan.Operation, ".")[0], plan.IntendedAfter)
+				case "scim.update", "okta_scim.update":
+					report, err = analysis.SCIMUpdateImpact(strings.Split(plan.Operation, ".")[0], plan.Before, plan.IntendedAfter)
+				case "scim.delete", "okta_scim.delete":
+					report, err = analysis.SCIMDeleteImpact(strings.Split(plan.Operation, ".")[0], plan.Before)
+				case "scim.token", "okta_scim.token":
+					report, err = analysis.SCIMTokenImpact(strings.Split(plan.Operation, ".")[0], plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -756,6 +764,29 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 								findingMessage = "changing the EDR integration may alter device-compliance enforcement and peer access and requires exact acknowledgement"
 							case "delete":
 								findingMessage = "deleting the EDR integration removes a device-compliance gate and requires exact acknowledgement"
+							}
+						}
+					}
+				case strings.HasPrefix(plan.Operation, "scim.") || strings.HasPrefix(plan.Operation, "okta_scim."):
+					parts := strings.Split(plan.Operation, ".")
+					if len(parts) == 2 {
+						kind := parts[1]
+						classificationKind := kind
+						if kind == "update" {
+							classificationKind = "change"
+						}
+						findingCode = "impact.scim_" + parts[0] + "_" + classificationKind
+						if report.Classification == "scim_"+parts[0]+"_"+classificationKind {
+							switch kind {
+							case "create":
+								findingMessage = "creating the SCIM integration changes external user and group provisioning and requires exact acknowledgement"
+							case "update":
+								findingCode = "impact.scim_" + parts[0] + "_change"
+								findingMessage = "changing the SCIM integration may alter external user and group provisioning and requires exact acknowledgement"
+							case "delete":
+								findingMessage = "deleting the SCIM integration stops external user and group provisioning and requires exact acknowledgement"
+							case "token":
+								findingMessage = "regenerating the SCIM token revokes the prior provisioning credential and requires exact acknowledgement"
 							}
 						}
 					}

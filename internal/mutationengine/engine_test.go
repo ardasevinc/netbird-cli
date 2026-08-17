@@ -118,6 +118,7 @@ type fakeRemote struct {
 	azureIDP               azureIDPState
 	googleIDP              googleIDPState
 	edr                    map[string]edrIntegrationState
+	scim                   map[string]scimIntegrationState
 }
 
 type notificationChannelState struct {
@@ -145,6 +146,13 @@ type edrIntegrationState struct {
 	before json.RawMessage
 	after  json.RawMessage
 	body   json.RawMessage
+}
+
+type scimIntegrationState struct {
+	before     json.RawMessage
+	collection json.RawMessage
+	after      json.RawMessage
+	token      string
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -1531,6 +1539,82 @@ func (f *fakeRemote) DeleteEDRIntegration(_ context.Context, provider string) (j
 	state.before = nil
 	f.edr[provider] = *state
 	return json.RawMessage(`{}`), nil
+}
+
+func (f *fakeRemote) scimState(provider string) *scimIntegrationState {
+	if f.scim == nil {
+		f.scim = make(map[string]scimIntegrationState)
+	}
+	state := f.scim[provider]
+	f.scim[provider] = state
+	return &state
+}
+
+func (f *fakeRemote) ListSCIMIntegrationsRaw(_ context.Context, provider string) (json.RawMessage, error) {
+	state := f.scimState(provider)
+	if state.collection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), state.collection...), nil
+}
+
+func (f *fakeRemote) GetSCIMIntegrationRaw(_ context.Context, provider, _ string) (json.RawMessage, error) {
+	state := f.scimState(provider)
+	if state.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), state.before...), nil
+}
+
+func (f *fakeRemote) CreateSCIMIntegration(_ context.Context, provider string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.scimState(provider)
+	if state.after == nil {
+		return nil, errors.New("missing SCIM integration")
+	}
+	state.collection = json.RawMessage("[" + string(state.after) + "]")
+	state.before = append(json.RawMessage(nil), state.after...)
+	f.scim[provider] = *state
+	return append(json.RawMessage(nil), state.after...), nil
+}
+
+func (f *fakeRemote) UpdateSCIMIntegration(_ context.Context, provider, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.scimState(provider)
+	state.before = append(json.RawMessage(nil), state.after...)
+	f.scim[provider] = *state
+	return append(json.RawMessage(nil), state.after...), nil
+}
+
+func (f *fakeRemote) DeleteSCIMIntegration(_ context.Context, provider, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.scimState(provider)
+	state.before = nil
+	state.collection = json.RawMessage(`[]`)
+	f.scim[provider] = *state
+	return json.RawMessage(`{}`), nil
+}
+
+func (f *fakeRemote) RegenerateSCIMToken(_ context.Context, provider, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.scimState(provider)
+	if state.token == "" {
+		state.token = "nbs-one-time"
+	}
+	f.scim[provider] = *state
+	return json.RawMessage(`{"auth_token":"nbs-one-time"}`), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -3434,6 +3518,45 @@ func TestApplyEDRDeleteConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected EDR delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplySCIMCreateConfirmsCollectionAndTokenIsOneTime(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":1,"enabled":true,"prefix":"acme","provider":"okta"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "scim.create", Request: json.RawMessage(`{"prefix":"acme","provider":"okta"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"scim_scim_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a SCIM identity integration changes external user and group provisioning; its one-time token is returned only to the caller and never persisted"],"completeness":{"state":"unknown","reason":"scim_provisioning_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.scim_scim_create", Severity: "blocking", Message: "creating the SCIM integration changes external user and group provisioning and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", scim: map[string]scimIntegrationState{"scim": {collection: []byte(before), after: []byte(after)}}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected SCIM create result: %+v updates=%d", result, remote.updates)
+	}
+
+	tokenBefore := after
+	tokenStage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "scim.token", Request: json.RawMessage(`{"id":"1"}`), Before: json.RawMessage(tokenBefore), IntendedAfter: json.RawMessage(tokenBefore), Impact: json.RawMessage(`{"classification":"scim_scim_token","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["regenerating the SCIM token revokes the prior external provisioning credential; the replacement token is returned once and never persisted"],"completeness":{"state":"unknown","reason":"scim_token_credential_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.scim_scim_token", Severity: "blocking", Message: "regenerating the SCIM token revokes the prior provisioning credential and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = Apply(context.Background(), store, remote, ApplyInput{StageID: tokenStage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "nbs-one-time" || strings.Contains(string(receipt.Result), "nbs-one-time") {
+		t.Fatalf("unexpected SCIM token result: %+v receipt=%s", result, receipt.Result)
 	}
 }
 

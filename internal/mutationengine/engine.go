@@ -184,6 +184,12 @@ type Remote interface {
 	CreateEDRIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	UpdateEDRIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteEDRIntegration(context.Context, string) (json.RawMessage, error)
+	ListSCIMIntegrationsRaw(context.Context, string) (json.RawMessage, error)
+	GetSCIMIntegrationRaw(context.Context, string, string) (json.RawMessage, error)
+	CreateSCIMIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	UpdateSCIMIntegration(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
+	DeleteSCIMIntegration(context.Context, string, string) (json.RawMessage, error)
+	RegenerateSCIMToken(context.Context, string, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -371,7 +377,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		return result, &ApplyError{Result: result, Err: err}
 	}
 	result.AttemptID = attempt.ID
-	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" {
+	if preimage == mutation.PreimageAlreadySatisfied && stage.Operation != "users.password.update" && stage.Operation != "users.invite.resend" && stage.Operation != "scim.token" && stage.Operation != "okta_scim.token" {
 		return finish(ctx, store, result, mutation.AlreadySatisfied, "remote state already equals intended state")
 	}
 	dispatchRequest, err := prepareSecretRequest(stage.Operation, stage.Request, input.SecretResolver)
@@ -391,6 +397,14 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			return finish(ctx, store, result, mutation.Unknown, "IDP sync response did not confirm success")
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "IDP sync endpoint confirmed synchronization")
+	}
+	if stage.Operation == "scim.token" || stage.Operation == "okta_scim.token" {
+		secret, err := responseSecret(dispatchResult)
+		if err != nil {
+			return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "SCIM token regenerated but its one-time value could not be delivered")
+		}
+		result.OneTimeSecret = secret
+		return finish(ctx, store, result, mutation.ConfirmedSuccess, "SCIM token regeneration endpoint confirmed success")
 	}
 	if isCreateOperation(stage.Operation) {
 		if stage.Operation == "peers.temporary_access.create" {
@@ -439,23 +453,27 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "google IDP create response matches intended state")
 		}
-		if strings.HasPrefix(stage.Operation, "edr.") && strings.HasSuffix(stage.Operation, ".create") {
+		if (strings.HasPrefix(stage.Operation, "edr.") || strings.HasPrefix(stage.Operation, "scim.") || strings.HasPrefix(stage.Operation, "okta_scim.")) && strings.HasSuffix(stage.Operation, ".create") {
 			matches, err := objectContains(dispatchResult, stage.IntendedAfter)
 			if err != nil {
-				return finish(ctx, store, result, mutation.Unknown, "EDR create response could not be compared with intent")
+				return finish(ctx, store, result, mutation.Unknown, "integration create response could not be compared with intent")
 			}
 			if !matches {
-				return finish(ctx, store, result, mutation.Partial, "EDR create response differs from intended state")
+				return finish(ctx, store, result, mutation.Partial, "integration create response differs from intended state")
 			}
 			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
 			if err != nil {
-				return finish(ctx, store, result, mutation.Unknown, "EDR create may have applied, but read-back was inconclusive")
+				return finish(ctx, store, result, mutation.Unknown, "integration create may have applied, but read-back was inconclusive")
 			}
-			matches, err = objectContains(liveAfter, stage.IntendedAfter)
+			if strings.HasPrefix(stage.Operation, "scim.") || strings.HasPrefix(stage.Operation, "okta_scim.") {
+				matches, err = collectionContainsIntent(liveAfter, stage.IntendedAfter)
+			} else {
+				matches, err = objectContains(liveAfter, stage.IntendedAfter)
+			}
 			if err != nil || !matches {
-				return finish(ctx, store, result, mutation.Partial, "EDR create read-back differs from intended state")
+				return finish(ctx, store, result, mutation.Partial, "integration create read-back differs from intended state")
 			}
-			return finish(ctx, store, result, mutation.ConfirmedSuccess, "EDR create response and read-back match intended state")
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "integration create response and read-back match intended state")
 		}
 		if stage.Operation == "peers.edr.bypass.create" {
 			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
@@ -725,6 +743,14 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return readOptionalEDRIntegration(ctx, remote, "fleetdm")
 	case "edr.fleetdm.update", "edr.fleetdm.delete":
 		return remote.GetEDRIntegrationRaw(ctx, "fleetdm")
+	case "scim.create":
+		return remote.ListSCIMIntegrationsRaw(ctx, "scim")
+	case "scim.update", "scim.delete", "scim.token":
+		return remote.GetSCIMIntegrationRaw(ctx, "scim", target.ID)
+	case "okta_scim.create":
+		return remote.ListSCIMIntegrationsRaw(ctx, "okta_scim")
+	case "okta_scim.update", "okta_scim.delete", "okta_scim.token":
+		return remote.GetSCIMIntegrationRaw(ctx, "okta_scim", target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -1136,6 +1162,22 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateEDRIntegration(ctx, "fleetdm", request)
 	case "edr.fleetdm.delete":
 		return remote.DeleteEDRIntegration(ctx, "fleetdm")
+	case "scim.create":
+		return remote.CreateSCIMIntegration(ctx, "scim", request)
+	case "scim.update":
+		return remote.UpdateSCIMIntegration(ctx, "scim", target.ID, request)
+	case "scim.delete":
+		return remote.DeleteSCIMIntegration(ctx, "scim", target.ID)
+	case "scim.token":
+		return remote.RegenerateSCIMToken(ctx, "scim", target.ID)
+	case "okta_scim.create":
+		return remote.CreateSCIMIntegration(ctx, "okta_scim", request)
+	case "okta_scim.update":
+		return remote.UpdateSCIMIntegration(ctx, "okta_scim", target.ID, request)
+	case "okta_scim.delete":
+		return remote.DeleteSCIMIntegration(ctx, "okta_scim", target.ID)
+	case "okta_scim.token":
+		return remote.RegenerateSCIMToken(ctx, "okta_scim", target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1230,7 +1272,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".create"))
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create" || operation == "scim.create" || operation == "okta_scim.create" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".create"))
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1265,11 +1307,12 @@ func responseSecret(response json.RawMessage) (string, error) {
 		PlainToken  string `json:"plain_token"`
 		Key         string `json:"key"`
 		InviteToken string `json:"invite_token"`
+		AuthToken   string `json:"auth_token"`
 	}
 	if err := json.Unmarshal(response, &object); err != nil {
 		return "", errors.New("create response has no one-time secret")
 	}
-	for _, secret := range []string{object.PlainToken, object.Key, object.InviteToken} {
+	for _, secret := range []string{object.PlainToken, object.Key, object.InviteToken, object.AuthToken} {
 		if strings.TrimSpace(secret) != "" {
 			return secret, nil
 		}
@@ -1908,6 +1951,14 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.EDRIntegrationUpdateImpact(strings.Split(operation, ".")[1], before, intendedAfter)
 	case "edr.intune.delete", "edr.sentinelone.delete", "edr.falcon.delete", "edr.huntress.delete", "edr.fleetdm.delete":
 		return analysis.EDRIntegrationDeleteImpact(strings.Split(operation, ".")[1], before)
+	case "scim.create", "okta_scim.create":
+		return analysis.SCIMCreateImpact(strings.Split(operation, ".")[0], intendedAfter)
+	case "scim.update", "okta_scim.update":
+		return analysis.SCIMUpdateImpact(strings.Split(operation, ".")[0], before, intendedAfter)
+	case "scim.delete", "okta_scim.delete":
+		return analysis.SCIMDeleteImpact(strings.Split(operation, ".")[0], before)
+	case "scim.token", "okta_scim.token":
+		return analysis.SCIMTokenImpact(strings.Split(operation, ".")[0], before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1951,7 +2002,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "azure_idp.delete" || operation == "google_idp.delete" || operation == "users.invites.delete" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".delete"))
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "azure_idp.delete" || operation == "google_idp.delete" || operation == "users.invites.delete" || operation == "scim.delete" || operation == "okta_scim.delete" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".delete"))
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

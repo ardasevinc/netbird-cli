@@ -247,6 +247,14 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["POST /api/integrations/edr/fleetdm"] = operation{ID: "edr.fleetdm.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/integrations/edr/fleetdm"] = operation{ID: "edr.fleetdm.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/integrations/edr/fleetdm"] = operation{ID: "edr.fleetdm.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/scim-idp"] = operation{ID: "scim.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/integrations/scim-idp/{id}"] = operation{ID: "scim.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["DELETE /api/integrations/scim-idp/{id}"] = operation{ID: "scim.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/scim-idp/{id}/token"] = operation{ID: "scim.token", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/okta-scim-idp"] = operation{ID: "okta_scim.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/integrations/okta-scim-idp/{id}"] = operation{ID: "okta_scim.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["DELETE /api/integrations/okta-scim-idp/{id}"] = operation{ID: "okta_scim.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/okta-scim-idp/{id}/token"] = operation{ID: "okta_scim.token", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/peers/{peerId}/jobs"] = operation{ID: "peers.jobs.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/notifications/channels"] = operation{ID: "notification_channels.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/integrations/notifications/channels/{channelId}"] = operation{ID: "notification_channels.update", Implementation: "implemented", Verification: "contract_verified"}

@@ -1221,6 +1221,41 @@ func EDRIntegrationDeleteImpact(provider string, before []byte) (ImpactReport, e
 	return ImpactReport{Classification: "edr_" + provider + "_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an EDR integration removes a device-compliance gate and may change peer access"}, Completeness: map[string]any{"state": "unknown", "reason": "edr_integration_compliance_boundary"}}, nil
 }
 
+func SCIMCreateImpact(provider string, intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode %s SCIM create intent: %w", provider, err)
+	}
+	return ImpactReport{Classification: "scim_" + provider + "_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a SCIM identity integration changes external user and group provisioning; its one-time token is returned only to the caller and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "scim_provisioning_boundary"}}, nil
+}
+
+func SCIMUpdateImpact(provider string, before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode %s SCIM update preimage: %w", provider, err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode %s SCIM update intent: %w", provider, err)
+	}
+	return ImpactReport{Classification: "scim_" + provider + "_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating a SCIM identity integration may alter external user and group provisioning"}, Completeness: map[string]any{"state": "unknown", "reason": "scim_provisioning_boundary"}}, nil
+}
+
+func SCIMDeleteImpact(provider string, before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode %s SCIM delete preimage: %w", provider, err)
+	}
+	return ImpactReport{Classification: "scim_" + provider + "_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a SCIM identity integration stops external user and group provisioning"}, Completeness: map[string]any{"state": "unknown", "reason": "scim_provisioning_boundary"}}, nil
+}
+
+func SCIMTokenImpact(provider string, before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode %s SCIM token preimage: %w", provider, err)
+	}
+	return ImpactReport{Classification: "scim_" + provider + "_token", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"regenerating the SCIM token revokes the prior external provisioning credential; the replacement token is returned once and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "scim_token_credential_boundary"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

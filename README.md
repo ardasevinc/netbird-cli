@@ -257,3 +257,8 @@ EDR integration stages use provider-specific external credential references
 credentials are resolved only at dispatch and never persisted. Create, update,
 and delete are blocking device-compliance and peer-access effects with exact
 singleton preimages and read-back or absence confirmation.
+
+SCIM and Okta SCIM integration stages are blocking provisioning effects with
+exact preimages and read-back or absence confirmation. Token regeneration
+requires a fresh integration preimage and returns the replacement `auth_token`
+once without persisting it.

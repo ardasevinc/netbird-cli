@@ -946,18 +946,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.okta_scim_idp",
+      "id": "okta_scim.create",
       "method": "POST",
       "path": "/api/integrations/okta-scim-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.okta_scim_idp.id",
+      "id": "okta_scim.delete",
       "method": "DELETE",
       "path": "/api/integrations/okta-scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.okta_scim_idp.id",
@@ -967,11 +967,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.okta_scim_idp.id",
+      "id": "okta_scim.update",
       "method": "PUT",
       "path": "/api/integrations/okta-scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.okta_scim_idp.id.logs",
@@ -981,11 +981,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.okta_scim_idp.id.token",
+      "id": "okta_scim.token",
       "method": "POST",
       "path": "/api/integrations/okta-scim-idp/{id}/token",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.scim_idp",
@@ -995,18 +995,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.scim_idp",
+      "id": "scim.create",
       "method": "POST",
       "path": "/api/integrations/scim-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.scim_idp.id",
+      "id": "scim.delete",
       "method": "DELETE",
       "path": "/api/integrations/scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.scim_idp.id",
@@ -1016,11 +1016,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.scim_idp.id",
+      "id": "scim.update",
       "method": "PUT",
       "path": "/api/integrations/scim-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.scim_idp.id.logs",
@@ -1030,11 +1030,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.scim_idp.id.token",
+      "id": "scim.token",
       "method": "POST",
       "path": "/api/integrations/scim-idp/{id}/token",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "locations.countries",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 216,
+    "implemented": 224,
     "classified": 0,
-    "discovered": 20,
-    "contract_verified": 207,
+    "discovered": 12,
+    "contract_verified": 215,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
