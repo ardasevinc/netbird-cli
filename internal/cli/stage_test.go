@@ -552,6 +552,25 @@ func TestStageCreateUserTokenCreateRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateSetupKeyDeleteRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"setup_keys.delete","request":{"id":"key-1"},"before":{"id":"key-1","name":"bootstrap","valid":true},"intended_after":{}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.setup_key_delete"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("setup key acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

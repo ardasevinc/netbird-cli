@@ -18,6 +18,7 @@ Agent-network provider mutations are capability-gated, blocking, and require exa
 User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
 Personal access token deletion is capability-gated, blocking, and requires exact token preimage plus absence confirmation; token values are never represented by the owned metadata model.
 Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
+Setup-key deletion is capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and absence confirmation; setup-key creation remains one-time-secret gated.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.

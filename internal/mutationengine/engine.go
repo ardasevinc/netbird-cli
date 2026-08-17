@@ -116,6 +116,8 @@ type Remote interface {
 	ListPersonalAccessTokensRaw(context.Context, string) (json.RawMessage, error)
 	CreatePersonalAccessToken(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePersonalAccessToken(context.Context, string, string) (json.RawMessage, error)
+	GetSetupKeyRaw(context.Context, string) (json.RawMessage, error)
+	DeleteSetupKey(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -413,6 +415,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
 	case "users.tokens.create":
 		return remote.ListPersonalAccessTokensRaw(ctx, target.UserID)
+	case "setup_keys.delete":
+		return remote.GetSetupKeyRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -632,6 +636,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreatePersonalAccessToken(ctx, target.UserID, body)
+	case "setup_keys.delete":
+		return remote.DeleteSetupKey(ctx, target.ID)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -929,6 +935,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserTokenDeleteImpact(before)
 	case "users.tokens.create":
 		return analysis.UserTokenCreateImpact(intendedAfter)
+	case "setup_keys.delete":
+		return analysis.SetupKeyDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -976,7 +984,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

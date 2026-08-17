@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -45,6 +46,30 @@ func (c *Client) GetSetupKey(ctx context.Context, id string) (SetupKey, error) {
 		return SetupKey{}, fmt.Errorf("get setup key %q: %w", id, err)
 	}
 	normalizeSetupKeys([]SetupKey{result})
+	return result, nil
+}
+
+func (c *Client) GetSetupKeyRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("setup key id is required")
+	}
+	path := "/api/setup-keys/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get setup key %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteSetupKey(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("setup key id is required")
+	}
+	path := "/api/setup-keys/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete setup key %q: %w", id, err)
+	}
 	return result, nil
 }
 

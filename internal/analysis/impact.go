@@ -349,6 +349,14 @@ func UserTokenCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "user_token_create", Reachability: "unchanged", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a personal access token changes credential inventory without changing data-plane reachability; the one-time token value is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "complete", "reason": nil}}, nil
 }
 
+func SetupKeyDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode setup key delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "setup_key_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"deleting a setup key can prevent new peer enrollment through that credential; already-enrolled peers require separate live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_delete_requires_enrollment_analysis"}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

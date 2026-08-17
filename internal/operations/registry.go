@@ -53,6 +53,7 @@ var definitions = map[string]Definition{
 	"events.proxy":                      {Name: "events.proxy", Method: "GET", Path: "/api/events/proxy", Mutation: ReadOnly},
 	"setup_keys.list":                   {Name: "setup_keys.list", Method: "GET", Path: "/api/setup-keys", Mutation: ReadOnly},
 	"setup_keys.get":                    {Name: "setup_keys.get", Method: "GET", Path: "/api/setup-keys/{keyId}", Mutation: ReadOnly},
+	"setup_keys.delete":                 {Name: "setup_keys.delete", Method: "DELETE", Path: "/api/setup-keys/{keyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"locations.countries":               {Name: "locations.countries", Method: "GET", Path: "/api/locations/countries", Mutation: ReadOnly},
 	"locations.cities":                  {Name: "locations.cities", Method: "GET", Path: "/api/locations/countries/{country}/cities", Mutation: ReadOnly},
 	"users.tokens.list":                 {Name: "users.tokens.list", Method: "GET", Path: "/api/users/{userId}/tokens", Mutation: ReadOnly},

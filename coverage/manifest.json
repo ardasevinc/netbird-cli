@@ -1506,11 +1506,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.setup_keys.keyId",
+      "id": "setup_keys.delete",
       "method": "DELETE",
       "path": "/api/setup-keys/{keyId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "setup_keys.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 160,
+    "implemented": 161,
     "classified": 0,
-    "discovered": 76,
-    "contract_verified": 151,
+    "discovered": 75,
+    "contract_verified": 152,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

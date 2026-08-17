@@ -21,6 +21,7 @@ Agent-network provider mutations are capability-gated, blocking, and require exa
 User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 Personal access token deletion is capability-gated, blocking, and requires exact token preimage plus absence proof; token values are never represented by the owned metadata model.
 Personal access token creation is capability-gated and blocking; the token value is returned once in the successful apply result and is omitted from stages, receipts, logs, and errors.
+Setup-key deletion is capability-gated and blocking, with enrollment-impact evidence, exact preimage verification, and absence proof; setup-key creation remains one-time-secret gated.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

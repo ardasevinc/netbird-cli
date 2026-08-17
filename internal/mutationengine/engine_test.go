@@ -44,6 +44,7 @@ type fakeRemote struct {
 	tokenBefore           json.RawMessage
 	tokenCollection       json.RawMessage
 	tokenAfter            json.RawMessage
+	setupKeyBefore        json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -513,6 +514,22 @@ func (f *fakeRemote) CreatePersonalAccessToken(_ context.Context, _ string, _ js
 	}
 	f.tokenCollection = json.RawMessage("[" + string(f.tokenAfter) + "]")
 	return json.RawMessage(`{"plain_token":"one-time-secret","personal_access_token":` + string(f.tokenAfter) + `}`), nil
+}
+
+func (f *fakeRemote) GetSetupKeyRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.setupKeyBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.setupKeyBefore...), nil
+}
+
+func (f *fakeRemote) DeleteSetupKey(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.setupKeyBefore = nil
+	return nil, nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -2042,6 +2059,27 @@ func TestApplyReturnsPersonalAccessTokenOnceWithoutPersistingIt(t *testing.T) {
 	}
 	if strings.Contains(string(receipt.Result), "one-time-secret") || strings.Contains(string(stage.Request), "one-time-secret") {
 		t.Fatal("one-time token leaked into persisted state")
+	}
+}
+
+func TestApplyDispatchesSetupKeyDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"key-1","name":"bootstrap","valid":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "setup_keys.delete", Request: json.RawMessage(`{"id":"key-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"setup_key_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a setup key can prevent new peer enrollment through that credential; already-enrolled peers require separate live analysis"],"completeness":{"state":"unknown","reason":"setup_key_delete_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.setup_key_delete", Severity: "blocking", Message: "deleting the setup key may stop new peer enrollment and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", setupKeyBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected setup key delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 
