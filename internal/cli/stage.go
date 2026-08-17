@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -97,6 +97,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.AccountUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "accounts.delete":
 					report, err = analysis.AccountDeleteImpact(plan.Before)
+				case "posture_checks.create":
+					report, err = analysis.PostureCheckCreateImpact(plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -189,6 +191,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "accounts.delete" && report.Classification == "account_delete":
 					findingCode = "impact.account_delete"
 					findingMessage = "deleting the account may remove management access and resources and requires exact acknowledgement"
+				case plan.Operation == "posture_checks.create" && report.Classification == "posture_check_create":
+					findingCode = "impact.posture_check_create"
+					findingMessage = "creating the posture check may alter policy admission and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

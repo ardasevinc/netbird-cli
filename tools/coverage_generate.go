@@ -109,6 +109,7 @@ func applyReviewedOverrides(ops []operation) {
 		"GET /api/identity-providers/{idpId}":                  {ID: "identity_providers.get", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/posture-checks":                              {ID: "posture_checks.list", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/posture-checks/{postureCheckId}":             {ID: "posture_checks.get", Implementation: "implemented", Verification: "contract_verified"},
+		"POST /api/posture-checks":                             {ID: "posture_checks.create", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/events/audit":                                {ID: "events.audit", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/events/network-traffic":                      {ID: "events.network_traffic", Implementation: "implemented", Verification: "contract_verified"},
 		"GET /api/events/proxy":                                {ID: "events.proxy", Implementation: "implemented", Verification: "contract_verified"},

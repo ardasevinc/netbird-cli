@@ -71,6 +71,8 @@ type Remote interface {
 	GetAccountRaw(context.Context, string) (json.RawMessage, error)
 	UpdateAccount(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteAccount(context.Context, string) (json.RawMessage, error)
+	ListPostureChecksRaw(context.Context) (json.RawMessage, error)
+	CreatePostureCheck(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -297,6 +299,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAccountRaw(ctx, target.ID)
 	case "accounts.delete":
 		return remote.GetAccountRaw(ctx, target.ID)
+	case "posture_checks.create":
+		return remote.ListPostureChecksRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -400,6 +404,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateAccount(ctx, target.ID, body)
 	case "accounts.delete":
 		return remote.DeleteAccount(ctx, target.ID)
+	case "posture_checks.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreatePostureCheck(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -458,7 +468,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -583,6 +593,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AccountUpdateImpact(before, intendedAfter)
 	case "accounts.delete":
 		return analysis.AccountDeleteImpact(before)
+	case "posture_checks.create":
+		return analysis.PostureCheckCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

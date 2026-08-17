@@ -141,6 +141,16 @@ func TestAccountDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestPostureCheckCreateImpactIsConservative(t *testing.T) {
+	report, err := PostureCheckCreateImpact([]byte(`{"name":"managed","checks":{"os_version_check":{}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "posture_check_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
 	if err != nil {

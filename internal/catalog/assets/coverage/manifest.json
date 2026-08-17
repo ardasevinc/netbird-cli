@@ -1324,11 +1324,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.posture_checks",
+      "id": "posture_checks.create",
       "method": "POST",
       "path": "/api/posture-checks",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "delete.api.posture_checks.postureCheckId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 132,
+    "implemented": 133,
     "classified": 0,
-    "discovered": 104,
-    "contract_verified": 123,
+    "discovered": 103,
+    "contract_verified": 124,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

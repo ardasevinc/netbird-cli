@@ -16,6 +16,7 @@ type fakeRemote struct {
 	account              string
 	accountBefore        json.RawMessage
 	accountAfter         json.RawMessage
+	postureCollection    json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -78,6 +79,25 @@ func (f *fakeRemote) DeleteAccount(_ context.Context, _ string) (json.RawMessage
 	}
 	f.accountBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) ListPostureChecksRaw(_ context.Context) (json.RawMessage, error) {
+	if f.postureCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.postureCollection...), nil
+}
+
+func (f *fakeRemote) CreatePostureCheck(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.after == nil {
+		return nil, errors.New("missing created posture check")
+	}
+	f.postureCollection = json.RawMessage("[" + string(f.after) + "]")
+	return append(json.RawMessage(nil), f.after...), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -999,6 +1019,40 @@ func TestApplyDispatchesAccountDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected account delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPostureCheckCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"pc-2","name":"managed","checks":{}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "posture_checks.create",
+		Request:        json.RawMessage(`{"name":"managed","checks":{}}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"posture_check_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a posture check can change policy admission for peers; affected peers and policies require live analysis"],"completeness":{"state":"unknown","reason":"posture_check_create_requires_policy_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.posture_check_create", Severity: "blocking", Message: "creating the posture check may alter policy admission and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", postureCollection: []byte(before), after: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected posture check create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

@@ -51,6 +51,22 @@ func (c *Client) ListPostureChecks(ctx context.Context) ([]PostureCheck, error) 
 	return result, nil
 }
 
+func (c *Client) ListPostureChecksRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/posture-checks", nil, &result); err != nil {
+		return nil, fmt.Errorf("list posture checks: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreatePostureCheck(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/posture-checks", request, &result); err != nil {
+		return nil, fmt.Errorf("create posture check: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetPostureCheck(ctx context.Context, id string) (PostureCheck, error) {
 	if strings.TrimSpace(id) == "" {
 		return PostureCheck{}, fmt.Errorf("posture check id is required")
