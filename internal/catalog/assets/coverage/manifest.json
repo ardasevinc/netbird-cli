@@ -1345,11 +1345,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.posture_checks.postureCheckId",
+      "id": "posture_checks.update",
       "method": "PUT",
       "path": "/api/posture-checks/{postureCheckId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.reverse_proxies.clusters",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 133,
+    "implemented": 134,
     "classified": 0,
-    "discovered": 103,
-    "contract_verified": 124,
+    "discovered": 102,
+    "contract_verified": 125,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

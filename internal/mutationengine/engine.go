@@ -73,6 +73,8 @@ type Remote interface {
 	DeleteAccount(context.Context, string) (json.RawMessage, error)
 	ListPostureChecksRaw(context.Context) (json.RawMessage, error)
 	CreatePostureCheck(context.Context, json.RawMessage) (json.RawMessage, error)
+	GetPostureCheckRaw(context.Context, string) (json.RawMessage, error)
+	UpdatePostureCheck(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -301,6 +303,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAccountRaw(ctx, target.ID)
 	case "posture_checks.create":
 		return remote.ListPostureChecksRaw(ctx)
+	case "posture_checks.update":
+		return remote.GetPostureCheckRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -410,6 +414,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreatePostureCheck(ctx, body)
+	case "posture_checks.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdatePostureCheck(ctx, target.ID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -595,6 +605,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AccountDeleteImpact(before)
 	case "posture_checks.create":
 		return analysis.PostureCheckCreateImpact(intendedAfter)
+	case "posture_checks.update":
+		return analysis.PostureCheckUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

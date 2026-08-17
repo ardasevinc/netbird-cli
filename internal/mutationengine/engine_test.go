@@ -17,6 +17,8 @@ type fakeRemote struct {
 	accountBefore        json.RawMessage
 	accountAfter         json.RawMessage
 	postureCollection    json.RawMessage
+	postureBefore        json.RawMessage
+	postureAfter         json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -98,6 +100,22 @@ func (f *fakeRemote) CreatePostureCheck(_ context.Context, _ json.RawMessage) (j
 	}
 	f.postureCollection = json.RawMessage("[" + string(f.after) + "]")
 	return append(json.RawMessage(nil), f.after...), nil
+}
+
+func (f *fakeRemote) GetPostureCheckRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.postureBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.postureBefore...), nil
+}
+
+func (f *fakeRemote) UpdatePostureCheck(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.postureBefore = append(json.RawMessage(nil), f.postureAfter...)
+	return append(json.RawMessage(nil), f.postureAfter...), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -1053,6 +1071,40 @@ func TestApplyDispatchesPostureCheckCreateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected posture check create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPostureCheckUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"pc-1","name":"managed","checks":{}}`
+	after := `{"id":"pc-1","name":"managed-v2","checks":{}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "posture_checks.update",
+		Request:        json.RawMessage(`{"id":"pc-1","name":"managed-v2","checks":{}}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"posture_check_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating a posture check can change policy admission for peers; affected peers and policies require live analysis"],"completeness":{"state":"unknown","reason":"posture_check_update_requires_policy_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.posture_check_change", Severity: "blocking", Message: "the proposed posture check change may alter policy admission and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", postureBefore: []byte(before), postureAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected posture check update result: %+v updates=%d", result, remote.updates)
 	}
 }
 

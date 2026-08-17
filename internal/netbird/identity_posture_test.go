@@ -80,3 +80,32 @@ func TestCreatePostureCheckUsesPOST(t *testing.T) {
 		t.Fatalf("created=%s err=%v", response, err)
 	}
 }
+
+func TestUpdatePostureCheckUsesPUT(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/posture-checks/pc-1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["name"] != "managed-v2" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "pc-1", "name": "managed-v2", "checks": map[string]any{}})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := NewClient(transportClient).UpdatePostureCheck(context.Background(), "pc-1", json.RawMessage(`{"name":"managed-v2","checks":{}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var updated map[string]any
+	if err := json.Unmarshal(response, &updated); err != nil || updated["name"] != "managed-v2" {
+		t.Fatalf("updated=%s err=%v", response, err)
+	}
+}

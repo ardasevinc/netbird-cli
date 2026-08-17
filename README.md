@@ -3,6 +3,7 @@
 Account updates are always treated as blocking `impact.account_change` changes and require exact account preimage and read-back confirmation.
 Account deletion is always treated as a blocking `impact.account_delete` change and requires exact account preimage and absence confirmation.
 Posture-check creation is always treated as a blocking `impact.posture_check_create` change and requires collection preimage and read-back confirmation.
+Posture-check updates are always treated as blocking `impact.posture_check_change` changes and require exact preimage and read-back confirmation.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.

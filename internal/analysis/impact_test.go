@@ -151,6 +151,19 @@ func TestPostureCheckCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestPostureCheckUpdateImpactIsConservative(t *testing.T) {
+	report, err := PostureCheckUpdateImpact(
+		[]byte(`{"id":"pc-1","name":"managed","checks":{}}`),
+		[]byte(`{"id":"pc-1","name":"managed-v2","checks":{}}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "posture_check_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
 	if err != nil {
