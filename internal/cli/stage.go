@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
+			case "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -73,6 +73,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
 					report, err = analysis.RouteUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "routes.create":
+					report, err = analysis.RouteCreateImpact(plan.IntendedAfter)
 				case "routes.delete":
 					report, err = analysis.RouteDeleteImpact(plan.Before)
 				case "peers.update":
@@ -123,6 +125,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "routes.update" && report.Classification == "route_change":
 					findingCode = "impact.route_change"
 					findingMessage = "the proposed route change may alter reachability and requires exact acknowledgement"
+				case plan.Operation == "routes.create" && report.Classification == "route_create":
+					findingCode = "impact.route_create"
+					findingMessage = "creating the route may alter reachability and requires exact acknowledgement"
 				case plan.Operation == "routes.delete" && report.Classification == "route_delete":
 					findingCode = "impact.route_delete"
 					findingMessage = "deleting the route may alter reachability and requires exact acknowledgement"

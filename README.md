@@ -128,6 +128,9 @@ Group deletion is staged under the same contract, with blocking
 `impact.group_delete` acknowledgement and a required 404 absence read-back.
 Route deletion is staged with blocking `impact.route_delete` acknowledgement
 and the same required absence proof.
+Route creation snapshots the route collection preimage, requires blocking
+`impact.route_create` acknowledgement, and confirms the returned id and
+read-back fields against the intended state.
 
 ## Development
 

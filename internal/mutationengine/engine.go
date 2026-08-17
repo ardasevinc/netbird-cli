@@ -25,6 +25,8 @@ type Remote interface {
 	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePolicy(context.Context, string) (json.RawMessage, error)
 	GetRouteRaw(context.Context, string) (json.RawMessage, error)
+	ListRoutesRaw(context.Context) (json.RawMessage, error)
+	CreateRoute(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateRoute(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteRoute(context.Context, string) (json.RawMessage, error)
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
@@ -243,6 +245,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
 		return remote.GetRouteRaw(ctx, target.ID)
+	case "routes.create":
+		return remote.ListRoutesRaw(ctx)
 	case "peers.update":
 		return remote.GetPeerRaw(ctx, target.ID)
 	case "peers.delete":
@@ -284,6 +288,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
 		return remote.DeleteRoute(ctx, target.ID)
+	case "routes.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateRoute(ctx, body)
 	case "peers.update":
 		return remote.UpdatePeer(ctx, target.ID, request)
 	case "peers.delete":
@@ -332,7 +342,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create"
+	return operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -428,6 +438,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
 		return analysis.RouteDeleteImpact(before)
+	case "routes.create":
+		return analysis.RouteCreateImpact(intendedAfter)
 	case "peers.update":
 		return analysis.PeerUpdateImpact(before, intendedAfter)
 	case "peers.delete":

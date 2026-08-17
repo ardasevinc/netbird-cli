@@ -98,6 +98,30 @@ func TestDeleteRouteUsesDELETE(t *testing.T) {
 	}
 }
 
+func TestCreateRouteUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/routes" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["network"] != "10.0.0.0/24" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "route-1", "description": "private subnet", "enabled": true, "network": "10.0.0.0/24", "groups": []string{"g1"}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).CreateRoute(context.Background(), json.RawMessage(`{"description":"private subnet","enabled":true,"network":"10.0.0.0/24","groups":["g1"]}`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUpdateNetworkUsesPUTAndReturnsRawDocument(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut || r.URL.Path != "/api/networks/network-1" {

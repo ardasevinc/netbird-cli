@@ -81,6 +81,7 @@ var definitions = map[string]Definition{
 	"policies.get":              {Name: "policies.get", Method: "GET", Path: "/api/policies/{policyId}", Mutation: ReadOnly},
 	"policies.update":           {Name: "policies.update", Method: "PUT", Path: "/api/policies/{policyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"policies.delete":           {Name: "policies.delete", Method: "DELETE", Path: "/api/policies/{policyId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"routes.create":             {Name: "routes.create", Method: "POST", Path: "/api/routes", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"routes.update":             {Name: "routes.update", Method: "PUT", Path: "/api/routes/{routeId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"routes.delete":             {Name: "routes.delete", Method: "DELETE", Path: "/api/routes/{routeId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.update":              {Name: "peers.update", Method: "PUT", Path: "/api/peers/{peerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

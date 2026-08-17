@@ -114,6 +114,22 @@ func RouteDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func RouteCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode route create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "route_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating a route can add a reachable destination or alter path selection; affected peers and resources require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "route_create_requires_topology"},
+	}, nil
+}
+
 func PeerUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

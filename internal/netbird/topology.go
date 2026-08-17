@@ -107,6 +107,22 @@ func (c *Client) ListRoutes(ctx context.Context) ([]Route, error) {
 	return normalizeRoutes(result), nil
 }
 
+func (c *Client) ListRoutesRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/routes", nil, &result); err != nil {
+		return nil, fmt.Errorf("list routes: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateRoute(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/routes", request, &result); err != nil {
+		return nil, fmt.Errorf("create route: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetRoute(ctx context.Context, id string) (Route, error) {
 	path, err := topologyPath("routes", id)
 	if err != nil {

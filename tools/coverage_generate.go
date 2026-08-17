@@ -154,6 +154,7 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["POST /api/networks/{networkId}/resources"] = operation{ID: "networks.resources.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/networks/{networkId}/routers"] = operation{ID: "networks.routers.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/networks"] = operation{ID: "networks.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/routes"] = operation{ID: "routes.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/networks/{networkId}/resources/{resourceId}"] = operation{ID: "networks.resources.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/networks/{networkId}/routers/{routerId}"] = operation{ID: "networks.routers.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/networks/{networkId}/routers/{routerId}"] = operation{ID: "networks.routers.update", Implementation: "implemented", Verification: "contract_verified"}

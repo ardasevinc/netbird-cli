@@ -1457,11 +1457,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.routes",
+      "id": "routes.create",
       "method": "POST",
       "path": "/api/routes",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "routes.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 117,
+    "implemented": 118,
     "classified": 0,
-    "discovered": 119,
-    "contract_verified": 108,
+    "discovered": 118,
+    "contract_verified": 109,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -65,6 +65,16 @@ func TestRouteDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestRouteCreateImpactIsConservative(t *testing.T) {
+	report, err := RouteCreateImpact([]byte(`{"description":"private subnet","enabled":true,"network":"10.0.0.0/24","groups":["g1"]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "route_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactBlocksRoutingChanges(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"route","enabled":true,"metric":10,"groups":["g1"]}`),
