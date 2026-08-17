@@ -799,18 +799,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.google_idp",
+      "id": "google_idp.create",
       "method": "POST",
       "path": "/api/integrations/google-idp",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.google_idp.id",
+      "id": "google_idp.delete",
       "method": "DELETE",
       "path": "/api/integrations/google-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.google_idp.id",
@@ -820,11 +820,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.google_idp.id",
+      "id": "google_idp.update",
       "method": "PUT",
       "path": "/api/integrations/google-idp/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.google_idp.id.logs",
@@ -834,11 +834,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.google_idp.id.sync",
+      "id": "google_idp.sync",
       "method": "POST",
       "path": "/api/integrations/google-idp/{id}/sync",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.msp.tenants",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 197,
+    "implemented": 201,
     "classified": 0,
-    "discovered": 39,
-    "contract_verified": 188,
+    "discovered": 35,
+    "contract_verified": 192,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

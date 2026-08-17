@@ -228,6 +228,10 @@ func applyReviewedOverrides(ops []operation) {
 	reviewed["PUT /api/reverse-proxies/services/{serviceId}"] = operation{ID: "reverse_proxy_services.update", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["DELETE /api/reverse-proxies/services/{serviceId}"] = operation{ID: "reverse_proxy_services.delete", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/azure-idp/{id}/sync"] = operation{ID: "azure_idp.sync", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/google-idp"] = operation{ID: "google_idp.create", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["PUT /api/integrations/google-idp/{id}"] = operation{ID: "google_idp.update", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["DELETE /api/integrations/google-idp/{id}"] = operation{ID: "google_idp.delete", Implementation: "implemented", Verification: "contract_verified"}
+	reviewed["POST /api/integrations/google-idp/{id}/sync"] = operation{ID: "google_idp.sync", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/peers/{peerId}/jobs"] = operation{ID: "peers.jobs.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["POST /api/integrations/notifications/channels"] = operation{ID: "notification_channels.create", Implementation: "implemented", Verification: "contract_verified"}
 	reviewed["PUT /api/integrations/notifications/channels/{channelId}"] = operation{ID: "notification_channels.update", Implementation: "implemented", Verification: "contract_verified"}

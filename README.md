@@ -243,3 +243,11 @@ delete remain blocking authentication and synchronization effects.
 Azure IDP sync stages re-verify the exact integration preimage and require a
 separate acknowledgement because synchronization may create or update account
 users and groups.
+
+Google IDP stages use `service_account_key_ref`; service-account keys are
+resolved only at dispatch and never persisted in the stage or receipt. Create,
+update, and delete remain blocking authentication and synchronization effects.
+
+Google IDP sync stages re-verify the exact integration preimage and require a
+separate acknowledgement because synchronization may create or update account
+users and groups.

@@ -96,6 +96,22 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 		}
 		return nil
 	}
+	if operation == "google_idp.create" || operation == "google_idp.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode google IDP request: %w", err)
+		}
+		if _, ok := object["service_account_key"]; ok {
+			return errors.New("google IDP service_account_key cannot be persisted in a stage; use service_account_key_ref")
+		}
+		if operation == "google_idp.create" {
+			ref, ok := object["service_account_key_ref"].(string)
+			if !ok || strings.TrimSpace(ref) == "" {
+				return errors.New("google IDP create requires service_account_key_ref")
+			}
+		}
+		return nil
+	}
 	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -193,7 +209,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -373,6 +389,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.AzureIDPDeleteImpact(plan.Before)
 				case "azure_idp.sync":
 					report, err = analysis.AzureIDPSyncImpact(plan.Before, plan.IntendedAfter)
+				case "google_idp.create":
+					report, err = analysis.GoogleIDPCreateImpact(plan.IntendedAfter)
+				case "google_idp.update":
+					report, err = analysis.GoogleIDPUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "google_idp.delete":
+					report, err = analysis.GoogleIDPDeleteImpact(plan.Before)
+				case "google_idp.sync":
+					report, err = analysis.GoogleIDPSyncImpact(plan.Before, plan.IntendedAfter)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -666,6 +690,18 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "azure_idp.sync" && report.Classification == "azure_idp_sync":
 					findingCode = "impact.azure_idp_sync"
 					findingMessage = "triggering Azure directory synchronization may create or update account users and groups and requires exact acknowledgement"
+				case plan.Operation == "google_idp.create" && report.Classification == "google_idp_create":
+					findingCode = "impact.google_idp_create"
+					findingMessage = "creating the Google identity integration changes external authentication and directory synchronization and requires exact acknowledgement"
+				case plan.Operation == "google_idp.update" && report.Classification == "google_idp_change":
+					findingCode = "impact.google_idp_change"
+					findingMessage = "changing the Google identity integration may alter authentication or directory synchronization and requires exact acknowledgement"
+				case plan.Operation == "google_idp.delete" && report.Classification == "google_idp_delete":
+					findingCode = "impact.google_idp_delete"
+					findingMessage = "deleting the Google identity integration may strand users or stop directory synchronization and requires exact acknowledgement"
+				case plan.Operation == "google_idp.sync" && report.Classification == "google_idp_sync":
+					findingCode = "impact.google_idp_sync"
+					findingMessage = "triggering Google directory synchronization may create or update account users and groups and requires exact acknowledgement"
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"

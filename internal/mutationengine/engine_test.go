@@ -116,6 +116,7 @@ type fakeRemote struct {
 	updates                int
 	notification           notificationChannelState
 	azureIDP               azureIDPState
+	googleIDP              googleIDPState
 }
 
 type notificationChannelState struct {
@@ -126,6 +127,13 @@ type notificationChannelState struct {
 }
 
 type azureIDPState struct {
+	before     json.RawMessage
+	collection json.RawMessage
+	after      json.RawMessage
+	body       json.RawMessage
+}
+
+type googleIDPState struct {
 	before     json.RawMessage
 	collection json.RawMessage
 	after      json.RawMessage
@@ -1395,6 +1403,64 @@ func (f *fakeRemote) DeleteAzureIDP(_ context.Context, _ string) (json.RawMessag
 }
 
 func (f *fakeRemote) SyncAzureIDP(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	return json.RawMessage(`{"result":"ok"}`), nil
+}
+
+func (f *fakeRemote) ListGoogleIDPsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.googleIDP.collection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.googleIDP.collection...), nil
+}
+
+func (f *fakeRemote) GetGoogleIDPRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.googleIDP.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.googleIDP.before...), nil
+}
+
+func (f *fakeRemote) CreateGoogleIDP(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.googleIDP.body = append(json.RawMessage(nil), body...)
+	if f.googleIDP.after == nil {
+		return nil, errors.New("missing google IDP")
+	}
+	f.googleIDP.collection = json.RawMessage("[" + string(f.googleIDP.after) + "]")
+	return append(json.RawMessage(nil), f.googleIDP.after...), nil
+}
+
+func (f *fakeRemote) UpdateGoogleIDP(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.googleIDP.body = append(json.RawMessage(nil), body...)
+	if f.googleIDP.after == nil {
+		return nil, errors.New("missing google IDP")
+	}
+	f.googleIDP.before = append(json.RawMessage(nil), f.googleIDP.after...)
+	return append(json.RawMessage(nil), f.googleIDP.after...), nil
+}
+
+func (f *fakeRemote) DeleteGoogleIDP(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.googleIDP.before = nil
+	f.googleIDP.collection = json.RawMessage(`[]`)
+	return json.RawMessage(`{}`), nil
+}
+
+func (f *fakeRemote) SyncGoogleIDP(_ context.Context, _ string) (json.RawMessage, error) {
 	f.updates++
 	if f.updateErr != nil {
 		return nil, f.updateErr
@@ -3206,6 +3272,54 @@ func TestApplyAzureIDPSyncRequiresExactPreimageAndEndpointProof(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected Azure IDP sync result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyGoogleIDPResolvesServiceAccountKeyOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":1,"enabled":true,"customer_id":"customer"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "google_idp.create", Request: json.RawMessage(`{"customer_id":"customer","service_account_key_ref":"pa:google-key"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"google_idp_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a Google identity integration changes external authentication and directory synchronization; the service-account key is resolved in memory and never persisted"],"completeness":{"state":"unknown","reason":"google_idp_authentication_and_sync_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.google_idp_create", Severity: "blocking", Message: "creating the Google identity integration changes external authentication and directory synchronization and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", googleIDP: googleIDPState{collection: []byte(before), after: []byte(after)}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:google-key" {
+			t.Fatalf("unexpected secret ref: %s", ref)
+		}
+		return "json-service-account-key", nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "json-service-account-key") || !strings.Contains(string(remote.googleIDP.body), "json-service-account-key") {
+		t.Fatalf("unexpected Google IDP result: %+v body=%s", result, remote.googleIDP.body)
+	}
+}
+
+func TestApplyGoogleIDPSyncRequiresExactPreimageAndEndpointProof(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":1,"enabled":true,"customer_id":"customer"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "google_idp.sync", Request: json.RawMessage(`{"id":"1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(before), Impact: json.RawMessage(`{"classification":"google_idp_sync","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["triggering a Google identity synchronization can create or update account users and groups from the external directory; the endpoint success response is the declared proof"],"completeness":{"state":"unknown","reason":"google_idp_external_directory_sync"}}`), Findings: []ledger.Finding{{Code: "impact.google_idp_sync", Severity: "blocking", Message: "triggering Google directory synchronization may create or update account users and groups and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", googleIDP: googleIDPState{before: []byte(before)}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected Google IDP sync result: %+v updates=%d", result, remote.updates)
 	}
 }
 

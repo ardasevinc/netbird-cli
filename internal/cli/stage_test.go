@@ -1003,6 +1003,60 @@ func TestStageCreateAzureIDPSyncRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateGoogleIDPRejectsRawSecret(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"google_idp.create","request":{"customer_id":"customer","service_account_key":"secret"},"before":[],"intended_after":{"id":1,"customer_id":"customer"}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "service_account_key_ref") {
+		t.Fatalf("expected service_account_key_ref validation, got %v", err)
+	}
+}
+
+func TestStageCreateGoogleIDPRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"google_idp.create","request":{"customer_id":"customer","service_account_key_ref":"pa:google-key"},"before":[],"intended_after":{"id":1,"customer_id":"customer"}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.google_idp_create"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("Google IDP acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
+func TestStageCreateGoogleIDPSyncRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"google_idp.sync","request":{"id":"1"},"before":{"id":1,"enabled":true},"intended_after":{"id":1,"enabled":true}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.google_idp_sync"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("Google IDP sync acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

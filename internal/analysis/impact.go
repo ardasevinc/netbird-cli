@@ -1159,6 +1159,41 @@ func AzureIDPSyncImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "azure_idp_sync", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"triggering an Azure identity synchronization can create or update account users and groups from the external directory; the endpoint success response is the declared proof"}, Completeness: map[string]any{"state": "unknown", "reason": "azure_idp_external_directory_sync"}}, nil
 }
 
+func GoogleIDPCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode google IDP create intent: %w", err)
+	}
+	return ImpactReport{Classification: "google_idp_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a Google identity integration changes external authentication and directory synchronization; the service-account key is resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "google_idp_authentication_and_sync_boundary"}}, nil
+}
+
+func GoogleIDPUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode google IDP update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode google IDP update intent: %w", err)
+	}
+	return ImpactReport{Classification: "google_idp_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating a Google identity integration may alter external authentication or directory synchronization; service-account keys are resolved in memory and never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "google_idp_authentication_and_sync_boundary"}}, nil
+}
+
+func GoogleIDPDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode google IDP delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "google_idp_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a Google identity integration may strand users or stop directory synchronization"}, Completeness: map[string]any{"state": "unknown", "reason": "google_idp_authentication_and_sync_boundary"}}, nil
+}
+
+func GoogleIDPSyncImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode google IDP sync preimage: %w", err)
+	}
+	return ImpactReport{Classification: "google_idp_sync", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"triggering a Google identity synchronization can create or update account users and groups from the external directory; the endpoint success response is the declared proof"}, Completeness: map[string]any{"state": "unknown", "reason": "google_idp_external_directory_sync"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {
