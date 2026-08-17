@@ -1359,11 +1359,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "delete.api.reverse_proxies.clusters.clusterAddress",
+      "id": "reverse_proxy_clusters.delete",
       "method": "DELETE",
       "path": "/api/reverse-proxies/clusters/{clusterAddress}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.reverse_proxies.domains",
@@ -1422,18 +1422,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.reverse_proxies.services",
+      "id": "reverse_proxy_services.create",
       "method": "POST",
       "path": "/api/reverse-proxies/services",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.reverse_proxies.services.serviceId",
+      "id": "reverse_proxy_services.delete",
       "method": "DELETE",
       "path": "/api/reverse-proxies/services/{serviceId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.reverse_proxies.services.serviceId",
@@ -1443,11 +1443,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.reverse_proxies.services.serviceId",
+      "id": "reverse_proxy_services.update",
       "method": "PUT",
       "path": "/api/reverse-proxies/services/{serviceId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "routes.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 185,
+    "implemented": 189,
     "classified": 0,
-    "discovered": 51,
-    "contract_verified": 176,
+    "discovered": 47,
+    "contract_verified": 180,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

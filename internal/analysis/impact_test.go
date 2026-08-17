@@ -832,6 +832,33 @@ func TestReverseProxyDomainImpactsAreConservative(t *testing.T) {
 	}
 }
 
+func TestReverseProxyServiceImpactsAreConservative(t *testing.T) {
+	cluster, err := ReverseProxyClusterDeleteImpact([]byte(`[{"address":"proxy.example.com","type":"account"}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	create, err := ReverseProxyServiceCreateImpact([]byte(`{"id":"service-1","domain":"app.example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := ReverseProxyServiceUpdateImpact([]byte(`{"id":"service-1","enabled":true}`), []byte(`{"id":"service-1","enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := ReverseProxyServiceDeleteImpact([]byte(`{"id":"service-1","domain":"app.example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cluster.Classification != "reverse_proxy_cluster_delete" || create.Classification != "reverse_proxy_service_create" || change.Classification != "reverse_proxy_service_change" || remove.Classification != "reverse_proxy_service_delete" {
+		t.Fatalf("unexpected classifications: %q %q %q %q", cluster.Classification, create.Classification, change.Classification, remove.Classification)
+	}
+	for _, report := range []ImpactReport{cluster, create, change, remove} {
+		if report.Confidence != "high" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected reverse proxy service impact: %+v", report)
+		}
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {

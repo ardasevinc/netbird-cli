@@ -155,6 +155,13 @@ type Remote interface {
 	ListReverseProxyDomainsRaw(context.Context) (json.RawMessage, error)
 	CreateReverseProxyDomain(context.Context, json.RawMessage) (json.RawMessage, error)
 	DeleteReverseProxyDomain(context.Context, string) (json.RawMessage, error)
+	ListReverseProxyClustersRaw(context.Context) (json.RawMessage, error)
+	DeleteReverseProxyCluster(context.Context, string) (json.RawMessage, error)
+	ListReverseProxyServicesRaw(context.Context) (json.RawMessage, error)
+	GetReverseProxyServiceRaw(context.Context, string) (json.RawMessage, error)
+	CreateReverseProxyService(context.Context, json.RawMessage) (json.RawMessage, error)
+	UpdateReverseProxyService(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteReverseProxyService(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -427,6 +434,20 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "reverse proxy domain is absent after delete")
 		}
+		if stage.Operation == "reverse_proxy_clusters.delete" {
+			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "reverse proxy cluster may have been deleted, but cluster absence could not be confirmed")
+			}
+			present, err := collectionContainsAddress(liveAfter, request.ID)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "reverse proxy cluster absence could not be compared with the cluster collection")
+			}
+			if present {
+				return finish(ctx, store, result, mutation.Partial, "reverse proxy cluster remains present after delete")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "reverse proxy cluster is absent after delete")
+		}
 		if err := confirmDeleted(ctx, remote, stage.Operation, request); err != nil && !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
@@ -572,6 +593,12 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListReverseProxyTokensRaw(ctx)
 	case "reverse_proxy_domains.create", "reverse_proxy_domains.delete":
 		return remote.ListReverseProxyDomainsRaw(ctx)
+	case "reverse_proxy_clusters.delete":
+		return remote.ListReverseProxyClustersRaw(ctx)
+	case "reverse_proxy_services.create":
+		return remote.ListReverseProxyServicesRaw(ctx)
+	case "reverse_proxy_services.update", "reverse_proxy_services.delete":
+		return remote.GetReverseProxyServiceRaw(ctx, target.ID)
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -881,6 +908,22 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.CreateReverseProxyDomain(ctx, body)
 	case "reverse_proxy_domains.delete":
 		return remote.DeleteReverseProxyDomain(ctx, target.ID)
+	case "reverse_proxy_clusters.delete":
+		return remote.DeleteReverseProxyCluster(ctx, target.ID)
+	case "reverse_proxy_services.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateReverseProxyService(ctx, body)
+	case "reverse_proxy_services.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateReverseProxyService(ctx, target.ID, body)
+	case "reverse_proxy_services.delete":
+		return remote.DeleteReverseProxyService(ctx, target.ID)
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -969,7 +1012,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1073,6 +1116,26 @@ func collectionContainsID(collection json.RawMessage, id string) (bool, error) {
 			return false, err
 		}
 		if candidate.ID == id {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func collectionContainsAddress(collection json.RawMessage, address string) (bool, error) {
+	var objects []json.RawMessage
+	if err := json.Unmarshal(collection, &objects); err != nil {
+		return false, err
+	}
+	for _, object := range objects {
+		var candidate struct {
+			Address        string `json:"address"`
+			ClusterAddress string `json:"cluster_address"`
+		}
+		if err := json.Unmarshal(object, &candidate); err != nil {
+			return false, err
+		}
+		if candidate.Address == address || candidate.ClusterAddress == address {
 			return true, nil
 		}
 	}
@@ -1242,6 +1305,33 @@ func prepareSecretRequest(operation string, request json.RawMessage, resolve fun
 			return nil, errors.New("identity provider client_secret_ref could not be resolved")
 		}
 		object["client_secret"] = secret
+		return json.Marshal(object)
+	}
+	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode reverse proxy service request: %w", err)
+		}
+		if _, ok := object["auth"]; ok {
+			return nil, errors.New("reverse proxy service auth cannot be persisted; use auth_ref")
+		}
+		ref, hasRef := object["auth_ref"].(string)
+		delete(object, "auth_ref")
+		if !hasRef || strings.TrimSpace(ref) == "" {
+			return json.Marshal(object)
+		}
+		if resolve == nil {
+			return nil, errors.New("reverse proxy service auth_ref requires a configured secret resolver")
+		}
+		authJSON, err := resolve(ref)
+		if err != nil || strings.TrimSpace(authJSON) == "" {
+			return nil, errors.New("reverse proxy service auth_ref could not be resolved")
+		}
+		var auth any
+		if err := json.Unmarshal([]byte(authJSON), &auth); err != nil {
+			return nil, errors.New("reverse proxy service auth_ref must resolve to JSON")
+		}
+		object["auth"] = auth
 		return json.Marshal(object)
 	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
@@ -1424,6 +1514,14 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.ReverseProxyDomainCreateImpact(intendedAfter)
 	case "reverse_proxy_domains.delete":
 		return analysis.ReverseProxyDomainDeleteImpact(before)
+	case "reverse_proxy_clusters.delete":
+		return analysis.ReverseProxyClusterDeleteImpact(before)
+	case "reverse_proxy_services.create":
+		return analysis.ReverseProxyServiceCreateImpact(intendedAfter)
+	case "reverse_proxy_services.update":
+		return analysis.ReverseProxyServiceUpdateImpact(before, intendedAfter)
+	case "reverse_proxy_services.delete":
+		return analysis.ReverseProxyServiceDeleteImpact(before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1467,7 +1565,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "users.invites.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

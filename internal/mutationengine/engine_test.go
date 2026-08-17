@@ -89,6 +89,11 @@ type fakeRemote struct {
 	proxyDomainCollection  json.RawMessage
 	proxyDomainAfter       json.RawMessage
 	proxyDomainBody        json.RawMessage
+	proxyClusterCollection json.RawMessage
+	proxyServiceBefore     json.RawMessage
+	proxyServiceCollection json.RawMessage
+	proxyServiceAfter      json.RawMessage
+	proxyServiceBody       json.RawMessage
 	temporaryAccessBody    json.RawMessage
 	temporaryAccessResult  json.RawMessage
 	edrBypassed            json.RawMessage
@@ -1192,6 +1197,72 @@ func (f *fakeRemote) DeleteReverseProxyDomain(_ context.Context, _ string) (json
 	}
 	f.proxyDomainBefore = nil
 	f.proxyDomainCollection = json.RawMessage(`[]`)
+	return nil, nil
+}
+
+func (f *fakeRemote) ListReverseProxyClustersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.proxyClusterCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.proxyClusterCollection...), nil
+}
+
+func (f *fakeRemote) DeleteReverseProxyCluster(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyClusterCollection = json.RawMessage(`[]`)
+	return nil, nil
+}
+
+func (f *fakeRemote) ListReverseProxyServicesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.proxyServiceCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.proxyServiceCollection...), nil
+}
+
+func (f *fakeRemote) GetReverseProxyServiceRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.proxyServiceBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.proxyServiceBefore...), nil
+}
+
+func (f *fakeRemote) CreateReverseProxyService(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyServiceBody = append(json.RawMessage(nil), body...)
+	if f.proxyServiceAfter == nil {
+		return nil, errors.New("missing proxy service")
+	}
+	f.proxyServiceCollection = json.RawMessage("[" + string(f.proxyServiceAfter) + "]")
+	return append(json.RawMessage(nil), f.proxyServiceAfter...), nil
+}
+
+func (f *fakeRemote) UpdateReverseProxyService(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyServiceBody = append(json.RawMessage(nil), body...)
+	if f.proxyServiceAfter == nil {
+		return nil, errors.New("missing proxy service")
+	}
+	f.proxyServiceBefore = append(json.RawMessage(nil), f.proxyServiceAfter...)
+	return append(json.RawMessage(nil), f.proxyServiceAfter...), nil
+}
+
+func (f *fakeRemote) DeleteReverseProxyService(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyServiceBefore = nil
+	f.proxyServiceCollection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -2871,6 +2942,54 @@ func TestApplyConfirmsReverseProxyDomainDeleteFromCollection(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected reverse proxy domain result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyReverseProxyServiceResolvesAuthOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"service-1","name":"app","domain":"app.example.com","enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "reverse_proxy_services.create", Request: json.RawMessage(`{"name":"app","domain":"app.example.com","enabled":true,"auth_ref":"pa:proxy-auth"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"reverse_proxy_service_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a reverse proxy service publishes a public ingress route to internal targets; authentication and target configuration are dispatched only after explicit acknowledgement"],"completeness":{"state":"unknown","reason":"reverse_proxy_service_public_exposure"}}`), Findings: []ledger.Finding{{Code: "impact.reverse_proxy_service_create", Severity: "blocking", Message: "creating the reverse proxy service publishes public ingress to internal targets and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", proxyServiceCollection: []byte(before), proxyServiceAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:proxy-auth" {
+			t.Fatalf("unexpected auth ref: %s", ref)
+		}
+		return `{"password_auth":{"username":"viewer","password":"real-secret"}}`, nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.proxyServiceBody), "real-secret") {
+		t.Fatalf("unexpected reverse proxy service result: %+v body=%s", result, remote.proxyServiceBody)
+	}
+}
+
+func TestApplyConfirmsReverseProxyClusterDeleteFromCollection(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[{"address":"proxy.example.com","type":"account"}]`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "reverse_proxy_clusters.delete", Request: json.RawMessage(`{"id":"proxy.example.com"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"reverse_proxy_cluster_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["deleting an account reverse proxy cluster removes its public ingress infrastructure; running proxy processes may remain connected until stopped or revoked separately"],"completeness":{"state":"unknown","reason":"reverse_proxy_cluster_public_exposure"}}`), Findings: []ledger.Finding{{Code: "impact.reverse_proxy_cluster_delete", Severity: "blocking", Message: "deleting the reverse proxy cluster removes public ingress infrastructure and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", proxyClusterCollection: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected reverse proxy cluster result: %+v updates=%d", result, remote.updates)
 	}
 }
 

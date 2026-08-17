@@ -80,6 +80,16 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 		}
 		return nil
 	}
+	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode reverse proxy service request: %w", err)
+		}
+		if _, ok := object["auth"]; ok {
+			return errors.New("reverse proxy service auth cannot be persisted in a stage; use auth_ref")
+		}
+		return nil
+	}
 	if operation != "agent_network.providers.create" && operation != "agent_network.providers.update" {
 		return nil
 	}
@@ -151,7 +161,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -307,6 +317,14 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.ReverseProxyDomainCreateImpact(plan.IntendedAfter)
 				case "reverse_proxy_domains.delete":
 					report, err = analysis.ReverseProxyDomainDeleteImpact(plan.Before)
+				case "reverse_proxy_clusters.delete":
+					report, err = analysis.ReverseProxyClusterDeleteImpact(plan.Before)
+				case "reverse_proxy_services.create":
+					report, err = analysis.ReverseProxyServiceCreateImpact(plan.IntendedAfter)
+				case "reverse_proxy_services.update":
+					report, err = analysis.ReverseProxyServiceUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "reverse_proxy_services.delete":
+					report, err = analysis.ReverseProxyServiceDeleteImpact(plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -564,6 +582,18 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "reverse_proxy_domains.delete" && report.Classification == "reverse_proxy_domain_delete":
 					findingCode = "impact.reverse_proxy_domain_delete"
 					findingMessage = "deleting the reverse proxy domain removes public DNS and ingress exposure and requires exact acknowledgement"
+				case plan.Operation == "reverse_proxy_clusters.delete" && report.Classification == "reverse_proxy_cluster_delete":
+					findingCode = "impact.reverse_proxy_cluster_delete"
+					findingMessage = "deleting the reverse proxy cluster removes public ingress infrastructure and requires exact acknowledgement"
+				case plan.Operation == "reverse_proxy_services.create" && report.Classification == "reverse_proxy_service_create":
+					findingCode = "impact.reverse_proxy_service_create"
+					findingMessage = "creating the reverse proxy service publishes public ingress to internal targets and requires exact acknowledgement"
+				case plan.Operation == "reverse_proxy_services.update" && report.Classification == "reverse_proxy_service_change":
+					findingCode = "impact.reverse_proxy_service_change"
+					findingMessage = "changing the reverse proxy service may alter public routing or authentication and requires exact acknowledgement"
+				case plan.Operation == "reverse_proxy_services.delete" && report.Classification == "reverse_proxy_service_delete":
+					findingCode = "impact.reverse_proxy_service_delete"
+					findingMessage = "deleting the reverse proxy service removes public ingress and requires exact acknowledgement"
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"

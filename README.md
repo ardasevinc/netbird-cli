@@ -30,6 +30,7 @@ Identity-provider create, update, and delete are capability-gated and blocking. 
 
 Reverse-proxy token creation and revocation are capability-gated and blocking. Creation returns the clear proxy token once, while revocation proves the token is absent from the server collection.
 Custom reverse-proxy domain creation and deletion are capability-gated and blocking, with public-DNS and ingress-exposure impact evidence; deletion proves absence from the domain collection.
+Reverse-proxy service creation, updates, deletion, and account-cluster deletion are capability-gated and blocking because they change public ingress infrastructure. Service auth is supplied through an external `auth_ref` and resolved only in memory at dispatch.
 Authenticated invite create, delete, and regenerate mutations are capability-gated and blocking; invite tokens are returned once only and never persisted in stages, receipts, logs, or errors.
 Password changes are capability-gated and blocking; staged requests carry only external `old_password_ref` and `new_password_ref` values, resolved in memory immediately before dispatch.
 Resending a user invitation is capability-gated and blocking; the empty API response is proven by exact user preimage validation and unchanged user metadata read-back, with no token persisted or emitted.

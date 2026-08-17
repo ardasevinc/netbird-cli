@@ -1051,6 +1051,41 @@ func ReverseProxyDomainDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "reverse_proxy_domain_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a custom reverse proxy domain removes a public DNS and ingress binding"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_domain_public_exposure"}}, nil
 }
 
+func ReverseProxyClusterDeleteImpact(before []byte) (ImpactReport, error) {
+	var value any
+	if err := json.Unmarshal(before, &value); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy cluster delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_cluster_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting an account reverse proxy cluster removes its public ingress infrastructure; running proxy processes may remain connected until stopped or revoked separately"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_cluster_public_exposure"}}, nil
+}
+
+func ReverseProxyServiceCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy service create intent: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_service_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a reverse proxy service publishes a public ingress route to internal targets; authentication and target configuration are dispatched only after explicit acknowledgement"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_service_public_exposure"}}, nil
+}
+
+func ReverseProxyServiceUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeValue, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeValue); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy service update preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy service update intent: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_service_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"updating a reverse proxy service can change public routing, targets, authentication, or access restrictions"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_service_public_exposure"}}, nil
+}
+
+func ReverseProxyServiceDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy service delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_service_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a reverse proxy service permanently removes its public ingress route, domain, and certificate"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_service_public_exposure"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

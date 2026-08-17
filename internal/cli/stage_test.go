@@ -860,6 +860,41 @@ func TestStageCreateReverseProxyDomainRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateReverseProxyServiceRejectsRawAuth(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"reverse_proxy_services.create","request":{"name":"app","domain":"app.example.com","auth":{"password_auth":{"password":"secret"}}},"before":[],"intended_after":{"id":"service-1","domain":"app.example.com"}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "auth_ref") {
+		t.Fatalf("expected auth_ref validation, got %v", err)
+	}
+}
+
+func TestStageCreateReverseProxyServiceRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"reverse_proxy_services.create","request":{"name":"app","domain":"app.example.com","auth_ref":"pa:proxy-auth"},"before":[],"intended_after":{"id":"service-1","domain":"app.example.com"}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.reverse_proxy_service_create"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("reverse proxy service acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")
