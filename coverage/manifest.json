@@ -1499,11 +1499,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.setup_keys",
+      "id": "setup_keys.create",
       "method": "POST",
       "path": "/api/setup-keys",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "setup_keys.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 161,
+    "implemented": 162,
     "classified": 0,
-    "discovered": 75,
-    "contract_verified": 152,
+    "discovered": 74,
+    "contract_verified": 153,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

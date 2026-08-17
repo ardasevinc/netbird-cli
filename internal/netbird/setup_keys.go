@@ -37,6 +37,22 @@ func (c *Client) ListSetupKeys(ctx context.Context) ([]SetupKey, error) {
 	return result, nil
 }
 
+func (c *Client) ListSetupKeysRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/setup-keys", nil, &result); err != nil {
+		return nil, fmt.Errorf("list setup keys: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateSetupKey(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/setup-keys", request, &result); err != nil {
+		return nil, fmt.Errorf("create setup key: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetSetupKey(ctx context.Context, id string) (SetupKey, error) {
 	if strings.TrimSpace(id) == "" {
 		return SetupKey{}, fmt.Errorf("setup key id is required")

@@ -357,6 +357,14 @@ func SetupKeyDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "setup_key_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"deleting a setup key can prevent new peer enrollment through that credential; already-enrolled peers require separate live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_delete_requires_enrollment_analysis"}}, nil
 }
 
+func SetupKeyCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode setup key create intent: %w", err)
+	}
+	return ImpactReport{Classification: "setup_key_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a setup key can expand peer enrollment authority; the one-time key value is returned only in the successful apply result and is never persisted"}, Completeness: map[string]any{"state": "unknown", "reason": "setup_key_create_requires_enrollment_analysis"}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

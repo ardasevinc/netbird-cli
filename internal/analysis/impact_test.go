@@ -655,3 +655,13 @@ func TestSetupKeyDeleteImpactIsConservative(t *testing.T) {
 		t.Fatalf("unexpected setup key report: %+v", report)
 	}
 }
+
+func TestSetupKeyCreateImpactIsConservative(t *testing.T) {
+	report, err := SetupKeyCreateImpact([]byte(`{"id":"key-1","name":"bootstrap","valid":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "setup_key_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected setup key create report: %+v", report)
+	}
+}

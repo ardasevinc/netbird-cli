@@ -117,6 +117,8 @@ type Remote interface {
 	CreatePersonalAccessToken(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePersonalAccessToken(context.Context, string, string) (json.RawMessage, error)
 	GetSetupKeyRaw(context.Context, string) (json.RawMessage, error)
+	ListSetupKeysRaw(context.Context) (json.RawMessage, error)
+	CreateSetupKey(context.Context, json.RawMessage) (json.RawMessage, error)
 	DeleteSetupKey(context.Context, string) (json.RawMessage, error)
 }
 
@@ -298,7 +300,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		if !matches {
 			return finish(ctx, store, result, mutation.Partial, "created resource differs from intended state after create")
 		}
-		if stage.Operation == "users.tokens.create" {
+		if stage.Operation == "users.tokens.create" || stage.Operation == "setup_keys.create" {
 			secret, err := responseSecret(dispatchResult)
 			if err != nil {
 				return finish(ctx, store, result, mutation.EffectConfirmedReceiptFail, "personal access token was created but its one-time value could not be delivered")
@@ -417,6 +419,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListPersonalAccessTokensRaw(ctx, target.UserID)
 	case "setup_keys.delete":
 		return remote.GetSetupKeyRaw(ctx, target.ID)
+	case "setup_keys.create":
+		return remote.ListSetupKeysRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -638,6 +642,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.CreatePersonalAccessToken(ctx, target.UserID, body)
 	case "setup_keys.delete":
 		return remote.DeleteSetupKey(ctx, target.ID)
+	case "setup_keys.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateSetupKey(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -696,7 +706,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -728,12 +738,19 @@ func responseID(response json.RawMessage) (string, error) {
 
 func responseSecret(response json.RawMessage) (string, error) {
 	var object struct {
-		PlainToken string `json:"plain_token"`
+		PlainToken  string `json:"plain_token"`
+		Key         string `json:"key"`
+		InviteToken string `json:"invite_token"`
 	}
-	if err := json.Unmarshal(response, &object); err != nil || strings.TrimSpace(object.PlainToken) == "" {
+	if err := json.Unmarshal(response, &object); err != nil {
 		return "", errors.New("create response has no one-time secret")
 	}
-	return object.PlainToken, nil
+	for _, secret := range []string{object.PlainToken, object.Key, object.InviteToken} {
+		if strings.TrimSpace(secret) != "" {
+			return secret, nil
+		}
+	}
+	return "", errors.New("create response has no one-time secret")
 }
 
 func collectionContainsIntent(collection, intent json.RawMessage) (bool, error) {
@@ -937,6 +954,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.UserTokenCreateImpact(intendedAfter)
 	case "setup_keys.delete":
 		return analysis.SetupKeyDeleteImpact(before)
+	case "setup_keys.create":
+		return analysis.SetupKeyCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

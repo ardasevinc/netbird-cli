@@ -66,3 +66,20 @@ func TestDeleteSetupKeyUsesDeclaredRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreateSetupKeyUsesDeclaredRoute(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/setup-keys" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "key-1", "name": "bootstrap", "key": "one-time-key"})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).CreateSetupKey(context.Background(), json.RawMessage(`{"name":"bootstrap","type":"reusable","expires_in":86400,"auto_groups":[],"usage_limit":0}`)); err != nil {
+		t.Fatal(err)
+	}
+}

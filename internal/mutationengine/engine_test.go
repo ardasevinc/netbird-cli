@@ -45,6 +45,8 @@ type fakeRemote struct {
 	tokenCollection       json.RawMessage
 	tokenAfter            json.RawMessage
 	setupKeyBefore        json.RawMessage
+	setupKeyCollection    json.RawMessage
+	setupKeyAfter         json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -530,6 +532,25 @@ func (f *fakeRemote) DeleteSetupKey(_ context.Context, _ string) (json.RawMessag
 	}
 	f.setupKeyBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) ListSetupKeysRaw(_ context.Context) (json.RawMessage, error) {
+	if f.setupKeyCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.setupKeyCollection...), nil
+}
+
+func (f *fakeRemote) CreateSetupKey(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.setupKeyAfter == nil {
+		return nil, errors.New("missing created setup key")
+	}
+	f.setupKeyCollection = json.RawMessage("[" + string(f.setupKeyAfter) + "]")
+	return json.RawMessage(`{"id":"key-1","name":"bootstrap","key":"one-time-key"}`), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -2080,6 +2101,35 @@ func TestApplyDispatchesSetupKeyDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected setup key delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyReturnsSetupKeyOnceWithoutPersistingIt(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"key-1","name":"bootstrap","valid":true,"auto_groups":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "setup_keys.create", Request: json.RawMessage(`{"name":"bootstrap","type":"reusable","expires_in":86400,"auto_groups":[],"usage_limit":0}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"setup_key_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a setup key can expand peer enrollment authority; the one-time key value is returned only in the successful apply result and is never persisted"],"completeness":{"state":"unknown","reason":"setup_key_create_requires_enrollment_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.setup_key_create", Severity: "blocking", Message: "creating the setup key expands peer enrollment authority and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", setupKeyCollection: []byte(before), setupKeyAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "one-time-key" || remote.updates != 1 {
+		t.Fatalf("unexpected setup key create result: %+v updates=%d", result, remote.updates)
+	}
+	receipt, err := store.GetReceipt(context.Background(), result.AttemptID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(receipt.Result), "one-time-key") || strings.Contains(string(stage.Request), "one-time-key") {
+		t.Fatal("setup key leaked into persisted state")
 	}
 }
 
