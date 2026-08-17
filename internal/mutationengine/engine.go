@@ -24,6 +24,8 @@ type Remote interface {
 	UpdateGroup(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteGroup(context.Context, string) (json.RawMessage, error)
 	GetPolicyRaw(context.Context, string) (json.RawMessage, error)
+	ListPoliciesRaw(context.Context) (json.RawMessage, error)
+	CreatePolicy(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdatePolicy(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePolicy(context.Context, string) (json.RawMessage, error)
 	GetRouteRaw(context.Context, string) (json.RawMessage, error)
@@ -245,6 +247,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPolicyRaw(ctx, target.ID)
 	case "policies.delete":
 		return remote.GetPolicyRaw(ctx, target.ID)
+	case "policies.create":
+		return remote.ListPoliciesRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -294,6 +298,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdatePolicy(ctx, target.ID, request)
 	case "policies.delete":
 		return remote.DeletePolicy(ctx, target.ID)
+	case "policies.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreatePolicy(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -352,7 +362,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -446,6 +456,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PolicyUpdateImpact(before, intendedAfter)
 	case "policies.delete":
 		return analysis.PolicyDeleteImpact(before)
+	case "policies.create":
+		return analysis.PolicyCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

@@ -124,6 +124,9 @@ returned id and read-back fields against the intended state.
 Policy deletion is also staged, requires the blocking `impact.policy_delete`
 acknowledgement, and is confirmed only when a post-delete policy read returns
 404.
+Policy creation snapshots the policy collection preimage, requires blocking
+`impact.policy_create` acknowledgement, and confirms the returned id and
+read-back fields against the intended state.
 Group deletion is staged under the same contract, with blocking
 `impact.group_delete` acknowledgement and a required 404 absence read-back.
 Group creation snapshots the group collection preimage, requires blocking

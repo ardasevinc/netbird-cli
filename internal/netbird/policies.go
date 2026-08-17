@@ -60,6 +60,22 @@ func (c *Client) ListPolicies(ctx context.Context) ([]Policy, error) {
 	return result, nil
 }
 
+func (c *Client) ListPoliciesRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/policies", nil, &result); err != nil {
+		return nil, fmt.Errorf("list policies: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreatePolicy(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/policies", request, &result); err != nil {
+		return nil, fmt.Errorf("create policy: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetPolicy(ctx context.Context, id string) (Policy, error) {
 	if strings.TrimSpace(id) == "" {
 		return Policy{}, fmt.Errorf("policy id is required")

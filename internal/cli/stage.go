@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -71,6 +71,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.GroupDeleteImpact(plan.Before)
 				case "policies.update":
 					report, err = analysis.PolicyUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "policies.create":
+					report, err = analysis.PolicyCreateImpact(plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -124,6 +126,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "policies.update" && report.Classification == "policy_rule_change":
 					findingCode = "impact.policy_rule_change"
 					findingMessage = "the proposed policy rule change may alter reachability and requires exact acknowledgement"
+				case plan.Operation == "policies.create" && report.Classification == "policy_create":
+					findingCode = "impact.policy_create"
+					findingMessage = "creating the policy may add reachability and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

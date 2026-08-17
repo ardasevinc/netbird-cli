@@ -1289,11 +1289,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "post.api.policies",
+      "id": "policies.create",
       "method": "POST",
       "path": "/api/policies",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "policies.delete",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 119,
+    "implemented": 120,
     "classified": 0,
-    "discovered": 117,
-    "contract_verified": 110,
+    "discovered": 116,
+    "contract_verified": 111,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

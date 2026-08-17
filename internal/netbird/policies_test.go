@@ -55,3 +55,27 @@ func TestDeletePolicyUsesDELETE(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreatePolicyUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/policies" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.RequestURI())
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["name"] != "allow-office" {
+			t.Fatalf("unexpected request body: %+v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "p1", "name": "allow-office", "enabled": true, "rules": []any{map[string]any{"action": "accept"}}})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(transportClient).CreatePolicy(context.Background(), json.RawMessage(`{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]}`)); err != nil {
+		t.Fatal(err)
+	}
+}

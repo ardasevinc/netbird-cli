@@ -19,6 +19,7 @@ type fakeRemote struct {
 	groupCollection    json.RawMessage
 	policyBefore       json.RawMessage
 	policyAfter        json.RawMessage
+	policyCollection   json.RawMessage
 	routeBefore        json.RawMessage
 	routeAfter         json.RawMessage
 	routeCollection    json.RawMessage
@@ -95,6 +96,25 @@ func (f *fakeRemote) GetPolicyRaw(_ context.Context, _ string) (json.RawMessage,
 		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
 	}
 	return append(json.RawMessage(nil), f.policyBefore...), nil
+}
+
+func (f *fakeRemote) ListPoliciesRaw(_ context.Context) (json.RawMessage, error) {
+	if f.policyCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.policyCollection...), nil
+}
+
+func (f *fakeRemote) CreatePolicy(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.policyAfter == nil {
+		return nil, errors.New("missing created policy")
+	}
+	f.policyCollection = json.RawMessage("[" + string(f.policyAfter) + "]")
+	return append(json.RawMessage(nil), f.policyAfter...), nil
 }
 
 func (f *fakeRemote) UpdatePolicy(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
@@ -548,6 +568,41 @@ func TestApplyDispatchesPolicyUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected policy result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesPolicyCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]}`
+	created := `{"id":"p1","name":"allow-office","enabled":true,"rules":[{"action":"accept"}],"source_posture_checks":[]}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "policies.create",
+		Request:        json.RawMessage(`{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"policy_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a policy can add access edges; affected peers and resources require live topology analysis"],"completeness":{"state":"unknown","reason":"policy_create_requires_topology"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.policy_create", Severity: "blocking", Message: "creating the policy may add reachability and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", policyCollection: []byte(before), policyAfter: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected policy create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

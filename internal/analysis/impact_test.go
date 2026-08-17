@@ -42,6 +42,16 @@ func TestPolicyDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestPolicyCreateImpactIsConservative(t *testing.T) {
+	report, err := PolicyCreateImpact([]byte(`{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "policy_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),
