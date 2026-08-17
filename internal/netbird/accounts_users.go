@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 // ManagedUser is the stable, non-secret user inventory view. Passwords and
@@ -98,6 +99,82 @@ func (c *Client) ListUsers(ctx context.Context, serviceUser *bool) ([]ManagedUse
 	var result []ManagedUser
 	if err := c.transport.GetJSON(ctx, path, &result); err != nil {
 		return nil, fmt.Errorf("list users: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) ListUsersRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/users", nil, &result); err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) GetUserRaw(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("get user %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateUser(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/users", request, &result); err != nil {
+		return nil, fmt.Errorf("create user: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) UpdateUser(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update user %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) DeleteUser(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id)
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("delete user %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) ApproveUser(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id) + "/approve"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("approve user %q: %w", id, err)
+	}
+	return result, nil
+}
+
+func (c *Client) RejectUser(ctx context.Context, id string) (json.RawMessage, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("user id is required")
+	}
+	path := "/api/users/" + url.PathEscape(id) + "/reject"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("reject user %q: %w", id, err)
 	}
 	return result, nil
 }

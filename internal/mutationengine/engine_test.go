@@ -38,6 +38,9 @@ type fakeRemote struct {
 	providerBefore        json.RawMessage
 	providerAfter         json.RawMessage
 	providerSecretSeen    bool
+	userCollection        json.RawMessage
+	userBefore            json.RawMessage
+	userAfter             json.RawMessage
 	before                json.RawMessage
 	after                 json.RawMessage
 	groupCollection       json.RawMessage
@@ -409,6 +412,68 @@ func (f *fakeRemote) DeleteAgentNetworkProvider(_ context.Context, _ string) (js
 		return nil, f.updateErr
 	}
 	f.providerBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ListUsersRaw(_ context.Context) (json.RawMessage, error) {
+	if f.userCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.userCollection...), nil
+}
+
+func (f *fakeRemote) GetUserRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.userBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.userBefore...), nil
+}
+
+func (f *fakeRemote) CreateUser(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.userAfter == nil {
+		return nil, errors.New("missing created user")
+	}
+	f.userCollection = json.RawMessage("[" + string(f.userAfter) + "]")
+	return append(json.RawMessage(nil), f.userAfter...), nil
+}
+
+func (f *fakeRemote) UpdateUser(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.userBefore = append(json.RawMessage(nil), f.userAfter...)
+	return append(json.RawMessage(nil), f.userAfter...), nil
+}
+
+func (f *fakeRemote) DeleteUser(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.userBefore = nil
+	return nil, nil
+}
+
+func (f *fakeRemote) ApproveUser(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.userBefore = append(json.RawMessage(nil), f.userAfter...)
+	return append(json.RawMessage(nil), f.userAfter...), nil
+}
+
+func (f *fakeRemote) RejectUser(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.userBefore = nil
 	return nil, nil
 }
 
@@ -1846,6 +1911,49 @@ func TestApplyResolvesAgentNetworkProviderSecretOnlyForDispatch(t *testing.T) {
 	}
 	if strings.Contains(string(stage.Request), "ephemeral") || strings.Contains(string(stage.Request), "api_key\":\"") {
 		t.Fatal("provider secret was persisted in staged request")
+	}
+}
+
+func TestApplyDispatchesUserCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"user-1","email":"a@example.com","role":"user","auto_groups":[],"is_blocked":false,"pending_approval":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.create", Request: json.RawMessage(`{"email":"a@example.com","role":"user","auto_groups":[],"is_service_user":false}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"user_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a user can grant account access and assign automatic peer groups; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"user_create_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.user_create", Severity: "blocking", Message: "creating the user may grant account access and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userCollection: []byte(before), userAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected user create result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesUserRejectAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"user-1","email":"a@example.com","pending_approval":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.reject", Request: json.RawMessage(`{"id":"user-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"user_reject","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["rejecting a pending user removes a pending account-access edge; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"user_reject_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.user_reject", Severity: "blocking", Message: "rejecting the user removes a pending account-access edge and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected user reject result: %+v updates=%d", result, remote.updates)
 	}
 }
 

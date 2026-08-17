@@ -15,6 +15,7 @@ Agent-network budget-rule mutations are capability-gated, blocking, and require 
 Agent-network guardrail mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
 Agent-network policy mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
 Agent-network provider mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation. Provider API keys never persist in stages; use an external `api_key_ref` for one-time resolution at apply.
+User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence confirmation.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.

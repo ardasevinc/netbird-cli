@@ -290,6 +290,49 @@ func AccountDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func UserCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user create intent: %w", err)
+	}
+	return ImpactReport{Classification: "user_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a user can grant account access and assign automatic peer groups; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_create_requires_capability_analysis"}}, nil
+}
+
+func UserUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user impact intended state: %w", err)
+	}
+	return ImpactReport{Classification: "user_change", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"updating a user can alter account access, role, block state, or automatic peer-group assignment; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_update_requires_capability_analysis"}}, nil
+}
+
+func UserDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "user_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"deleting a user can revoke account access and affect peers registered by that user; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_delete_requires_capability_analysis"}}, nil
+}
+
+func UserApproveImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user approval preimage: %w", err)
+	}
+	return ImpactReport{Classification: "user_approve", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"approving a pending user can grant account access and activate automatic peer-group assignment; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_approve_requires_capability_analysis"}}, nil
+}
+
+func UserRejectImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode user rejection preimage: %w", err)
+	}
+	return ImpactReport{Classification: "user_reject", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"rejecting a pending user removes a pending account-access edge; affected peers and account resources require capability-aware live analysis"}, Completeness: map[string]any{"state": "unknown", "reason": "user_reject_requires_capability_analysis"}}, nil
+}
+
 func PostureCheckCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

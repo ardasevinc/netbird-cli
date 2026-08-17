@@ -18,6 +18,7 @@ Agent-network budget-rule mutations are capability-gated, blocking, and require 
 Agent-network guardrail mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 Agent-network policy mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 Agent-network provider mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof. Provider API keys never persist in stages; use an external `api_key_ref` for one-time resolution at apply.
+User create/update/delete and approval/rejection mutations are capability-gated, blocking, and require exact preimage plus read-back or absence proof.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

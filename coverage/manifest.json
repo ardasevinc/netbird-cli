@@ -1534,11 +1534,11 @@
       "verification": "live_verified"
     },
     {
-      "id": "post.api.users",
+      "id": "users.create",
       "method": "POST",
       "path": "/api/users",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.current",
@@ -1590,25 +1590,25 @@
       "verification": ""
     },
     {
-      "id": "delete.api.users.userId",
+      "id": "users.delete",
       "method": "DELETE",
       "path": "/api/users/{userId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.users.userId",
+      "id": "users.update",
       "method": "PUT",
       "path": "/api/users/{userId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "post.api.users.userId.approve",
+      "id": "users.approve",
       "method": "POST",
       "path": "/api/users/{userId}/approve",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "post.api.users.userId.invite",
@@ -1625,11 +1625,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.users.userId.reject",
+      "id": "users.reject",
       "method": "DELETE",
       "path": "/api/users/{userId}/reject",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "users.tokens.list",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 153,
+    "implemented": 158,
     "classified": 0,
-    "discovered": 83,
-    "contract_verified": 144,
+    "discovered": 78,
+    "contract_verified": 149,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

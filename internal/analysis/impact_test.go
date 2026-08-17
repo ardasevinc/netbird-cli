@@ -594,3 +594,34 @@ func TestAgentNetworkProviderMutationsAreConservative(t *testing.T) {
 		t.Fatalf("unexpected provider classifications: %q %q %q", create.Classification, update.Classification, remove.Classification)
 	}
 }
+
+func TestUserLifecycleMutationsAreConservative(t *testing.T) {
+	create, err := UserCreateImpact([]byte(`{"id":"user-1","email":"a@example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	update, err := UserUpdateImpact([]byte(`{"id":"user-1","role":"user"}`), []byte(`{"id":"user-1","role":"admin"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := UserDeleteImpact([]byte(`{"id":"user-1"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	approve, err := UserApproveImpact([]byte(`{"id":"user-1","pending_approval":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reject, err := UserRejectImpact([]byte(`{"id":"user-1","pending_approval":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, report := range []ImpactReport{create, update, remove, approve, reject} {
+		if report.Reachability != "potentially_changed" || report.Confidence != "medium" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected user report: %+v", report)
+		}
+	}
+	if create.Classification != "user_create" || update.Classification != "user_change" || remove.Classification != "user_delete" || approve.Classification != "user_approve" || reject.Classification != "user_reject" {
+		t.Fatalf("unexpected user classifications: %q %q %q %q %q", create.Classification, update.Classification, remove.Classification, approve.Classification, reject.Classification)
+	}
+}
