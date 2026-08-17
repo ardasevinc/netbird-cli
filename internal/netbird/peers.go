@@ -134,6 +134,18 @@ func (c *Client) CreateTemporaryAccessPeer(ctx context.Context, peerID string, r
 	return result, nil
 }
 
+func (c *Client) CreatePeerJob(ctx context.Context, peerID string, request json.RawMessage) (json.RawMessage, error) {
+	if strings.TrimSpace(peerID) == "" {
+		return nil, fmt.Errorf("peer id is required")
+	}
+	path := "/api/peers/" + url.PathEscape(peerID) + "/jobs"
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create job for peer %q: %w", peerID, err)
+	}
+	return result, nil
+}
+
 func (c *Client) DeletePeer(ctx context.Context, id string) (json.RawMessage, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("peer id is required")

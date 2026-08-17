@@ -36,6 +36,7 @@ type Remote interface {
 	GetPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdatePeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	CreateTemporaryAccessPeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	CreatePeerJob(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeletePeer(context.Context, string) (json.RawMessage, error)
 	ListEDRBypassedPeersRaw(context.Context) (json.RawMessage, error)
 	BypassPeerEDR(context.Context, string) (json.RawMessage, error)
@@ -258,6 +259,9 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if strings.HasPrefix(stage.Operation, "peers.ingress.ports.") && request.PeerID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires peer_id", stage.Operation)}
 	}
+	if stage.Operation == "peers.jobs.create" && request.PeerID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires peer_id", stage.Operation)}
+	}
 	if isUserTokenDeleteOperation(stage.Operation) && request.TokenID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires token_id", stage.Operation)}
 	}
@@ -303,7 +307,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		if !equal {
 			return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage drifted; create a new revision", stage.Operation)}
 		}
-		if stage.Operation == "peers.temporary_access.create" {
+		if stage.Operation == "peers.temporary_access.create" || stage.Operation == "peers.jobs.create" {
 			preimage = mutation.PreimageMatches
 		} else {
 			already, err := collectionContainsIntent(liveBefore, stage.IntendedAfter)
@@ -367,6 +371,19 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 				return finish(ctx, store, result, mutation.Partial, "temporary access response differs from intended state")
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "temporary access peer response matches intended state")
+		}
+		if stage.Operation == "peers.jobs.create" {
+			if _, err := responseID(dispatchResult); err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "remote job may have applied, but the job id could not be confirmed")
+			}
+			matches, err := objectContains(dispatchResult, stage.IntendedAfter)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "remote job response could not be compared with intent")
+			}
+			if !matches {
+				return finish(ctx, store, result, mutation.Partial, "remote job response differs from intended state")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote job response matches intended state")
 		}
 		if stage.Operation == "peers.edr.bypass.create" {
 			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
@@ -624,6 +641,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPeerRaw(ctx, target.ID)
 	case "peers.temporary_access.create":
 		return remote.GetPeerRaw(ctx, target.ID)
+	case "peers.jobs.create":
+		return remote.GetPeerRaw(ctx, target.PeerID)
 	case "peers.delete":
 		return remote.GetPeerRaw(ctx, target.ID)
 	case "peers.edr.bypass.create", "peers.edr.bypass.delete":
@@ -985,6 +1004,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateTemporaryAccessPeer(ctx, target.ID, body)
+	case "peers.jobs.create":
+		body, err := stripPeerJobTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreatePeerJob(ctx, target.PeerID, body)
 	case "peers.delete":
 		return remote.DeletePeer(ctx, target.ID)
 	case "peers.edr.bypass.create":
@@ -1035,7 +1060,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
 }
 
 func isTargetlessOperation(operation string) bool {
@@ -1206,6 +1231,19 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 }
 
 func stripIngressPortTargetFields(request json.RawMessage) (json.RawMessage, error) {
+	body, err := stripTargetFields(request)
+	if err != nil {
+		return nil, err
+	}
+	var object map[string]any
+	if err := json.Unmarshal(body, &object); err != nil {
+		return nil, err
+	}
+	delete(object, "peer_id")
+	return json.Marshal(object)
+}
+
+func stripPeerJobTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	body, err := stripTargetFields(request)
 	if err != nil {
 		return nil, err
@@ -1547,6 +1585,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PeerUpdateImpact(before, intendedAfter)
 	case "peers.temporary_access.create":
 		return analysis.TemporaryAccessCreateImpact(before, intendedAfter)
+	case "peers.jobs.create":
+		return analysis.PeerJobCreateImpact(before, intendedAfter)
 	case "event_streaming.create":
 		return analysis.EventStreamingCreateImpact(intendedAfter)
 	case "event_streaming.update":

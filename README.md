@@ -231,3 +231,7 @@ notes for the locked contracts and release claim.
 
 Notification-channel stages use `target_ref`; email targets and webhook headers
 are resolved only at dispatch and are never persisted in the ledger.
+
+Remote-job stages require `peer_id`, exact peer preimage, and explicit
+acknowledgement. The response proves job creation; the workload may collect
+sensitive diagnostics from the selected peer.

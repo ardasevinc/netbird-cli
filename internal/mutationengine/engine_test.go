@@ -1050,6 +1050,18 @@ func (f *fakeRemote) CreateTemporaryAccessPeer(_ context.Context, _ string, body
 	return append(json.RawMessage(nil), f.temporaryAccessResult...), nil
 }
 
+func (f *fakeRemote) CreatePeerJob(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.temporaryAccessBody = append(json.RawMessage(nil), body...)
+	if f.temporaryAccessResult == nil {
+		return nil, errors.New("missing peer job result")
+	}
+	return append(json.RawMessage(nil), f.temporaryAccessResult...), nil
+}
+
 func (f *fakeRemote) ListEventStreamingIntegrationsRaw(_ context.Context) (json.RawMessage, error) {
 	if f.eventStreamingList == nil {
 		return json.RawMessage(`[]`), nil
@@ -2902,6 +2914,32 @@ func TestApplyDispatchesTemporaryAccessAndConfirmsResponse(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["id"] != nil || body["name"] != "temp-host" {
 		t.Fatalf("unexpected temporary access result: %+v updates=%d body=%s", result, remote.updates, remote.temporaryAccessBody)
+	}
+}
+
+func TestApplyDispatchesPeerJobAndConfirmsResponse(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"peer-1","name":"target","connected":true}`
+	after := `{"id":"job-1","status":"pending","workload":{"type":"bundle"}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "peers.jobs.create", Request: json.RawMessage(`{"peer_id":"peer-1","workload":{"type":"bundle","parameters":{"anonymize":true}}}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"peer_job_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating a remote job executes a diagnostic workload on the selected peer and may collect sensitive logs; the peer must be online and the response is the authoritative job-creation proof"],"completeness":{"state":"unknown","reason":"remote_job_execution_and_collection"}}`), Findings: []ledger.Finding{{Code: "impact.peer_job_create", Severity: "blocking", Message: "creating the remote job executes a workload on the peer and may collect sensitive diagnostics; exact acknowledgement is required"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", peerBefore: []byte(before), temporaryAccessResult: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(remote.temporaryAccessBody, &body); err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["peer_id"] != nil || body["workload"] == nil {
+		t.Fatalf("unexpected peer job result: %+v updates=%d body=%s", result, remote.updates, remote.temporaryAccessBody)
 	}
 }
 

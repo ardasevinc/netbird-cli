@@ -930,6 +930,25 @@ func TestStageCreateNotificationChannelRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreatePeerJobRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: filepath.Join(temp, "ledger.db")}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"peers.jobs.create","request":{"peer_id":"peer-1","workload":{"type":"bundle","parameters":{"anonymize":true}}},"before":{"id":"peer-1","connected":true},"intended_after":{"id":"job-1","status":"pending","workload":{"type":"bundle"}}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.peer_job_create"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("peer job acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateRouteChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

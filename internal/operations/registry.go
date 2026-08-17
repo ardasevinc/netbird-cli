@@ -158,6 +158,7 @@ var definitions = map[string]Definition{
 	"peers.update":                      {Name: "peers.update", Method: "PUT", Path: "/api/peers/{peerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.delete":                      {Name: "peers.delete", Method: "DELETE", Path: "/api/peers/{peerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.temporary_access.create":     {Name: "peers.temporary_access.create", Method: "POST", Path: "/api/peers/{peerId}/temporary-access", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
+	"peers.jobs.create":                 {Name: "peers.jobs.create", Method: "POST", Path: "/api/peers/{peerId}/jobs", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: false, DispatcherAdmitted: true},
 	"peers.edr.bypassed.list":           {Name: "peers.edr.bypassed.list", Method: "GET", Path: "/api/peers/edr/bypassed", Mutation: ReadOnly},
 	"peers.edr.bypass.create":           {Name: "peers.edr.bypass.create", Method: "POST", Path: "/api/peers/{peer-id}/edr/bypass", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.edr.bypass.delete":           {Name: "peers.edr.bypass.delete", Method: "DELETE", Path: "/api/peers/{peer-id}/edr/bypass", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

@@ -72,3 +72,20 @@ func TestCreateTemporaryAccessPeerUsesDeclaredRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCreatePeerJobUsesDeclaredRoute(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.EscapedPath() != "/api/peers/peer%2Fone/jobs" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.EscapedPath())
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "job-1", "status": "pending", "workload": map[string]any{"type": "bundle"}})
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewClient(client).CreatePeerJob(context.Background(), "peer/one", json.RawMessage(`{"workload":{"type":"bundle"}}`)); err != nil {
+		t.Fatal(err)
+	}
+}

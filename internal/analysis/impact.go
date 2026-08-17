@@ -965,6 +965,17 @@ func TemporaryAccessCreateImpact(before, intendedAfter []byte) (ImpactReport, er
 	return ImpactReport{Classification: "temporary_access_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "medium", Evidence: []string{"creating a temporary access peer grants a short-lived scoped path to the target peer; automatic cleanup is controlled by the remote peer lifecycle and is not readable as durable state"}, Completeness: map[string]any{"state": "unknown", "reason": "temporary_access_peer_lifetime_is_external"}}, nil
 }
 
+func PeerJobCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var peerObject, jobObject map[string]any
+	if err := json.Unmarshal(before, &peerObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode peer job target preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &jobObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode peer job intent: %w", err)
+	}
+	return ImpactReport{Classification: "peer_job_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a remote job executes a diagnostic workload on the selected peer and may collect sensitive logs; the peer must be online and the response is the authoritative job-creation proof"}, Completeness: map[string]any{"state": "unknown", "reason": "remote_job_execution_and_collection"}}, nil
+}
+
 func EventStreamingCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	var object map[string]any
 	if err := json.Unmarshal(intendedAfter, &object); err != nil {

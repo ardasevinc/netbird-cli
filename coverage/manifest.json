@@ -1261,11 +1261,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.peers.peerId.jobs",
+      "id": "peers.jobs.create",
       "method": "POST",
       "path": "/api/peers/{peerId}/jobs",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.peers.peerId.jobs.jobId",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 192,
+    "implemented": 193,
     "classified": 0,
-    "discovered": 44,
-    "contract_verified": 183,
+    "discovered": 43,
+    "contract_verified": 184,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
