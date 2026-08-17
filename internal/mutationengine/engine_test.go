@@ -93,6 +93,15 @@ func (f *fakeRemote) UpdateNameserverGroup(_ context.Context, _ string, _ json.R
 	return append(json.RawMessage(nil), f.nameserverAfter...), nil
 }
 
+func (f *fakeRemote) DeleteNameserverGroup(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.nameserverBefore = nil
+	return nil, nil
+}
+
 func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
 	f.updates++
 	if f.updateErr != nil {
@@ -811,6 +820,39 @@ func TestApplyDispatchesNameserverGroupUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected nameserver update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNameserverGroupDeleteAndConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"ns-1","name":"office","description":"office resolvers","domains":["office.internal"],"enabled":true,"groups":["g1"],"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}],"primary":false,"search_domains_enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.nameservers.delete",
+		Request:        json.RawMessage(`{"id":"ns-1"}`),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(`{}`),
+		Impact:         json.RawMessage(`{"classification":"dns_nameserver_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["deleting a nameserver group can change resolver behavior for distributed peers; affected peers and domains require live analysis"],"completeness":{"state":"unknown","reason":"dns_nameserver_delete_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_nameserver_delete", Severity: "blocking", Message: "deleting the nameserver group may alter resolver behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", nameserverBefore: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected nameserver delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

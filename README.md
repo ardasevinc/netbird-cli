@@ -124,6 +124,8 @@ returned id and read-back fields against the intended state.
 Nameserver-group updates are always treated as blocking
 `impact.dns_nameserver_change` changes and require exact preimage/read-back
 confirmation.
+Nameserver-group deletion is staged with blocking `impact.dns_nameserver_delete`
+acknowledgement and the same required 404 absence proof.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.

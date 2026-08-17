@@ -220,6 +220,22 @@ func DNSNameserverUpdateImpact(before, intendedAfter []byte) (ImpactReport, erro
 	}, nil
 }
 
+func DNSNameserverDeleteImpact(before []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(before, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode dns nameserver delete preimage: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "dns_nameserver_delete",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"deleting a nameserver group can change resolver behavior for distributed peers; affected peers and domains require live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "dns_nameserver_delete_requires_dns_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

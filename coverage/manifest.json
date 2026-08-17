@@ -246,11 +246,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "delete.api.dns.nameservers.nsgroupId",
+      "id": "dns.nameservers.delete",
       "method": "DELETE",
       "path": "/api/dns/nameservers/{nsgroupId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "dns.nameservers.get",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 128,
+    "implemented": 129,
     "classified": 0,
-    "discovered": 108,
-    "contract_verified": 119,
+    "discovered": 107,
+    "contract_verified": 120,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

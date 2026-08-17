@@ -141,6 +141,16 @@ func TestDNSNameserverUpdateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSNameserverDeleteImpactIsConservative(t *testing.T) {
+	report, err := DNSNameserverDeleteImpact([]byte(`{"id":"ns-1","domains":["office.internal"],"enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_nameserver_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),
