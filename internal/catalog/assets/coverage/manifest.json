@@ -218,11 +218,11 @@
       "verification": ""
     },
     {
-      "id": "put.api.agent_network.settings",
+      "id": "agent_network.settings.update",
       "method": "PUT",
       "path": "/api/agent-network/settings",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.usage.overview",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 138,
+    "implemented": 139,
     "classified": 0,
-    "discovered": 98,
-    "contract_verified": 129,
+    "discovered": 97,
+    "contract_verified": 130,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

@@ -22,6 +22,8 @@ type fakeRemote struct {
 	ingressCollection    json.RawMessage
 	ingressBefore        json.RawMessage
 	ingressAfter         json.RawMessage
+	agentSettingsBefore  json.RawMessage
+	agentSettingsAfter   json.RawMessage
 	before               json.RawMessage
 	after                json.RawMessage
 	groupCollection      json.RawMessage
@@ -172,6 +174,22 @@ func (f *fakeRemote) DeleteIngressPeer(_ context.Context, _ string) (json.RawMes
 	}
 	f.ingressBefore = nil
 	return nil, nil
+}
+
+func (f *fakeRemote) GetAgentNetworkSettingsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.agentSettingsBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.agentSettingsBefore...), nil
+}
+
+func (f *fakeRemote) UpdateAgentNetworkSettings(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.agentSettingsBefore = append(json.RawMessage(nil), f.agentSettingsAfter...)
+	return append(json.RawMessage(nil), f.agentSettingsAfter...), nil
 }
 
 func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error) {
@@ -1295,6 +1313,40 @@ func TestApplyDispatchesIngressPeerDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected ingress peer delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesAgentNetworkSettingsUpdateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"enabled":true}`
+	after := `{"enabled":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "agent_network.settings.update",
+		Request:        json.RawMessage(after),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(after),
+		Impact:         json.RawMessage(`{"classification":"agent_network_settings_change","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["updating agent-network settings can change Cloud agent routing and provider behavior; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"agent_network_settings_update_requires_capability_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.agent_network_settings_change", Severity: "blocking", Message: "the proposed agent-network settings change may alter Cloud agent behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", agentSettingsBefore: []byte(before), agentSettingsAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected agent-network settings result: %+v updates=%d", result, remote.updates)
 	}
 }
 

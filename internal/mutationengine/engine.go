@@ -81,6 +81,8 @@ type Remote interface {
 	GetIngressPeerRaw(context.Context, string) (json.RawMessage, error)
 	UpdateIngressPeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteIngressPeer(context.Context, string) (json.RawMessage, error)
+	GetAgentNetworkSettingsRaw(context.Context) (json.RawMessage, error)
+	UpdateAgentNetworkSettings(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -319,6 +321,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetIngressPeerRaw(ctx, target.ID)
 	case "ingress.peers.delete":
 		return remote.GetIngressPeerRaw(ctx, target.ID)
+	case "agent_network.settings.update":
+		return remote.GetAgentNetworkSettingsRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -450,6 +454,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateIngressPeer(ctx, target.ID, body)
 	case "ingress.peers.delete":
 		return remote.DeleteIngressPeer(ctx, target.ID)
+	case "agent_network.settings.update":
+		return remote.UpdateAgentNetworkSettings(ctx, request)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -512,7 +518,7 @@ func isCreateOperation(operation string) bool {
 }
 
 func isTargetlessOperation(operation string) bool {
-	return operation == "dns.settings.update"
+	return operation == "dns.settings.update" || operation == "agent_network.settings.update"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -645,6 +651,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.IngressPeerUpdateImpact(before, intendedAfter)
 	case "ingress.peers.delete":
 		return analysis.IngressPeerDeleteImpact(before)
+	case "agent_network.settings.update":
+		return analysis.AgentNetworkSettingsUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

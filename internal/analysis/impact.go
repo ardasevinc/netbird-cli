@@ -392,6 +392,25 @@ func IngressPeerDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func AgentNetworkSettingsUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network settings impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode agent-network settings impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "agent_network_settings_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating agent-network settings can change Cloud agent routing and provider behavior; affected peers and account resources require capability-aware live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "agent_network_settings_update_requires_capability_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

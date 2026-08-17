@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -109,6 +109,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.IngressPeerUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "ingress.peers.delete":
 					report, err = analysis.IngressPeerDeleteImpact(plan.Before)
+				case "agent_network.settings.update":
+					report, err = analysis.AgentNetworkSettingsUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -219,6 +221,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "ingress.peers.delete" && report.Classification == "ingress_peer_delete":
 					findingCode = "impact.ingress_peer_delete"
 					findingMessage = "deleting the ingress peer may remove external reachability and requires exact acknowledgement"
+				case plan.Operation == "agent_network.settings.update" && report.Classification == "agent_network_settings_change":
+					findingCode = "impact.agent_network_settings_change"
+					findingMessage = "the proposed agent-network settings change may alter Cloud agent behavior and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"
