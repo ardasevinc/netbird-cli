@@ -54,6 +54,7 @@ type Remote interface {
 	ListDNSZonesRaw(context.Context) (json.RawMessage, error)
 	CreateDNSZone(context.Context, json.RawMessage) (json.RawMessage, error)
 	GetDNSZoneRaw(context.Context, string) (json.RawMessage, error)
+	UpdateDNSZone(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteDNSZone(context.Context, string) (json.RawMessage, error)
 }
 
@@ -257,6 +258,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListDNSZonesRaw(ctx)
 	case "dns.zones.delete":
 		return remote.GetDNSZoneRaw(ctx, target.ID)
+	case "dns.zones.update":
+		return remote.GetDNSZoneRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -320,6 +323,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.CreateDNSZone(ctx, body)
 	case "dns.zones.delete":
 		return remote.DeleteDNSZone(ctx, target.ID)
+	case "dns.zones.update":
+		return remote.UpdateDNSZone(ctx, target.ID, request)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -478,6 +483,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSZoneCreateImpact(intendedAfter)
 	case "dns.zones.delete":
 		return analysis.DNSZoneDeleteImpact(before)
+	case "dns.zones.update":
+		return analysis.DNSZoneUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

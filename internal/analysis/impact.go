@@ -115,6 +115,25 @@ func DNSZoneDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func DNSZoneUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode dns zone impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode dns zone impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "dns_zone_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating a DNS zone can change name-resolution behavior for distributed peers; affected peers and records require live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "dns_zone_update_requires_dns_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

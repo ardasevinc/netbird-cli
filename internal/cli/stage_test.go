@@ -217,6 +217,26 @@ func TestStageCreateDNSZoneDeleteRequiresAcknowledgement(t *testing.T) {
 	}
 }
 
+func TestStageCreateDNSZoneUpdateRequiresAcknowledgement(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"dns.zones.update","request":{"id":"zone-1","domain":"corp.internal","enabled":true},"before":{"id":"zone-1","domain":"office.internal","enabled":true},"intended_after":{"id":"zone-1","domain":"corp.internal","enabled":true}}`))
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), `"code":"impact.dns_zone_change"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
+		t.Fatalf("dns zone update acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
 func TestStageCreateGroupDeleteRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

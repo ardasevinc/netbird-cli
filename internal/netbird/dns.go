@@ -172,6 +172,18 @@ func (c *Client) GetDNSZoneRaw(ctx context.Context, id string) (json.RawMessage,
 	return result, nil
 }
 
+func (c *Client) UpdateDNSZone(ctx context.Context, id string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := dnsPath("zones", id)
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPut, path, request, &result); err != nil {
+		return nil, fmt.Errorf("update dns zone %q: %w", id, err)
+	}
+	return result, nil
+}
+
 func (c *Client) DeleteDNSZone(ctx context.Context, id string) (json.RawMessage, error) {
 	path, err := dnsPath("zones", id)
 	if err != nil {

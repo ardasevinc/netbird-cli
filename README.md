@@ -109,6 +109,8 @@ DNS zone creation snapshots the zone collection preimage, requires blocking
 read-back fields against the intended state.
 DNS zone deletion is staged with blocking `impact.dns_zone_delete`
 acknowledgement and the same required 404 absence proof.
+DNS zone updates are always treated as blocking `impact.dns_zone_change`
+changes and require exact preimage and read-back confirmation.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.
