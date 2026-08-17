@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -113,6 +113,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.AgentNetworkSettingsUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "agent_network.settings.create":
 					report, err = analysis.AgentNetworkSettingsCreateImpact(plan.IntendedAfter)
+				case "agent_network.settings.delete":
+					report, err = analysis.AgentNetworkSettingsDeleteImpact(plan.Before)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -229,6 +231,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "agent_network.settings.create" && report.Classification == "agent_network_settings_create":
 					findingCode = "impact.agent_network_settings_create"
 					findingMessage = "creating agent-network settings may enable Cloud agent behavior and requires exact acknowledgement"
+				case plan.Operation == "agent_network.settings.delete" && report.Classification == "agent_network_settings_delete":
+					findingCode = "impact.agent_network_settings_delete"
+					findingMessage = "deleting agent-network settings may disable Cloud agent behavior and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

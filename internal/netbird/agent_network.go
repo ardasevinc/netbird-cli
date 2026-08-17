@@ -30,3 +30,11 @@ func (c *Client) CreateAgentNetworkSettings(ctx context.Context, request json.Ra
 	}
 	return result, nil
 }
+
+func (c *Client) DeleteAgentNetworkSettings(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodDelete, "/api/agent-network/settings", nil, &result); err != nil {
+		return nil, fmt.Errorf("delete agent-network settings: %w", err)
+	}
+	return result, nil
+}

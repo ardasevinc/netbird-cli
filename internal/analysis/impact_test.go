@@ -230,6 +230,16 @@ func TestAgentNetworkSettingsCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestAgentNetworkSettingsDeleteImpactIsConservative(t *testing.T) {
+	report, err := AgentNetworkSettingsDeleteImpact([]byte(`{"enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "agent_network_settings_delete" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
 	if err != nil {

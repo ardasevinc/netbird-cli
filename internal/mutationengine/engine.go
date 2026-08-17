@@ -84,6 +84,7 @@ type Remote interface {
 	GetAgentNetworkSettingsRaw(context.Context) (json.RawMessage, error)
 	UpdateAgentNetworkSettings(context.Context, json.RawMessage) (json.RawMessage, error)
 	CreateAgentNetworkSettings(context.Context, json.RawMessage) (json.RawMessage, error)
+	DeleteAgentNetworkSettings(context.Context) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -326,6 +327,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetAgentNetworkSettingsRaw(ctx)
 	case "agent_network.settings.create":
 		return remote.GetAgentNetworkSettingsRaw(ctx)
+	case "agent_network.settings.delete":
+		return remote.GetAgentNetworkSettingsRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -461,6 +464,8 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateAgentNetworkSettings(ctx, request)
 	case "agent_network.settings.create":
 		return remote.CreateAgentNetworkSettings(ctx, request)
+	case "agent_network.settings.delete":
+		return remote.DeleteAgentNetworkSettings(ctx)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -523,7 +528,7 @@ func isCreateOperation(operation string) bool {
 }
 
 func isTargetlessOperation(operation string) bool {
-	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create"
+	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -660,6 +665,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.AgentNetworkSettingsUpdateImpact(before, intendedAfter)
 	case "agent_network.settings.create":
 		return analysis.AgentNetworkSettingsCreateImpact(intendedAfter)
+	case "agent_network.settings.delete":
+		return analysis.AgentNetworkSettingsDeleteImpact(before)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":
@@ -707,7 +714,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "agent_network.settings.delete"
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

@@ -197,11 +197,11 @@
       "verification": ""
     },
     {
-      "id": "delete.api.agent_network.settings",
+      "id": "agent_network.settings.delete",
       "method": "DELETE",
       "path": "/api/agent-network/settings",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.agent_network.settings",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 140,
+    "implemented": 141,
     "classified": 0,
-    "discovered": 96,
-    "contract_verified": 131,
+    "discovered": 95,
+    "contract_verified": 132,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
