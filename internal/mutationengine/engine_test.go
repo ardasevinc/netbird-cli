@@ -117,6 +117,7 @@ type fakeRemote struct {
 	notification           notificationChannelState
 	azureIDP               azureIDPState
 	googleIDP              googleIDPState
+	edr                    map[string]edrIntegrationState
 }
 
 type notificationChannelState struct {
@@ -138,6 +139,12 @@ type googleIDPState struct {
 	collection json.RawMessage
 	after      json.RawMessage
 	body       json.RawMessage
+}
+
+type edrIntegrationState struct {
+	before json.RawMessage
+	after  json.RawMessage
+	body   json.RawMessage
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -1466,6 +1473,64 @@ func (f *fakeRemote) SyncGoogleIDP(_ context.Context, _ string) (json.RawMessage
 		return nil, f.updateErr
 	}
 	return json.RawMessage(`{"result":"ok"}`), nil
+}
+
+func (f *fakeRemote) edrState(provider string) *edrIntegrationState {
+	if f.edr == nil {
+		f.edr = make(map[string]edrIntegrationState)
+	}
+	state := f.edr[provider]
+	f.edr[provider] = state
+	return &state
+}
+
+func (f *fakeRemote) GetEDRIntegrationRaw(_ context.Context, provider string) (json.RawMessage, error) {
+	state := f.edrState(provider)
+	if state.before == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), state.before...), nil
+}
+
+func (f *fakeRemote) CreateEDRIntegration(_ context.Context, provider string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.edrState(provider)
+	state.body = append(json.RawMessage(nil), body...)
+	if state.after == nil {
+		return nil, errors.New("missing EDR integration")
+	}
+	state.before = append(json.RawMessage(nil), state.after...)
+	f.edr[provider] = *state
+	return append(json.RawMessage(nil), state.after...), nil
+}
+
+func (f *fakeRemote) UpdateEDRIntegration(_ context.Context, provider string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.edrState(provider)
+	state.body = append(json.RawMessage(nil), body...)
+	if state.after == nil {
+		return nil, errors.New("missing EDR integration")
+	}
+	state.before = append(json.RawMessage(nil), state.after...)
+	f.edr[provider] = *state
+	return append(json.RawMessage(nil), state.after...), nil
+}
+
+func (f *fakeRemote) DeleteEDRIntegration(_ context.Context, provider string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	state := f.edrState(provider)
+	state.before = nil
+	f.edr[provider] = *state
+	return json.RawMessage(`{}`), nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -3320,6 +3385,55 @@ func TestApplyGoogleIDPSyncRequiresExactPreimageAndEndpointProof(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected Google IDP sync result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyEDRIntuneResolvesSecretOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `null`
+	after := `{"id":1,"enabled":true,"client_id":"client","tenant_id":"tenant","groups":[],"last_synced_interval":24}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "edr.intune.create", Request: json.RawMessage(`{"client_id":"client","tenant_id":"tenant","secret_ref":"pa:intune-secret","groups":[],"last_synced_interval":24}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"edr_intune_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating an EDR integration changes device-compliance enforcement and may deny or restore peer access; credentials are resolved in memory and never persisted"],"completeness":{"state":"unknown","reason":"edr_integration_compliance_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.edr_intune_create", Severity: "blocking", Message: "creating the EDR integration changes device-compliance enforcement and peer access and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", edr: map[string]edrIntegrationState{"intune": {after: []byte(after)}}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:intune-secret" {
+			t.Fatalf("unexpected secret ref: %s", ref)
+		}
+		return "real-intune-secret", nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := remote.edr["intune"]
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-intune-secret") || !strings.Contains(string(state.body), "real-intune-secret") {
+		t.Fatalf("unexpected EDR result: %+v body=%s", result, state.body)
+	}
+}
+
+func TestApplyEDRDeleteConfirmsAbsence(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":1,"enabled":true,"api_url":"https://edr.example","groups":[],"last_synced_interval":24,"match_attributes":{}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "edr.fleetdm.delete", Request: json.RawMessage(`{}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`null`), Impact: json.RawMessage(`{"classification":"edr_fleetdm_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["deleting an EDR integration removes a device-compliance gate and may change peer access"],"completeness":{"state":"unknown","reason":"edr_integration_compliance_boundary"}}`), Findings: []ledger.Finding{{Code: "impact.edr_fleetdm_delete", Severity: "blocking", Message: "deleting the EDR integration removes a device-compliance gate and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", edr: map[string]edrIntegrationState{"fleetdm": {before: []byte(before)}}}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected EDR delete result: %+v updates=%d", result, remote.updates)
 	}
 }
 

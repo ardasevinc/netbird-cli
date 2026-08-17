@@ -40,3 +40,44 @@ func TestEDRBypassRoutesAndReadModel(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEDRIntegrationRoutes(t *testing.T) {
+	providers := []string{"intune", "sentinelone", "falcon", "huntress", "fleetdm"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, provider := range providers {
+			if r.URL.Path != "/api/integrations/edr/"+provider {
+				continue
+			}
+			if r.Method == http.MethodDelete {
+				_ = json.NewEncoder(w).Encode(map[string]any{})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": 1, "enabled": true})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	client, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nb := NewClient(client)
+	for _, provider := range providers {
+		if _, err := nb.GetEDRIntegrationRaw(context.Background(), provider); err != nil {
+			t.Fatalf("get %s: %v", provider, err)
+		}
+		if _, err := nb.CreateEDRIntegration(context.Background(), provider, json.RawMessage(`{"enabled":true}`)); err != nil {
+			t.Fatalf("create %s: %v", provider, err)
+		}
+		if _, err := nb.UpdateEDRIntegration(context.Background(), provider, json.RawMessage(`{"enabled":false}`)); err != nil {
+			t.Fatalf("update %s: %v", provider, err)
+		}
+		if _, err := nb.DeleteEDRIntegration(context.Background(), provider); err != nil {
+			t.Fatalf("delete %s: %v", provider, err)
+		}
+	}
+	if _, err := nb.GetEDRIntegrationRaw(context.Background(), "unknown"); err == nil {
+		t.Fatal("expected unsupported EDR provider error")
+	}
+}

@@ -112,6 +112,38 @@ func validatePersistedSecretSafety(operation string, request json.RawMessage) er
 		}
 		return nil
 	}
+	if strings.HasPrefix(operation, "edr.") && (strings.HasSuffix(operation, ".create") || strings.HasSuffix(operation, ".update")) {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return fmt.Errorf("decode EDR request: %w", err)
+		}
+		provider := strings.TrimSuffix(strings.TrimPrefix(operation, "edr."), ".create")
+		if strings.HasSuffix(operation, ".update") {
+			provider = strings.TrimSuffix(strings.TrimPrefix(operation, "edr."), ".update")
+		}
+		fields := map[string]string{}
+		switch provider {
+		case "intune", "falcon":
+			fields["secret"] = "secret_ref"
+		case "sentinelone", "fleetdm":
+			fields["api_token"] = "api_token_ref"
+		case "huntress":
+			fields["api_key"] = "api_key_ref"
+			fields["api_secret"] = "api_secret_ref"
+		default:
+			return fmt.Errorf("unsupported EDR operation %q", operation)
+		}
+		for field, refField := range fields {
+			if _, ok := object[field]; ok {
+				return fmt.Errorf("EDR %s cannot be persisted in a stage; use %s", field, refField)
+			}
+			ref, ok := object[refField].(string)
+			if !ok || strings.TrimSpace(ref) == "" {
+				return fmt.Errorf("EDR %s requires %s", provider, refField)
+			}
+		}
+		return nil
+	}
 	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -209,7 +241,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "peers.temporary_access.create", "peers.jobs.create", "peers.edr.bypass.create", "peers.edr.bypass.delete", "event_streaming.create", "event_streaming.update", "event_streaming.delete", "identity_providers.create", "identity_providers.update", "identity_providers.delete", "reverse_proxy_tokens.create", "reverse_proxy_tokens.delete", "reverse_proxy_domains.create", "reverse_proxy_domains.delete", "reverse_proxy_clusters.delete", "reverse_proxy_services.create", "reverse_proxy_services.update", "reverse_proxy_services.delete", "notification_channels.create", "notification_channels.update", "notification_channels.delete", "azure_idp.create", "azure_idp.update", "azure_idp.delete", "azure_idp.sync", "google_idp.create", "google_idp.update", "google_idp.delete", "google_idp.sync", "edr.intune.create", "edr.intune.update", "edr.intune.delete", "edr.sentinelone.create", "edr.sentinelone.update", "edr.sentinelone.delete", "edr.falcon.create", "edr.falcon.update", "edr.falcon.delete", "edr.huntress.create", "edr.huntress.update", "edr.huntress.delete", "edr.fleetdm.create", "edr.fleetdm.update", "edr.fleetdm.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create", "dns.records.update", "dns.records.delete", "dns.nameservers.create", "dns.nameservers.update", "dns.nameservers.delete", "dns.settings.update", "accounts.update", "accounts.delete", "posture_checks.create", "posture_checks.update", "posture_checks.delete", "ingress.peers.create", "ingress.peers.update", "ingress.peers.delete", "peers.ingress.ports.create", "peers.ingress.ports.update", "peers.ingress.ports.delete", "agent_network.settings.update", "agent_network.settings.create", "agent_network.settings.delete", "agent_network.budget_rules.create", "agent_network.budget_rules.update", "agent_network.budget_rules.delete", "agent_network.guardrails.create", "agent_network.guardrails.update", "agent_network.guardrails.delete", "agent_network.policies.create", "agent_network.policies.update", "agent_network.policies.delete", "agent_network.providers.create", "agent_network.providers.update", "agent_network.providers.delete", "users.create", "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend", "users.tokens.create", "users.tokens.delete", "setup_keys.create", "setup_keys.update", "setup_keys.delete", "users.invites.create", "users.invites.delete", "users.invites.regenerate", "users.invites.accept":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -397,6 +429,12 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.GoogleIDPDeleteImpact(plan.Before)
 				case "google_idp.sync":
 					report, err = analysis.GoogleIDPSyncImpact(plan.Before, plan.IntendedAfter)
+				case "edr.intune.create", "edr.sentinelone.create", "edr.falcon.create", "edr.huntress.create", "edr.fleetdm.create":
+					report, err = analysis.EDRIntegrationCreateImpact(strings.Split(plan.Operation, ".")[1], plan.IntendedAfter)
+				case "edr.intune.update", "edr.sentinelone.update", "edr.falcon.update", "edr.huntress.update", "edr.fleetdm.update":
+					report, err = analysis.EDRIntegrationUpdateImpact(strings.Split(plan.Operation, ".")[1], plan.Before, plan.IntendedAfter)
+				case "edr.intune.delete", "edr.sentinelone.delete", "edr.falcon.delete", "edr.huntress.delete", "edr.fleetdm.delete":
+					report, err = analysis.EDRIntegrationDeleteImpact(strings.Split(plan.Operation, ".")[1], plan.Before)
 				case "networks.update":
 					report, err = analysis.NetworkUpdateImpact(plan.Before, plan.IntendedAfter)
 				case "networks.create":
@@ -702,6 +740,25 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "google_idp.sync" && report.Classification == "google_idp_sync":
 					findingCode = "impact.google_idp_sync"
 					findingMessage = "triggering Google directory synchronization may create or update account users and groups and requires exact acknowledgement"
+				case strings.HasPrefix(plan.Operation, "edr.") && (strings.HasSuffix(plan.Operation, ".create") || strings.HasSuffix(plan.Operation, ".update") || strings.HasSuffix(plan.Operation, ".delete")):
+					parts := strings.Split(plan.Operation, ".")
+					if len(parts) == 3 {
+						kind := parts[2]
+						if kind == "update" {
+							kind = "change"
+						}
+						if report.Classification == "edr_"+parts[1]+"_"+kind {
+							findingCode = "impact.edr_" + parts[1] + "_" + kind
+							switch kind {
+							case "create":
+								findingMessage = "creating the EDR integration changes device-compliance enforcement and peer access and requires exact acknowledgement"
+							case "change":
+								findingMessage = "changing the EDR integration may alter device-compliance enforcement and peer access and requires exact acknowledgement"
+							case "delete":
+								findingMessage = "deleting the EDR integration removes a device-compliance gate and requires exact acknowledgement"
+							}
+						}
+					}
 				case plan.Operation == "networks.update" && report.Classification == "network_change":
 					findingCode = "impact.network_change"
 					findingMessage = "the proposed network change may alter topology and requires exact acknowledgement"

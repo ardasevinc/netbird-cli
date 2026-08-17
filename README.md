@@ -251,3 +251,9 @@ update, and delete remain blocking authentication and synchronization effects.
 Google IDP sync stages re-verify the exact integration preimage and require a
 separate acknowledgement because synchronization may create or update account
 users and groups.
+
+EDR integration stages use provider-specific external credential references
+(`secret_ref`, `api_token_ref`, `api_key_ref`, and `api_secret_ref`). EDR
+credentials are resolved only at dispatch and never persisted. Create, update,
+and delete are blocking device-compliance and peer-access effects with exact
+singleton preimages and read-back or absence confirmation.

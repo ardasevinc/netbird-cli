@@ -180,6 +180,10 @@ type Remote interface {
 	UpdateGoogleIDP(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteGoogleIDP(context.Context, string) (json.RawMessage, error)
 	SyncGoogleIDP(context.Context, string) (json.RawMessage, error)
+	GetEDRIntegrationRaw(context.Context, string) (json.RawMessage, error)
+	CreateEDRIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	UpdateEDRIntegration(context.Context, string, json.RawMessage) (json.RawMessage, error)
+	DeleteEDRIntegration(context.Context, string) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -435,6 +439,24 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "google IDP create response matches intended state")
 		}
+		if strings.HasPrefix(stage.Operation, "edr.") && strings.HasSuffix(stage.Operation, ".create") {
+			matches, err := objectContains(dispatchResult, stage.IntendedAfter)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR create response could not be compared with intent")
+			}
+			if !matches {
+				return finish(ctx, store, result, mutation.Partial, "EDR create response differs from intended state")
+			}
+			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
+			if err != nil {
+				return finish(ctx, store, result, mutation.Unknown, "EDR create may have applied, but read-back was inconclusive")
+			}
+			matches, err = objectContains(liveAfter, stage.IntendedAfter)
+			if err != nil || !matches {
+				return finish(ctx, store, result, mutation.Partial, "EDR create read-back differs from intended state")
+			}
+			return finish(ctx, store, result, mutation.ConfirmedSuccess, "EDR create response and read-back match intended state")
+		}
 		if stage.Operation == "peers.edr.bypass.create" {
 			liveAfter, err := readPreimage(ctx, remote, stage.Operation, request)
 			if err != nil {
@@ -683,6 +705,26 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.ListGoogleIDPsRaw(ctx)
 	case "google_idp.update", "google_idp.delete", "google_idp.sync":
 		return remote.GetGoogleIDPRaw(ctx, target.ID)
+	case "edr.intune.create":
+		return readOptionalEDRIntegration(ctx, remote, "intune")
+	case "edr.intune.update", "edr.intune.delete":
+		return remote.GetEDRIntegrationRaw(ctx, "intune")
+	case "edr.sentinelone.create":
+		return readOptionalEDRIntegration(ctx, remote, "sentinelone")
+	case "edr.sentinelone.update", "edr.sentinelone.delete":
+		return remote.GetEDRIntegrationRaw(ctx, "sentinelone")
+	case "edr.falcon.create":
+		return readOptionalEDRIntegration(ctx, remote, "falcon")
+	case "edr.falcon.update", "edr.falcon.delete":
+		return remote.GetEDRIntegrationRaw(ctx, "falcon")
+	case "edr.huntress.create":
+		return readOptionalEDRIntegration(ctx, remote, "huntress")
+	case "edr.huntress.update", "edr.huntress.delete":
+		return remote.GetEDRIntegrationRaw(ctx, "huntress")
+	case "edr.fleetdm.create":
+		return readOptionalEDRIntegration(ctx, remote, "fleetdm")
+	case "edr.fleetdm.update", "edr.fleetdm.delete":
+		return remote.GetEDRIntegrationRaw(ctx, "fleetdm")
 	case "users.invites.create":
 		return remote.ListInvitesRaw(ctx)
 	case "users.invites.delete", "users.invites.regenerate":
@@ -726,6 +768,14 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 	default:
 		return nil, fmt.Errorf("operation %q has no preimage reader", operation)
 	}
+}
+
+func readOptionalEDRIntegration(ctx context.Context, remote Remote, provider string) (json.RawMessage, error) {
+	result, err := remote.GetEDRIntegrationRaw(ctx, provider)
+	if isNotFound(err) {
+		return json.RawMessage(`null`), nil
+	}
+	return result, err
 }
 
 func dispatch(ctx context.Context, remote Remote, operation string, target requestTarget, request json.RawMessage) (json.RawMessage, error) {
@@ -1056,6 +1106,36 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.DeleteGoogleIDP(ctx, target.ID)
 	case "google_idp.sync":
 		return remote.SyncGoogleIDP(ctx, target.ID)
+	case "edr.intune.create":
+		return remote.CreateEDRIntegration(ctx, "intune", request)
+	case "edr.intune.update":
+		return remote.UpdateEDRIntegration(ctx, "intune", request)
+	case "edr.intune.delete":
+		return remote.DeleteEDRIntegration(ctx, "intune")
+	case "edr.sentinelone.create":
+		return remote.CreateEDRIntegration(ctx, "sentinelone", request)
+	case "edr.sentinelone.update":
+		return remote.UpdateEDRIntegration(ctx, "sentinelone", request)
+	case "edr.sentinelone.delete":
+		return remote.DeleteEDRIntegration(ctx, "sentinelone")
+	case "edr.falcon.create":
+		return remote.CreateEDRIntegration(ctx, "falcon", request)
+	case "edr.falcon.update":
+		return remote.UpdateEDRIntegration(ctx, "falcon", request)
+	case "edr.falcon.delete":
+		return remote.DeleteEDRIntegration(ctx, "falcon")
+	case "edr.huntress.create":
+		return remote.CreateEDRIntegration(ctx, "huntress", request)
+	case "edr.huntress.update":
+		return remote.UpdateEDRIntegration(ctx, "huntress", request)
+	case "edr.huntress.delete":
+		return remote.DeleteEDRIntegration(ctx, "huntress")
+	case "edr.fleetdm.create":
+		return remote.CreateEDRIntegration(ctx, "fleetdm", request)
+	case "edr.fleetdm.update":
+		return remote.UpdateEDRIntegration(ctx, "fleetdm", request)
+	case "edr.fleetdm.delete":
+		return remote.DeleteEDRIntegration(ctx, "fleetdm")
 	case "users.invites.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
@@ -1150,11 +1230,11 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create" || operation == "posture_checks.create" || operation == "ingress.peers.create" || operation == "peers.ingress.ports.create" || operation == "peers.edr.bypass.create" || operation == "peers.temporary_access.create" || operation == "peers.jobs.create" || operation == "event_streaming.create" || operation == "identity_providers.create" || operation == "reverse_proxy_tokens.create" || operation == "reverse_proxy_domains.create" || operation == "reverse_proxy_services.create" || operation == "notification_channels.create" || operation == "azure_idp.create" || operation == "google_idp.create" || operation == "agent_network.budget_rules.create" || operation == "agent_network.guardrails.create" || operation == "agent_network.policies.create" || operation == "agent_network.providers.create" || operation == "users.create" || operation == "users.tokens.create" || operation == "setup_keys.create" || operation == "users.invites.create" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".create"))
 }
 
 func isTargetlessOperation(operation string) bool {
-	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete"
+	return operation == "dns.settings.update" || operation == "agent_network.settings.update" || operation == "agent_network.settings.create" || operation == "agent_network.settings.delete" || strings.HasPrefix(operation, "edr.")
 }
 
 func isUserTokenDeleteOperation(operation string) bool {
@@ -1510,6 +1590,49 @@ func prepareSecretRequest(operation string, request json.RawMessage, resolve fun
 		object["service_account_key"] = secret
 		return json.Marshal(object)
 	}
+	if strings.HasPrefix(operation, "edr.") && (strings.HasSuffix(operation, ".create") || strings.HasSuffix(operation, ".update")) {
+		var object map[string]any
+		if err := json.Unmarshal(request, &object); err != nil {
+			return nil, fmt.Errorf("decode EDR request: %w", err)
+		}
+		provider := strings.TrimSuffix(strings.TrimPrefix(operation, "edr."), ".create")
+		if strings.HasSuffix(operation, ".update") {
+			provider = strings.TrimSuffix(strings.TrimPrefix(operation, "edr."), ".update")
+		}
+		fields := map[string]string{}
+		switch provider {
+		case "intune":
+			fields["secret"] = "secret_ref"
+		case "sentinelone", "fleetdm":
+			fields["api_token"] = "api_token_ref"
+		case "falcon":
+			fields["secret"] = "secret_ref"
+		case "huntress":
+			fields["api_key"] = "api_key_ref"
+			fields["api_secret"] = "api_secret_ref"
+		default:
+			return nil, fmt.Errorf("unsupported EDR operation %q", operation)
+		}
+		for field, refField := range fields {
+			if _, ok := object[field]; ok {
+				return nil, fmt.Errorf("EDR %s cannot be persisted; use %s", field, refField)
+			}
+			ref, ok := object[refField].(string)
+			delete(object, refField)
+			if !ok || strings.TrimSpace(ref) == "" {
+				return nil, fmt.Errorf("EDR %s requires %s", provider, refField)
+			}
+			if resolve == nil {
+				return nil, errors.New("EDR credential refs require a configured secret resolver")
+			}
+			secret, err := resolve(ref)
+			if err != nil || strings.TrimSpace(secret) == "" {
+				return nil, fmt.Errorf("EDR %s could not resolve %s", provider, refField)
+			}
+			object[field] = secret
+		}
+		return json.Marshal(object)
+	}
 	if operation == "reverse_proxy_services.create" || operation == "reverse_proxy_services.update" {
 		var object map[string]any
 		if err := json.Unmarshal(request, &object); err != nil {
@@ -1779,6 +1902,12 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.GoogleIDPDeleteImpact(before)
 	case "google_idp.sync":
 		return analysis.GoogleIDPSyncImpact(before, intendedAfter)
+	case "edr.intune.create", "edr.sentinelone.create", "edr.falcon.create", "edr.huntress.create", "edr.fleetdm.create":
+		return analysis.EDRIntegrationCreateImpact(strings.Split(operation, ".")[1], intendedAfter)
+	case "edr.intune.update", "edr.sentinelone.update", "edr.falcon.update", "edr.huntress.update", "edr.fleetdm.update":
+		return analysis.EDRIntegrationUpdateImpact(strings.Split(operation, ".")[1], before, intendedAfter)
+	case "edr.intune.delete", "edr.sentinelone.delete", "edr.falcon.delete", "edr.huntress.delete", "edr.fleetdm.delete":
+		return analysis.EDRIntegrationDeleteImpact(strings.Split(operation, ".")[1], before)
 	case "peers.delete":
 		return analysis.PeerDeleteImpact(before)
 	case "peers.edr.bypass.create":
@@ -1822,7 +1951,7 @@ func isNotFound(err error) bool {
 }
 
 func isDeleteOperation(operation string) bool {
-	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "azure_idp.delete" || operation == "google_idp.delete" || operation == "users.invites.delete"
+	return operation == "groups.delete" || operation == "policies.delete" || operation == "routes.delete" || operation == "peers.delete" || operation == "peers.edr.bypass.delete" || operation == "networks.delete" || operation == "networks.resources.delete" || operation == "networks.routers.delete" || operation == "dns.zones.delete" || operation == "dns.records.delete" || operation == "dns.nameservers.delete" || operation == "accounts.delete" || operation == "posture_checks.delete" || operation == "ingress.peers.delete" || operation == "peers.ingress.ports.delete" || operation == "agent_network.settings.delete" || operation == "agent_network.budget_rules.delete" || operation == "agent_network.guardrails.delete" || operation == "agent_network.policies.delete" || operation == "agent_network.providers.delete" || operation == "users.delete" || operation == "users.reject" || operation == "users.tokens.delete" || operation == "setup_keys.delete" || operation == "event_streaming.delete" || operation == "identity_providers.delete" || operation == "reverse_proxy_tokens.delete" || operation == "reverse_proxy_domains.delete" || operation == "reverse_proxy_clusters.delete" || operation == "reverse_proxy_services.delete" || operation == "notification_channels.delete" || operation == "azure_idp.delete" || operation == "google_idp.delete" || operation == "users.invites.delete" || (strings.HasPrefix(operation, "edr.") && strings.HasSuffix(operation, ".delete"))
 }
 
 func classifyDispatchError(err error) mutation.DispatchState {

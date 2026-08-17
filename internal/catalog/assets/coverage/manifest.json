@@ -652,11 +652,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.edr.falcon",
+      "id": "edr.falcon.delete",
       "method": "DELETE",
       "path": "/api/integrations/edr/falcon",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.edr.falcon",
@@ -666,25 +666,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.edr.falcon",
+      "id": "edr.falcon.create",
       "method": "POST",
       "path": "/api/integrations/edr/falcon",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.edr.falcon",
+      "id": "edr.falcon.update",
       "method": "PUT",
       "path": "/api/integrations/edr/falcon",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.edr.fleetdm",
+      "id": "edr.fleetdm.delete",
       "method": "DELETE",
       "path": "/api/integrations/edr/fleetdm",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.edr.fleetdm",
@@ -694,25 +694,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.edr.fleetdm",
+      "id": "edr.fleetdm.create",
       "method": "POST",
       "path": "/api/integrations/edr/fleetdm",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.edr.fleetdm",
+      "id": "edr.fleetdm.update",
       "method": "PUT",
       "path": "/api/integrations/edr/fleetdm",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.edr.huntress",
+      "id": "edr.huntress.delete",
       "method": "DELETE",
       "path": "/api/integrations/edr/huntress",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.edr.huntress",
@@ -722,25 +722,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.edr.huntress",
+      "id": "edr.huntress.create",
       "method": "POST",
       "path": "/api/integrations/edr/huntress",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.edr.huntress",
+      "id": "edr.huntress.update",
       "method": "PUT",
       "path": "/api/integrations/edr/huntress",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.edr.intune",
+      "id": "edr.intune.delete",
       "method": "DELETE",
       "path": "/api/integrations/edr/intune",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.edr.intune",
@@ -750,25 +750,25 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.edr.intune",
+      "id": "edr.intune.create",
       "method": "POST",
       "path": "/api/integrations/edr/intune",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.edr.intune",
+      "id": "edr.intune.update",
       "method": "PUT",
       "path": "/api/integrations/edr/intune",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.integrations.edr.sentinelone",
+      "id": "edr.sentinelone.delete",
       "method": "DELETE",
       "path": "/api/integrations/edr/sentinelone",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.edr.sentinelone",
@@ -778,18 +778,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.integrations.edr.sentinelone",
+      "id": "edr.sentinelone.create",
       "method": "POST",
       "path": "/api/integrations/edr/sentinelone",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "put.api.integrations.edr.sentinelone",
+      "id": "edr.sentinelone.update",
       "method": "PUT",
       "path": "/api/integrations/edr/sentinelone",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.integrations.google_idp",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 201,
+    "implemented": 216,
     "classified": 0,
-    "discovered": 35,
-    "contract_verified": 192,
+    "discovered": 20,
+    "contract_verified": 207,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
