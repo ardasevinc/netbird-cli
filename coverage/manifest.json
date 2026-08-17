@@ -358,18 +358,18 @@
       "verification": "contract_verified"
     },
     {
-      "id": "post.api.event_streaming",
+      "id": "event_streaming.create",
       "method": "POST",
       "path": "/api/event-streaming",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
-      "id": "delete.api.event_streaming.id",
+      "id": "event_streaming.delete",
       "method": "DELETE",
       "path": "/api/event-streaming/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "get.api.event_streaming.id",
@@ -379,11 +379,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.event_streaming.id",
+      "id": "event_streaming.update",
       "method": "PUT",
       "path": "/api/event-streaming/{id}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "events.audit",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 175,
+    "implemented": 178,
     "classified": 0,
-    "discovered": 61,
-    "contract_verified": 166,
+    "discovered": 58,
+    "contract_verified": 169,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0

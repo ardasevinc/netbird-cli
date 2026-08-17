@@ -748,6 +748,29 @@ func TestTemporaryAccessCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestEventStreamingImpactsAreConservative(t *testing.T) {
+	create, err := EventStreamingCreateImpact([]byte(`{"id":"stream-1","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := EventStreamingUpdateImpact([]byte(`{"id":"stream-1","enabled":true}`), []byte(`{"id":"stream-1","enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := EventStreamingDeleteImpact([]byte(`{"id":"stream-1","enabled":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Classification != "event_streaming_create" || change.Classification != "event_streaming_change" || remove.Classification != "event_streaming_delete" {
+		t.Fatalf("unexpected classifications: %q %q %q", create.Classification, change.Classification, remove.Classification)
+	}
+	for _, report := range []ImpactReport{create, change, remove} {
+		if report.Confidence != "high" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected event-streaming impact: %+v", report)
+		}
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {

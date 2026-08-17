@@ -73,6 +73,10 @@ type fakeRemote struct {
 	routeCollection       json.RawMessage
 	peerBefore            json.RawMessage
 	peerAfter             json.RawMessage
+	eventStreamingBefore  json.RawMessage
+	eventStreamingAfter   json.RawMessage
+	eventStreamingList    json.RawMessage
+	eventStreamingBody    json.RawMessage
 	temporaryAccessBody   json.RawMessage
 	temporaryAccessResult json.RawMessage
 	edrBypassed           json.RawMessage
@@ -1019,6 +1023,55 @@ func (f *fakeRemote) CreateTemporaryAccessPeer(_ context.Context, _ string, body
 		return nil, errors.New("missing temporary access result")
 	}
 	return append(json.RawMessage(nil), f.temporaryAccessResult...), nil
+}
+
+func (f *fakeRemote) ListEventStreamingIntegrationsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.eventStreamingList == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.eventStreamingList...), nil
+}
+
+func (f *fakeRemote) GetEventStreamingIntegrationRaw(_ context.Context, _ string) (json.RawMessage, error) {
+	if f.eventStreamingBefore == nil {
+		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
+	}
+	return append(json.RawMessage(nil), f.eventStreamingBefore...), nil
+}
+
+func (f *fakeRemote) CreateEventStreamingIntegration(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.eventStreamingBody = append(json.RawMessage(nil), body...)
+	if f.eventStreamingAfter == nil {
+		return nil, errors.New("missing event-streaming integration")
+	}
+	f.eventStreamingList = json.RawMessage("[" + string(f.eventStreamingAfter) + "]")
+	return append(json.RawMessage(nil), f.eventStreamingAfter...), nil
+}
+
+func (f *fakeRemote) UpdateEventStreamingIntegration(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.eventStreamingBody = append(json.RawMessage(nil), body...)
+	if f.eventStreamingAfter == nil {
+		return nil, errors.New("missing event-streaming integration")
+	}
+	f.eventStreamingBefore = append(json.RawMessage(nil), f.eventStreamingAfter...)
+	return append(json.RawMessage(nil), f.eventStreamingAfter...), nil
+}
+
+func (f *fakeRemote) DeleteEventStreamingIntegration(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.eventStreamingBefore = nil
+	return nil, nil
 }
 
 func (f *fakeRemote) DeletePeer(_ context.Context, _ string) (json.RawMessage, error) {
@@ -2599,6 +2652,33 @@ func TestApplyDispatchesTemporaryAccessAndConfirmsResponse(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["id"] != nil || body["name"] != "temp-host" {
 		t.Fatalf("unexpected temporary access result: %+v updates=%d body=%s", result, remote.updates, remote.temporaryAccessBody)
+	}
+}
+
+func TestApplyEventStreamingResolvesConfigOnlyAtDispatch(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	after := `{"id":"stream-1","platform":"s3","enabled":true,"config":{"secret_access_key":"****"}}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "event_streaming.create", Request: json.RawMessage(`{"platform":"s3","enabled":true,"config_ref":"pa:stream-config"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"event_streaming_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["creating an event-streaming integration exports future account activity to an external platform; the resolved configuration is dispatched in memory and is never persisted"],"completeness":{"state":"unknown","reason":"event_streaming_external_delivery"}}`), Findings: []ledger.Finding{{Code: "impact.event_streaming_create", Severity: "blocking", Message: "creating the event-streaming integration exports account activity and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", eventStreamingList: []byte(before), eventStreamingAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true, SecretResolver: func(ref string) (string, error) {
+		if ref != "pa:stream-config" {
+			t.Fatalf("unexpected secret ref: %s", ref)
+		}
+		return `{"bucket":"logs","secret_access_key":"real-secret"}`, nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || strings.Contains(string(stage.Request), "real-secret") || !strings.Contains(string(remote.eventStreamingBody), "real-secret") {
+		t.Fatalf("unexpected event-streaming result: %+v body=%s", result, remote.eventStreamingBody)
 	}
 }
 
