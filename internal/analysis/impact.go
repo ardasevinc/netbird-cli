@@ -1035,6 +1035,22 @@ func ReverseProxyTokenDeleteImpact(before []byte) (ImpactReport, error) {
 	return ImpactReport{Classification: "reverse_proxy_token_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a reverse proxy token revokes the credential and disconnects proxies using it"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_token_external_credential"}}, nil
 }
 
+func ReverseProxyDomainCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy domain create intent: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_domain_create", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"creating a custom reverse proxy domain changes public DNS and ingress exposure for the reverse proxy"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_domain_public_exposure"}}, nil
+}
+
+func ReverseProxyDomainDeleteImpact(before []byte) (ImpactReport, error) {
+	var value any
+	if err := json.Unmarshal(before, &value); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode reverse proxy domain delete preimage: %w", err)
+	}
+	return ImpactReport{Classification: "reverse_proxy_domain_delete", Reachability: "potentially_changed", AffectedPeers: []string{}, AffectedResources: []string{}, Confidence: "high", Evidence: []string{"deleting a custom reverse proxy domain removes a public DNS and ingress binding"}, Completeness: map[string]any{"state": "unknown", "reason": "reverse_proxy_domain_public_exposure"}}, nil
+}
+
 func EDRBypassCreateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject []map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

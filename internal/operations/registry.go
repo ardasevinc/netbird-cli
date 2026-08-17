@@ -48,6 +48,8 @@ var definitions = map[string]Definition{
 	"identity_providers.delete":         {Name: "identity_providers.delete", Method: "DELETE", Path: "/api/identity-providers/{idpId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"reverse_proxy_tokens.create":       {Name: "reverse_proxy_tokens.create", Method: "POST", Path: "/api/reverse-proxies/proxy-tokens", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"reverse_proxy_tokens.delete":       {Name: "reverse_proxy_tokens.delete", Method: "DELETE", Path: "/api/reverse-proxies/proxy-tokens/{tokenId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"reverse_proxy_domains.create":      {Name: "reverse_proxy_domains.create", Method: "POST", Path: "/api/reverse-proxies/domains", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"reverse_proxy_domains.delete":      {Name: "reverse_proxy_domains.delete", Method: "DELETE", Path: "/api/reverse-proxies/domains/{domainId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"posture_checks.list":               {Name: "posture_checks.list", Method: "GET", Path: "/api/posture-checks", Mutation: ReadOnly},
 	"posture_checks.get":                {Name: "posture_checks.get", Method: "GET", Path: "/api/posture-checks/{postureCheckId}", Mutation: ReadOnly},
 	"posture_checks.create":             {Name: "posture_checks.create", Method: "POST", Path: "/api/posture-checks", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},

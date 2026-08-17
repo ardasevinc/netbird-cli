@@ -85,6 +85,10 @@ type fakeRemote struct {
 	proxyTokenCollection   json.RawMessage
 	proxyTokenAfter        json.RawMessage
 	proxyTokenBody         json.RawMessage
+	proxyDomainBefore      json.RawMessage
+	proxyDomainCollection  json.RawMessage
+	proxyDomainAfter       json.RawMessage
+	proxyDomainBody        json.RawMessage
 	temporaryAccessBody    json.RawMessage
 	temporaryAccessResult  json.RawMessage
 	edrBypassed            json.RawMessage
@@ -1158,6 +1162,36 @@ func (f *fakeRemote) DeleteReverseProxyToken(_ context.Context, _ string) (json.
 	}
 	f.proxyTokenBefore = nil
 	f.proxyTokenCollection = json.RawMessage(`[]`)
+	return nil, nil
+}
+
+func (f *fakeRemote) ListReverseProxyDomainsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.proxyDomainCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.proxyDomainCollection...), nil
+}
+
+func (f *fakeRemote) CreateReverseProxyDomain(_ context.Context, body json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyDomainBody = append(json.RawMessage(nil), body...)
+	if f.proxyDomainAfter == nil {
+		return nil, errors.New("missing proxy domain")
+	}
+	f.proxyDomainCollection = json.RawMessage("[" + string(f.proxyDomainAfter) + "]")
+	return append(json.RawMessage(nil), f.proxyDomainAfter...), nil
+}
+
+func (f *fakeRemote) DeleteReverseProxyDomain(_ context.Context, _ string) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	f.proxyDomainBefore = nil
+	f.proxyDomainCollection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -2815,6 +2849,28 @@ func TestApplyReturnsReverseProxyTokenOnceWithoutPersistingIt(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || result.OneTimeSecret != "one-time-proxy-token" || remote.updates != 1 || strings.Contains(string(stage.Request), "one-time-proxy-token") {
 		t.Fatalf("unexpected reverse proxy token result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyConfirmsReverseProxyDomainDeleteFromCollection(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	object := `{"id":"domain-1","domain":"app.example.com"}`
+	before := "[" + object + "]"
+	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "reverse_proxy_domains.delete", Request: json.RawMessage(`{"id":"domain-1"}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(`{}`), Impact: json.RawMessage(`{"classification":"reverse_proxy_domain_delete","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"high","evidence":["deleting a custom reverse proxy domain removes a public DNS and ingress binding"],"completeness":{"state":"unknown","reason":"reverse_proxy_domain_public_exposure"}}`), Findings: []ledger.Finding{{Code: "impact.reverse_proxy_domain_delete", Severity: "blocking", Message: "deleting the reverse proxy domain removes public DNS and ingress exposure and requires exact acknowledgement"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", proxyDomainCollection: []byte(before)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected reverse proxy domain result: %+v updates=%d", result, remote.updates)
 	}
 }
 

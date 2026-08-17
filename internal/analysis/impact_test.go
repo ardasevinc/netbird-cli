@@ -813,6 +813,25 @@ func TestReverseProxyTokenImpactsAreConservative(t *testing.T) {
 	}
 }
 
+func TestReverseProxyDomainImpactsAreConservative(t *testing.T) {
+	create, err := ReverseProxyDomainCreateImpact([]byte(`{"id":"domain-1","domain":"app.example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	remove, err := ReverseProxyDomainDeleteImpact([]byte(`{"id":"domain-1","domain":"app.example.com"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if create.Classification != "reverse_proxy_domain_create" || remove.Classification != "reverse_proxy_domain_delete" {
+		t.Fatalf("unexpected classifications: %q %q", create.Classification, remove.Classification)
+	}
+	for _, report := range []ImpactReport{create, remove} {
+		if report.Confidence != "high" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+			t.Fatalf("unexpected reverse proxy domain impact: %+v", report)
+		}
+	}
+}
+
 func TestInviteMutationsAreConservative(t *testing.T) {
 	create, err := InviteCreateImpact([]byte(`{"id":"invite-1","email":"a@example.com"}`))
 	if err != nil {
