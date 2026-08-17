@@ -82,3 +82,32 @@ func TestCreateIngressPeerUsesPOST(t *testing.T) {
 		t.Fatalf("created=%s err=%v", response, err)
 	}
 }
+
+func TestUpdateIngressPeerUsesPUT(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/ingress/peers/ing-1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["enabled"] != false {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "ing-1", "peer_id": "peer-1", "region": "eu", "enabled": false})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := NewClient(transportClient).UpdateIngressPeer(context.Background(), "ing-1", json.RawMessage(`{"enabled":false}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var updated map[string]any
+	if err := json.Unmarshal(response, &updated); err != nil || updated["enabled"] != false {
+		t.Fatalf("updated=%s err=%v", response, err)
+	}
+}

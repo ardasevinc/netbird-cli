@@ -6,6 +6,7 @@ Posture-check creation is always treated as a blocking `impact.posture_check_cre
 Posture-check updates are always treated as blocking `impact.posture_check_change` changes and require exact preimage and read-back confirmation.
 Posture-check deletion is always treated as a blocking `impact.posture_check_delete` change and requires exact preimage and absence confirmation.
 Ingress-peer creation is always treated as a blocking `impact.ingress_peer_create` change and requires collection preimage and read-back confirmation.
+Ingress-peer updates are always treated as blocking `impact.ingress_peer_change` changes and require exact preimage and read-back confirmation.
 `nb` is an unofficial, agent-first management CLI for NetBird. It complements
 NetBird's peer-oriented official CLI with bounded inspection, explainable
 analysis, staged consequential changes, and durable evidence.

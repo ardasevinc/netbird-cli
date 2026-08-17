@@ -76,6 +76,7 @@ var definitions = map[string]Definition{
 	"ingress.peers.list":        {Name: "ingress.peers.list", Method: "GET", Path: "/api/ingress/peers", Mutation: ReadOnly},
 	"ingress.peers.get":         {Name: "ingress.peers.get", Method: "GET", Path: "/api/ingress/peers/{ingressPeerId}", Mutation: ReadOnly},
 	"ingress.peers.create":      {Name: "ingress.peers.create", Method: "POST", Path: "/api/ingress/peers", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
+	"ingress.peers.update":      {Name: "ingress.peers.update", Method: "PUT", Path: "/api/ingress/peers/{ingressPeerId}", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"peers.ingress.ports.list":  {Name: "peers.ingress.ports.list", Method: "GET", Path: "/api/peers/{peerId}/ingress/ports", Mutation: ReadOnly},
 	"peers.ingress.ports.get":   {Name: "peers.ingress.ports.get", Method: "GET", Path: "/api/peers/{peerId}/ingress/ports/{allocationId}", Mutation: ReadOnly},
 	"peers.accessible":          {Name: "peers.accessible", Method: "GET", Path: "/api/peers/{peerId}/accessible-peers", Mutation: ReadOnly},

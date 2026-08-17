@@ -78,6 +78,8 @@ type Remote interface {
 	DeletePostureCheck(context.Context, string) (json.RawMessage, error)
 	ListIngressPeersRaw(context.Context) (json.RawMessage, error)
 	CreateIngressPeer(context.Context, json.RawMessage) (json.RawMessage, error)
+	GetIngressPeerRaw(context.Context, string) (json.RawMessage, error)
+	UpdateIngressPeer(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -312,6 +314,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetPostureCheckRaw(ctx, target.ID)
 	case "ingress.peers.create":
 		return remote.ListIngressPeersRaw(ctx)
+	case "ingress.peers.update":
+		return remote.GetIngressPeerRaw(ctx, target.ID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -435,6 +439,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
 		}
 		return remote.CreateIngressPeer(ctx, body)
+	case "ingress.peers.update":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateIngressPeer(ctx, target.ID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -626,6 +636,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.PostureCheckDeleteImpact(before)
 	case "ingress.peers.create":
 		return analysis.IngressPeerCreateImpact(intendedAfter)
+	case "ingress.peers.update":
+		return analysis.IngressPeerUpdateImpact(before, intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

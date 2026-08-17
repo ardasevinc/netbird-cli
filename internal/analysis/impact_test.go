@@ -184,6 +184,19 @@ func TestIngressPeerCreateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestIngressPeerUpdateImpactIsConservative(t *testing.T) {
+	report, err := IngressPeerUpdateImpact(
+		[]byte(`{"id":"ing-1","peer_id":"peer-1","enabled":true}`),
+		[]byte(`{"id":"ing-1","peer_id":"peer-1","enabled":false}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "ingress_peer_change" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
 	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
 	if err != nil {

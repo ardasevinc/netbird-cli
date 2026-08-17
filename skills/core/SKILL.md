@@ -9,6 +9,7 @@ Posture-check creation is blocking and requires collection preimage and read-bac
 Posture-check updates are blocking and require exact preimage and read-back proof.
 Posture-check deletion is blocking and requires exact preimage and absence proof.
 Ingress-peer creation is blocking and requires collection preimage and read-back proof.
+Ingress-peer updates are blocking and require exact preimage and read-back proof.
 # nb core
 
 Use the installed binary as the source of truth for its current machine

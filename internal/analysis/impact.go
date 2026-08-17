@@ -357,6 +357,25 @@ func IngressPeerCreateImpact(intendedAfter []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func IngressPeerUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress peer impact preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode ingress peer impact intended state: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "ingress_peer_change",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"updating an ingress peer can change an external reachability path; affected peers and allocations require live topology analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "ingress_peer_update_requires_topology_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

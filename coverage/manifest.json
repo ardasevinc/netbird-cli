@@ -505,11 +505,11 @@
       "verification": "contract_verified"
     },
     {
-      "id": "put.api.ingress.peers.ingressPeerId",
+      "id": "ingress.peers.update",
       "method": "PUT",
       "path": "/api/ingress/peers/{ingressPeerId}",
-      "implementation": "discovered",
-      "verification": ""
+      "implementation": "implemented",
+      "verification": "contract_verified"
     },
     {
       "id": "instance.status",
@@ -1661,10 +1661,10 @@
     }
   ],
   "summary": {
-    "implemented": 136,
+    "implemented": 137,
     "classified": 0,
-    "discovered": 100,
-    "contract_verified": 127,
+    "discovered": 99,
+    "contract_verified": 128,
     "disposable_verified": 0,
     "live_verified": 9,
     "unverified_live": 0
