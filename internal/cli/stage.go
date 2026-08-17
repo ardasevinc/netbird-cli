@@ -59,7 +59,7 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			impact := json.RawMessage(`{}`)
 			findings := append([]ledger.Finding(nil), plan.Findings...)
 			switch plan.Operation {
-			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete":
+			case "groups.create", "groups.update", "groups.delete", "policies.create", "policies.update", "policies.delete", "routes.create", "routes.update", "routes.delete", "peers.update", "peers.delete", "networks.create", "networks.update", "networks.delete", "networks.resources.create", "networks.resources.update", "networks.resources.delete", "networks.routers.create", "networks.routers.update", "networks.routers.delete", "dns.zones.create", "dns.zones.update", "dns.zones.delete", "dns.records.create":
 				var report analysis.ImpactReport
 				var err error
 				switch plan.Operation {
@@ -79,6 +79,8 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 					report, err = analysis.DNSZoneDeleteImpact(plan.Before)
 				case "dns.zones.update":
 					report, err = analysis.DNSZoneUpdateImpact(plan.Before, plan.IntendedAfter)
+				case "dns.records.create":
+					report, err = analysis.DNSRecordCreateImpact(plan.IntendedAfter)
 				case "policies.delete":
 					report, err = analysis.PolicyDeleteImpact(plan.Before)
 				case "routes.update":
@@ -144,6 +146,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 				case plan.Operation == "dns.zones.update" && report.Classification == "dns_zone_change":
 					findingCode = "impact.dns_zone_change"
 					findingMessage = "the proposed DNS zone change may alter name resolution and requires exact acknowledgement"
+				case plan.Operation == "dns.records.create" && report.Classification == "dns_record_create":
+					findingCode = "impact.dns_record_create"
+					findingMessage = "creating the DNS record may alter name resolution and requires exact acknowledgement"
 				case plan.Operation == "policies.delete" && report.Classification == "policy_delete":
 					findingCode = "impact.policy_delete"
 					findingMessage = "deleting the policy may remove access and requires exact acknowledgement"

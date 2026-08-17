@@ -85,6 +85,16 @@ func TestDNSZoneUpdateImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSRecordCreateImpactIsConservative(t *testing.T) {
+	report, err := DNSRecordCreateImpact([]byte(`{"name":"db","type":"A","content":"10.0.0.5","ttl":60}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_record_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),

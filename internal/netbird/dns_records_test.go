@@ -120,3 +120,32 @@ func TestUpdateDNSZoneUsesPUT(t *testing.T) {
 		t.Fatalf("updated=%s err=%v", response, err)
 	}
 }
+
+func TestCreateDNSRecordUsesPOST(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/dns/zones/zone-1/records" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		var request map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			t.Fatal(err)
+		}
+		if request["name"] != "db" {
+			t.Fatalf("unexpected request: %#v", request)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "record-2", "name": "db", "type": "A", "content": "10.0.0.5", "ttl": 60})
+	}))
+	defer server.Close()
+	transportClient, err := transport.New(transport.Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := NewClient(transportClient).CreateDNSRecord(context.Background(), "zone-1", json.RawMessage(`{"name":"db","type":"A","content":"10.0.0.5","ttl":60}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var created map[string]any
+	if err := json.Unmarshal(response, &created); err != nil || created["id"] != "record-2" {
+		t.Fatalf("created=%s err=%v", response, err)
+	}
+}

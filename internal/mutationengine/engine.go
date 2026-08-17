@@ -56,6 +56,8 @@ type Remote interface {
 	GetDNSZoneRaw(context.Context, string) (json.RawMessage, error)
 	UpdateDNSZone(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteDNSZone(context.Context, string) (json.RawMessage, error)
+	ListDNSRecordsRaw(context.Context, string) (json.RawMessage, error)
+	CreateDNSRecord(context.Context, string, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -78,6 +80,7 @@ type ApplyInput struct {
 type requestTarget struct {
 	ID        string `json:"id"`
 	NetworkID string `json:"network_id"`
+	ZoneID    string `json:"zone_id"`
 }
 
 type Result struct {
@@ -134,6 +137,9 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	}
 	if (stage.Operation == "networks.resources.create" || stage.Operation == "networks.resources.update" || stage.Operation == "networks.resources.delete" || stage.Operation == "networks.routers.create" || stage.Operation == "networks.routers.update" || stage.Operation == "networks.routers.delete") && request.NetworkID == "" {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires network_id", stage.Operation)}
+	}
+	if stage.Operation == "dns.records.create" && request.ZoneID == "" {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("%s stage request requires zone_id", stage.Operation)}
 	}
 	findings := make([]mutation.Finding, 0, len(stage.Findings))
 	for _, finding := range stage.Findings {
@@ -203,7 +209,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		if err != nil {
 			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but the created resource id could not be confirmed")
 		}
-		liveAfter, err := readPreimage(ctx, remote, stage.Operation, requestTarget{NetworkID: request.NetworkID, ID: createdID})
+		liveAfter, err := readPreimage(ctx, remote, stage.Operation, requestTarget{NetworkID: request.NetworkID, ZoneID: request.ZoneID, ID: createdID})
 		if err != nil {
 			return finish(ctx, store, result, mutation.Unknown, "create may have applied, but read-back was inconclusive")
 		}
@@ -260,6 +266,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetDNSZoneRaw(ctx, target.ID)
 	case "dns.zones.update":
 		return remote.GetDNSZoneRaw(ctx, target.ID)
+	case "dns.records.create":
+		return remote.ListDNSRecordsRaw(ctx, target.ZoneID)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -325,6 +333,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.DeleteDNSZone(ctx, target.ID)
 	case "dns.zones.update":
 		return remote.UpdateDNSZone(ctx, target.ID, request)
+	case "dns.records.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateDNSRecord(ctx, target.ZoneID, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -383,7 +397,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -462,6 +476,7 @@ func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
 	}
 	delete(object, "id")
 	delete(object, "network_id")
+	delete(object, "zone_id")
 	return json.Marshal(object)
 }
 
@@ -485,6 +500,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSZoneDeleteImpact(before)
 	case "dns.zones.update":
 		return analysis.DNSZoneUpdateImpact(before, intendedAfter)
+	case "dns.records.create":
+		return analysis.DNSRecordCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

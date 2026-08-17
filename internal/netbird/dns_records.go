@@ -2,6 +2,7 @@ package netbird
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,6 +20,30 @@ func (c *Client) ListDNSRecords(ctx context.Context, zoneID string) ([]DNSRecord
 	}
 	if result == nil {
 		result = []DNSRecord{}
+	}
+	return result, nil
+}
+
+func (c *Client) ListDNSRecordsRaw(ctx context.Context, zoneID string) (json.RawMessage, error) {
+	path, err := dnsRecordPath(zoneID, "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, path, nil, &result); err != nil {
+		return nil, fmt.Errorf("list dns records for zone %q: %w", zoneID, err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateDNSRecord(ctx context.Context, zoneID string, request json.RawMessage) (json.RawMessage, error) {
+	path, err := dnsRecordPath(zoneID, "")
+	if err != nil {
+		return nil, err
+	}
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, path, request, &result); err != nil {
+		return nil, fmt.Errorf("create dns record for zone %q: %w", zoneID, err)
 	}
 	return result, nil
 }

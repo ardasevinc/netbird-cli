@@ -61,6 +61,7 @@ var definitions = map[string]Definition{
 	"networks.routers.list_all": {Name: "networks.routers.list_all", Method: "GET", Path: "/api/networks/routers", Mutation: ReadOnly},
 	"dns.records.list":          {Name: "dns.records.list", Method: "GET", Path: "/api/dns/zones/{zoneId}/records", Mutation: ReadOnly},
 	"dns.records.get":           {Name: "dns.records.get", Method: "GET", Path: "/api/dns/zones/{zoneId}/records/{recordId}", Mutation: ReadOnly},
+	"dns.records.create":        {Name: "dns.records.create", Method: "POST", Path: "/api/dns/zones/{zoneId}/records", Mutation: Consequential, RequiresPreimage: true, RequiresReadBack: true, DispatcherAdmitted: true},
 	"ingress.peers.list":        {Name: "ingress.peers.list", Method: "GET", Path: "/api/ingress/peers", Mutation: ReadOnly},
 	"ingress.peers.get":         {Name: "ingress.peers.get", Method: "GET", Path: "/api/ingress/peers/{ingressPeerId}", Mutation: ReadOnly},
 	"peers.ingress.ports.list":  {Name: "peers.ingress.ports.list", Method: "GET", Path: "/api/peers/{peerId}/ingress/ports", Mutation: ReadOnly},

@@ -70,6 +70,7 @@ Network creation is blocking and requires collection preimage and read-back proo
 DNS zone creation is blocking and requires collection preimage and read-back proof.
 DNS zone deletion is blocking and requires the same absence proof.
 DNS zone updates are blocking and require exact preimage and read-back proof.
+DNS record creation is blocking and requires zone preimage and read-back proof.
 Network resource deletion is blocking and requires the same absence proof.
 Network resource address, enablement, or group changes are blocking.
 Network resource creation is blocking and requires collection preimage and read-back proof.
