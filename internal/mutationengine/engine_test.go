@@ -12,31 +12,32 @@ import (
 )
 
 type fakeRemote struct {
-	identity           string
-	account            string
-	before             json.RawMessage
-	after              json.RawMessage
-	groupCollection    json.RawMessage
-	policyBefore       json.RawMessage
-	policyAfter        json.RawMessage
-	policyCollection   json.RawMessage
-	routeBefore        json.RawMessage
-	routeAfter         json.RawMessage
-	routeCollection    json.RawMessage
-	peerBefore         json.RawMessage
-	peerAfter          json.RawMessage
-	networkBefore      json.RawMessage
-	networkAfter       json.RawMessage
-	networkCollection  json.RawMessage
-	dnsZoneCollection  json.RawMessage
-	resourceBefore     json.RawMessage
-	resourceAfter      json.RawMessage
-	resourceCollection json.RawMessage
-	routerBefore       json.RawMessage
-	routerAfter        json.RawMessage
-	routerCollection   json.RawMessage
-	updateErr          error
-	updates            int
+	identity             string
+	account              string
+	before               json.RawMessage
+	after                json.RawMessage
+	groupCollection      json.RawMessage
+	policyBefore         json.RawMessage
+	policyAfter          json.RawMessage
+	policyCollection     json.RawMessage
+	routeBefore          json.RawMessage
+	routeAfter           json.RawMessage
+	routeCollection      json.RawMessage
+	peerBefore           json.RawMessage
+	peerAfter            json.RawMessage
+	networkBefore        json.RawMessage
+	networkAfter         json.RawMessage
+	networkCollection    json.RawMessage
+	dnsZoneCollection    json.RawMessage
+	nameserverCollection json.RawMessage
+	resourceBefore       json.RawMessage
+	resourceAfter        json.RawMessage
+	resourceCollection   json.RawMessage
+	routerBefore         json.RawMessage
+	routerAfter          json.RawMessage
+	routerCollection     json.RawMessage
+	updateErr            error
+	updates              int
 }
 
 func (f *fakeRemote) ServerIdentity() string { return f.identity }
@@ -53,6 +54,25 @@ func (f *fakeRemote) ListDNSZonesRaw(_ context.Context) (json.RawMessage, error)
 		return json.RawMessage(`[]`), nil
 	}
 	return append(json.RawMessage(nil), f.dnsZoneCollection...), nil
+}
+
+func (f *fakeRemote) ListNameserverGroupsRaw(_ context.Context) (json.RawMessage, error) {
+	if f.nameserverCollection == nil {
+		return json.RawMessage(`[]`), nil
+	}
+	return append(json.RawMessage(nil), f.nameserverCollection...), nil
+}
+
+func (f *fakeRemote) CreateNameserverGroup(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
+	f.updates++
+	if f.updateErr != nil {
+		return nil, f.updateErr
+	}
+	if f.after == nil {
+		return nil, errors.New("missing created nameserver group")
+	}
+	f.nameserverCollection = json.RawMessage("[" + string(f.after) + "]")
+	return append(json.RawMessage(nil), f.after...), nil
 }
 
 func (f *fakeRemote) CreateDNSZone(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
@@ -703,6 +723,41 @@ func TestApplyDispatchesDNSRecordDeleteAndConfirmsAbsence(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
 		t.Fatalf("unexpected dns record delete result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestApplyDispatchesNameserverGroupCreateAndConfirmsReadBack(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `[]`
+	intended := `{"name":"office","description":"office resolvers","domains":["office.internal"],"enabled":true,"groups":["g1"],"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}],"primary":false,"search_domains_enabled":true}`
+	created := `{"id":"ns-1","name":"office","description":"office resolvers","domains":["office.internal"],"enabled":true,"groups":["g1"],"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}],"primary":false,"search_domains_enabled":true}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "default",
+		ServerIdentity: "https://nb.test",
+		AccountID:      "account-1",
+		Operation:      "dns.nameservers.create",
+		Request:        json.RawMessage(intended),
+		Before:         json.RawMessage(before),
+		IntendedAfter:  json.RawMessage(intended),
+		Impact:         json.RawMessage(`{"classification":"dns_nameserver_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a nameserver group can change resolver behavior for distributed peers; affected peers and domains require live analysis"],"completeness":{"state":"unknown","reason":"dns_nameserver_create_requires_dns_analysis"}}`),
+		Findings:       []ledger.Finding{{Code: "impact.dns_nameserver_create", Severity: "blocking", Message: "creating the nameserver group may alter resolver behavior and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", nameserverCollection: []byte(before), after: []byte(created)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{
+		StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected nameserver create result: %+v updates=%d", result, remote.updates)
 	}
 }
 

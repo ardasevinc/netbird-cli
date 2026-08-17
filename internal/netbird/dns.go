@@ -109,6 +109,22 @@ func (c *Client) ListNameserverGroups(ctx context.Context) ([]NameserverGroup, e
 	return normalized, nil
 }
 
+func (c *Client) ListNameserverGroupsRaw(ctx context.Context) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodGet, "/api/dns/nameservers", nil, &result); err != nil {
+		return nil, fmt.Errorf("list nameserver groups: %w", err)
+	}
+	return result, nil
+}
+
+func (c *Client) CreateNameserverGroup(ctx context.Context, request json.RawMessage) (json.RawMessage, error) {
+	var result json.RawMessage
+	if _, err := c.transport.DoJSON(ctx, http.MethodPost, "/api/dns/nameservers", request, &result); err != nil {
+		return nil, fmt.Errorf("create nameserver group: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetNameserverGroup(ctx context.Context, id string) (NameserverGroup, error) {
 	path, err := dnsPath("nameservers", id)
 	if err != nil {

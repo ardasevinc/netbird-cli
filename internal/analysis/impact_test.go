@@ -118,6 +118,16 @@ func TestDNSRecordDeleteImpactIsConservative(t *testing.T) {
 	}
 }
 
+func TestDNSNameserverCreateImpactIsConservative(t *testing.T) {
+	report, err := DNSNameserverCreateImpact([]byte(`{"name":"office","domains":["office.internal"],"enabled":true,"nameservers":[{"ip":"10.0.0.53","ns_type":"udp","port":53}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Classification != "dns_nameserver_create" || report.Reachability != "potentially_changed" || report.Completeness["state"] != "unknown" {
+		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
 func TestRouteUpdateImpactMarksDescriptionOnlyChangeAsNeutral(t *testing.T) {
 	report, err := RouteUpdateImpact(
 		[]byte(`{"id":"r1","description":"old","enabled":true,"metric":10,"groups":["g1"]}`),

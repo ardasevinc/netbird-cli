@@ -185,6 +185,22 @@ func DNSRecordDeleteImpact(before []byte) (ImpactReport, error) {
 	}, nil
 }
 
+func DNSNameserverCreateImpact(intendedAfter []byte) (ImpactReport, error) {
+	var object map[string]any
+	if err := json.Unmarshal(intendedAfter, &object); err != nil {
+		return ImpactReport{}, fmt.Errorf("decode dns nameserver create intent: %w", err)
+	}
+	return ImpactReport{
+		Classification:    "dns_nameserver_create",
+		Reachability:      "potentially_changed",
+		AffectedPeers:     []string{},
+		AffectedResources: []string{},
+		Confidence:        "medium",
+		Evidence:          []string{"creating a nameserver group can change resolver behavior for distributed peers; affected peers and domains require live analysis"},
+		Completeness:      map[string]any{"state": "unknown", "reason": "dns_nameserver_create_requires_dns_analysis"},
+	}, nil
+}
+
 func RouteUpdateImpact(before, intendedAfter []byte) (ImpactReport, error) {
 	var beforeObject, afterObject map[string]any
 	if err := json.Unmarshal(before, &beforeObject); err != nil {

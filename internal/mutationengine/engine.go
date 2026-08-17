@@ -61,6 +61,8 @@ type Remote interface {
 	GetDNSRecordRaw(context.Context, string, string) (json.RawMessage, error)
 	UpdateDNSRecord(context.Context, string, string, json.RawMessage) (json.RawMessage, error)
 	DeleteDNSRecord(context.Context, string, string) (json.RawMessage, error)
+	ListNameserverGroupsRaw(context.Context) (json.RawMessage, error)
+	CreateNameserverGroup(context.Context, json.RawMessage) (json.RawMessage, error)
 }
 
 type Ledger interface {
@@ -275,6 +277,8 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 		return remote.GetDNSRecordRaw(ctx, target.ZoneID, target.ID)
 	case "dns.records.delete":
 		return remote.GetDNSRecordRaw(ctx, target.ZoneID, target.ID)
+	case "dns.nameservers.create":
+		return remote.ListNameserverGroupsRaw(ctx)
 	case "routes.update":
 		return remote.GetRouteRaw(ctx, target.ID)
 	case "routes.delete":
@@ -354,6 +358,12 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 		return remote.UpdateDNSRecord(ctx, target.ZoneID, target.ID, body)
 	case "dns.records.delete":
 		return remote.DeleteDNSRecord(ctx, target.ZoneID, target.ID)
+	case "dns.nameservers.create":
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.CreateNameserverGroup(ctx, body)
 	case "routes.update":
 		return remote.UpdateRoute(ctx, target.ID, request)
 	case "routes.delete":
@@ -412,7 +422,7 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 }
 
 func isCreateOperation(operation string) bool {
-	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create"
+	return operation == "groups.create" || operation == "networks.create" || operation == "networks.resources.create" || operation == "networks.routers.create" || operation == "routes.create" || operation == "policies.create" || operation == "dns.zones.create" || operation == "dns.records.create" || operation == "dns.nameservers.create"
 }
 
 func responseID(response json.RawMessage) (string, error) {
@@ -521,6 +531,8 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 		return analysis.DNSRecordUpdateImpact(before, intendedAfter)
 	case "dns.records.delete":
 		return analysis.DNSRecordDeleteImpact(before)
+	case "dns.nameservers.create":
+		return analysis.DNSNameserverCreateImpact(intendedAfter)
 	case "routes.update":
 		return analysis.RouteUpdateImpact(before, intendedAfter)
 	case "routes.delete":

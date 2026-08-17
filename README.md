@@ -118,6 +118,9 @@ DNS record updates are always treated as blocking `impact.dns_record_change`
 changes and require exact zone/record preimage and read-back confirmation.
 DNS record deletion is staged with blocking `impact.dns_record_delete`
 acknowledgement and the same required 404 absence proof.
+Nameserver-group creation snapshots the resolver-group collection, requires
+blocking `impact.dns_nameserver_create` acknowledgement, and confirms the
+returned id and read-back fields against the intended state.
 Network resource deletion is staged with blocking
 `impact.network_resource_delete` acknowledgement and the same required 404
 absence proof.
