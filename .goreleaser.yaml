@@ -85,7 +85,7 @@ release:
   github:
     owner: ardasevinc
     name: netbird-cli
-  draft: true
+  draft: false
   prerelease: auto
   name_template: "v{{ .Version }}"
 
