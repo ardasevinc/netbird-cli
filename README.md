@@ -168,7 +168,8 @@ unknown and become blocking until the exact impact finding is acknowledged.
 Policy stages use the same preimage and read-back contract. Metadata-only policy
 changes are reachability-neutral; rule changes emit a blocking
 `impact.policy_rule_change` finding because exact affected peers and resources
-require live topology analysis.
+require live topology analysis. Policy write requests use group ID strings;
+policy read responses expand those groups into objects.
 Route stages use the same contract. Description-only edits are reachability-
 neutral; changes to enabled state, network, peer groups, metrics, or other
 routing fields emit the blocking `impact.route_change` finding.
