@@ -29,6 +29,34 @@ credential_ref = "env:NB_TEST_TOKEN"
 	}
 }
 
+func TestProfileReadOnlyFieldRoundTrips(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte(`[profiles.production]
+url = "https://netbird.example.test"
+read_only = true
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := file.Profile("production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !profile.ReadOnly {
+		t.Fatal("expected read-only profile")
+	}
+}
+
+func TestDefaultStatePathUsesNBState(t *testing.T) {
+	t.Setenv("NB_STATE", filepath.Join(t.TempDir(), "ledger.db"))
+	if got, want := DefaultStatePath(), os.Getenv("NB_STATE"); got != want {
+		t.Fatalf("state path=%q, want %q", got, want)
+	}
+}
+
 func TestProfileRejectsInsecureRemoteURL(t *testing.T) {
 	if err := (Profile{URL: "http://netbird.example.test"}).Validate(); err == nil {
 		t.Fatal("expected insecure remote URL to fail")

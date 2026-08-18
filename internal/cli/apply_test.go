@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
@@ -82,5 +83,47 @@ func TestApplyCommandUsesExactStageAndReturnsMachineResult(t *testing.T) {
 	}
 	if response.Schema != "nb/v1/apply-result" || response.Data.State != "confirmed_success" {
 		t.Fatalf("unexpected response: %s", stdout.String())
+	}
+}
+
+func TestApplyReadOnlyProfileBlocksBeforeDispatch(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte(`[profiles.production]
+url = "https://netbird.example.test"
+account_id = "account-1"
+server_identity = "https://netbird.example.test"
+read_only = true
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := ledger.Open(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile:        "production",
+		ServerIdentity: "https://netbird.example.test",
+		AccountID:      "account-1",
+		Operation:      "groups.update",
+		Request:        json.RawMessage(`{"id":"g1","name":"new"}`),
+		Before:         json.RawMessage(`{"id":"g1","name":"old"}`),
+		IntendedAfter:  json.RawMessage(`{"id":"g1","name":"new"}`),
+	})
+	if err != nil {
+		_ = store.Close()
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	state := &commandState{json: true, configPath: configPath, profileName: "production", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"apply", stage.ID + "@1"})
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "read-only") {
+		t.Fatalf("expected read-only rejection, got %v", err)
 	}
 }

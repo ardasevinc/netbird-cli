@@ -52,11 +52,11 @@ func profileCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(2, err)
 			}
-			data := map[string]any{"name": name, "url": profile.URL, "account_id": profile.AccountID, "credential_ref": profile.CredentialRef, "ca_file": profile.CAFile, "server_identity": profile.ServerIdentity}
+			data := map[string]any{"name": name, "url": profile.URL, "account_id": profile.AccountID, "credential_ref": profile.CredentialRef, "ca_file": profile.CAFile, "server_identity": profile.ServerIdentity, "read_only": profile.ReadOnly}
 			if state.json {
 				return writeJSON(stdout, map[string]any{"schema": "nb/v1/profile-result", "ok": true, "operation": "profile.show", "data": data})
 			}
-			_, err = fmt.Fprintf(stdout, "profile %s\nurl: %s\naccount_id: %s\ncredential_ref: %s\nca_file: %s\nserver_identity: %s\n", name, profile.URL, profile.AccountID, profile.CredentialRef, profile.CAFile, profile.ServerIdentity)
+			_, err = fmt.Fprintf(stdout, "profile %s\nurl: %s\naccount_id: %s\ncredential_ref: %s\nca_file: %s\nserver_identity: %s\nread_only: %t\n", name, profile.URL, profile.AccountID, profile.CredentialRef, profile.CAFile, profile.ServerIdentity, profile.ReadOnly)
 			return err
 		},
 	})

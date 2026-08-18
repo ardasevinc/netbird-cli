@@ -34,6 +34,9 @@ func applyCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(int(exit.InvalidInput), err)
 			}
+			if profile.ReadOnly {
+				return fail(int(exit.SafetyConflict), fmt.Errorf("profile %q is read-only; apply is disabled", state.profileName))
+			}
 			if profile.ServerIdentity == "" || profile.AccountID == "" {
 				return fail(int(exit.SafetyConflict), fmt.Errorf("apply requires profile server_identity and account_id"))
 			}

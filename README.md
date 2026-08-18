@@ -91,6 +91,35 @@ go run ./cmd/nb apply <stage-id>@<revision>
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
 
+## Configuration
+
+Profiles live in TOML at `NB_CONFIG`, then `$XDG_CONFIG_HOME/nb/config.toml`, or
+`~/.config/nb/config.toml`. A profile binds the server URL, account scope,
+server identity, TLS policy, and an external credential reference:
+
+```toml
+[profiles.production]
+url = "https://netbird.example.com"
+account_id = "account-123"
+server_identity = "https://netbird.example.com"
+credential_ref = "env:NETBIRD_PROD_TOKEN"
+read_only = true
+```
+
+Path and profile selectors use this precedence:
+
+- config path: `--config` > `NB_CONFIG` > XDG/default
+- state path: `--state` > `NB_STATE` > `XDG_STATE_HOME`/default
+- profile name: `--profile` > `NB_PROFILE` > `default`
+
+Connection identity remains profile-bound. `NB_URL`, `NB_ACCOUNT_ID`,
+`NB_SERVER_IDENTITY`, and `NB_CREDENTIAL_REF` are intentionally unsupported,
+so an ambient environment cannot silently retarget an apply. Credential values
+resolve only through the selected profile's `env:` or `file:` reference.
+
+Set `read_only = true` on a profile to allow reads, analysis, and stage creation
+while refusing `apply` before credential resolution or network dispatch.
+
 `setup bootstrap` is the one-shot first-run boundary for an instance reporting
 `setup_required=true`. It performs an unauthenticated guard request before the
 POST, resolves the password only from an external `env:` or `file:` reference,

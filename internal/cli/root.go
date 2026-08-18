@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/ardasevinc/netbird-cli/internal/catalog"
@@ -98,7 +99,10 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	state.configPath = configPath
 	profileName := state.profileName
 	if profileName == "" {
-		profileName = "default"
+		profileName = os.Getenv("NB_PROFILE")
+		if profileName == "" {
+			profileName = "default"
+		}
 	}
 	state.profileName = profileName
 	statePath := state.statePath

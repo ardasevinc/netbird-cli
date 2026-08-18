@@ -4,10 +4,51 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 
 	"github.com/ardasevinc/netbird-cli/internal/version"
 )
+
+func TestRootUsesNBProfileWhenNoExplicitProfileIsProvided(t *testing.T) {
+	t.Setenv("NB_PROFILE", "staging")
+	state := &commandState{}
+	root := newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	if state.profileName != "staging" {
+		t.Fatalf("profile=%q, want staging", state.profileName)
+	}
+	if got := root.PersistentFlags().Lookup("profile").DefValue; got != "staging" {
+		t.Fatalf("profile flag default=%q, want staging", got)
+	}
+}
+
+func TestRootProfileFlagBeatsNBProfile(t *testing.T) {
+	t.Setenv("NB_PROFILE", "staging")
+	state := &commandState{}
+	root := newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	root.SetArgs([]string{"--profile", "production", "version"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if state.profileName != "production" {
+		t.Fatalf("profile=%q, want production", state.profileName)
+	}
+}
+
+func TestRootExplicitStateAndProfileValuesBeatEnvironment(t *testing.T) {
+	t.Setenv("NB_PROFILE", "staging")
+	envState := filepath.Join(t.TempDir(), "env-ledger.db")
+	t.Setenv("NB_STATE", envState)
+	explicitState := filepath.Join(t.TempDir(), "explicit-ledger.db")
+	state := &commandState{profileName: "production", statePath: explicitState}
+	newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	if state.profileName != "production" {
+		t.Fatalf("profile=%q, want production", state.profileName)
+	}
+	if state.statePath != explicitState {
+		t.Fatalf("state path=%q, want explicit %q", state.statePath, explicitState)
+	}
+}
 
 func TestExecuteVersionJSON(t *testing.T) {
 	var stdout, stderr bytes.Buffer

@@ -21,6 +21,7 @@ type Profile struct {
 	CredentialRef  string `toml:"credential_ref"`
 	CAFile         string `toml:"ca_file"`
 	ServerIdentity string `toml:"server_identity"`
+	ReadOnly       bool   `toml:"read_only"`
 }
 
 func DefaultPath() string {
@@ -39,6 +40,9 @@ func DefaultPath() string {
 }
 
 func DefaultStatePath() string {
+	if value := os.Getenv("NB_STATE"); value != "" {
+		return value
+	}
 	base := os.Getenv("XDG_STATE_HOME")
 	if base == "" {
 		home, err := os.UserHomeDir()
