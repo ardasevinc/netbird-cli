@@ -264,8 +264,8 @@ production profile.
 Release tags use the checked-in `.goreleaser.yaml` contract. It builds macOS and
 Linux archives with injected version provenance, SHA-256 checksums, archive
 SBOMs, keyless Sigstore bundles, and a Homebrew tap formula. The release
-workflow is intentionally tag-triggered and drafts the GitHub release; it needs
-the eventual repository and `HOMEBREW_TAP_TOKEN` secret before publication.
+workflow is tag-triggered and publishes the GitHub release before the Homebrew
+tap update; it needs the repository and `HOMEBREW_TAP_TOKEN` secret.
 
 ## Status
 
