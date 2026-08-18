@@ -150,7 +150,7 @@ func TestStageCreatePostureCheckRequiresAcknowledgement(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	root := newRoot(state, &stdout, &stderr, version.Current())
 	root.SetArgs([]string{"stage", "create", "--from-json"})
-	root.SetIn(strings.NewReader(`{"operation":"posture_checks.create","request":{"name":"managed","checks":{}},"before":[],"intended_after":{"id":"pc-2","name":"managed","checks":{}}}`))
+	root.SetIn(strings.NewReader(`{"operation":"posture_checks.create","request":{"name":"managed","checks":{"process_check":{"processes":[{"linux_path":"/usr/bin/netbird"}]}}},"before":[],"intended_after":{"id":"pc-2","name":"managed","checks":{"process_check":{"processes":[{"linux_path":"/usr/bin/netbird"}]}}}}`))
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -1223,7 +1223,7 @@ func TestStageCreatePolicyCreateRequiresAcknowledgement(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	root := newRoot(state, &stdout, &stderr, version.Current())
 	root.SetArgs([]string{"stage", "create", "--from-json"})
-	root.SetIn(strings.NewReader(`{"operation":"policies.create","request":{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]},"before":[],"intended_after":{"name":"allow-office","enabled":true,"rules":[{"action":"accept"}]}}`))
+	root.SetIn(strings.NewReader(`{"operation":"policies.create","request":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"destinations":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"ports":[],"port_ranges":[]}]},"before":[],"intended_after":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"destinations":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"ports":[],"port_ranges":[]}]}}`))
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -1283,12 +1283,29 @@ func TestStageCreateDNSZoneUpdateRequiresAcknowledgement(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	root := newRoot(state, &stdout, &stderr, version.Current())
 	root.SetArgs([]string{"stage", "create", "--from-json"})
-	root.SetIn(strings.NewReader(`{"operation":"dns.zones.update","request":{"id":"zone-1","domain":"corp.internal","enabled":true},"before":{"id":"zone-1","domain":"office.internal","enabled":true},"intended_after":{"id":"zone-1","domain":"corp.internal","enabled":true}}`))
+	root.SetIn(strings.NewReader(`{"operation":"dns.zones.update","request":{"id":"zone-1","domain":"office.internal","enabled":true},"before":{"id":"zone-1","domain":"office.internal","enabled":false},"intended_after":{"id":"zone-1","domain":"office.internal","enabled":true}}`))
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(stdout.String(), `"code":"impact.dns_zone_change"`) || !strings.Contains(stdout.String(), `"severity":"blocking"`) {
 		t.Fatalf("dns zone update acknowledgement finding missing: %s", stdout.String())
+	}
+}
+
+func TestStageCreateDNSZoneUpdateRejectsDomainChange(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	var stdout, stderr bytes.Buffer
+	root := newRoot(state, &stdout, &stderr, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"dns.zones.update","request":{"id":"zone-1","domain":"corp.internal","enabled":true},"before":{"id":"zone-1","domain":"office.internal","enabled":false},"intended_after":{"id":"zone-1","domain":"corp.internal","enabled":true}}`))
+	if err := root.ExecuteContext(context.Background()); err == nil || !strings.Contains(err.Error(), "DNS zone domain cannot be changed") {
+		t.Fatalf("expected immutable domain error, got %v", err)
 	}
 }
 

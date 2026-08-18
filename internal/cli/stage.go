@@ -196,6 +196,25 @@ func validateInvitePreimageSafety(before json.RawMessage) error {
 	return nil
 }
 
+func validateDNSZoneUpdate(before, intendedAfter json.RawMessage) error {
+	var beforeObject, afterObject map[string]any
+	if err := json.Unmarshal(before, &beforeObject); err != nil {
+		return fmt.Errorf("decode DNS zone preimage: %w", err)
+	}
+	if err := json.Unmarshal(intendedAfter, &afterObject); err != nil {
+		return fmt.Errorf("decode DNS zone intended state: %w", err)
+	}
+	beforeDomain, beforeOK := beforeObject["domain"].(string)
+	afterDomain, afterOK := afterObject["domain"].(string)
+	if !beforeOK || !afterOK {
+		return errors.New("DNS zone update requires a domain in both preimage and intended state")
+	}
+	if beforeDomain != afterDomain {
+		return errors.New("DNS zone domain cannot be changed; create a new zone instead")
+	}
+	return nil
+}
+
 func stageCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	command := &cobra.Command{Use: "stage", Short: "create and inspect local mutation plans"}
 	command.AddCommand(stageCreateCommand(state, stdout))
@@ -232,6 +251,11 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			}
 			if err := validatePersistedSecretSafety(plan.Operation, plan.Request); err != nil {
 				return fail(2, err)
+			}
+			if plan.Operation == "dns.zones.update" {
+				if err := validateDNSZoneUpdate(plan.Before, plan.IntendedAfter); err != nil {
+					return fail(2, err)
+				}
 			}
 			if plan.Operation == "users.invites.accept" {
 				if err := validateInvitePreimageSafety(plan.Before); err != nil {
