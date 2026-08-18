@@ -102,6 +102,7 @@ type fakeRemote struct {
 	networkAfter           json.RawMessage
 	networkCollection      json.RawMessage
 	dnsZoneCollection      json.RawMessage
+	dnsZoneBody            json.RawMessage
 	nameserverCollection   json.RawMessage
 	nameserverBefore       json.RawMessage
 	nameserverAfter        json.RawMessage
@@ -868,11 +869,12 @@ func (f *fakeRemote) GetDNSZoneRaw(_ context.Context, _ string) (json.RawMessage
 	return append(json.RawMessage(nil), f.before...), nil
 }
 
-func (f *fakeRemote) UpdateDNSZone(_ context.Context, _ string, _ json.RawMessage) (json.RawMessage, error) {
+func (f *fakeRemote) UpdateDNSZone(_ context.Context, _ string, body json.RawMessage) (json.RawMessage, error) {
 	f.updates++
 	if f.updateErr != nil {
 		return nil, f.updateErr
 	}
+	f.dnsZoneBody = append(json.RawMessage(nil), body...)
 	f.before = append(json.RawMessage(nil), f.after...)
 	return append(json.RawMessage(nil), f.after...), nil
 }

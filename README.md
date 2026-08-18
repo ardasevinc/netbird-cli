@@ -191,7 +191,9 @@ read-back fields against the intended state.
 DNS zone deletion is staged with blocking `impact.dns_zone_delete`
 acknowledgement and the same required 404 absence proof.
 DNS zone updates are always treated as blocking `impact.dns_zone_change`
-changes and require exact preimage and read-back confirmation.
+changes and require exact preimage and read-back confirmation. NetBird does not
+allow a zone domain to change. Keep the staged domain equal to the preimage and
+change the name or other supported settings instead.
 DNS record creation snapshots the zone's record collection, requires blocking
 `impact.dns_record_create` acknowledgement, and confirms the returned id and
 read-back fields against the intended state.

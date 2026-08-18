@@ -878,7 +878,11 @@ func dispatch(ctx context.Context, remote Remote, operation string, target reque
 	case "dns.zones.delete":
 		return remote.DeleteDNSZone(ctx, target.ID)
 	case "dns.zones.update":
-		return remote.UpdateDNSZone(ctx, target.ID, request)
+		body, err := stripTargetFields(request)
+		if err != nil {
+			return nil, fmt.Errorf("prepare %s request: %w", operation, err)
+		}
+		return remote.UpdateDNSZone(ctx, target.ID, body)
 	case "dns.records.create":
 		body, err := stripTargetFields(request)
 		if err != nil {
