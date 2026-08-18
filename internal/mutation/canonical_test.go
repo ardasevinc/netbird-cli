@@ -15,3 +15,17 @@ func TestCanonicalJSONPreservesArrayOrder(t *testing.T) {
 		t.Fatalf("equivalent=%t err=%v", equivalent, err)
 	}
 }
+
+func TestEquivalentTreatsNullAndEmptyArrayAsSameCollection(t *testing.T) {
+	equivalent, err := Equivalent([]byte(`{"resources":null,"routers":[]}`), []byte(`{"resources":[],"routers":null}`))
+	if err != nil || !equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}
+
+func TestEquivalentDoesNotTreatNullAndNonEmptyArrayAsSame(t *testing.T) {
+	equivalent, err := Equivalent([]byte(`{"resources":null}`), []byte(`{"resources":[{"id":"r1"}]}`))
+	if err != nil || equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}

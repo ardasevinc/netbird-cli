@@ -1532,17 +1532,26 @@ func objectContains(actual, expected json.RawMessage) (bool, error) {
 	}
 	for key, expectedValue := range expectedObject {
 		actualValue, ok := actualObject[key]
-		if !ok || !jsonValuesEqual(actualValue, expectedValue) {
+		if !ok {
+			return false, nil
+		}
+		actualJSON, err := json.Marshal(actualValue)
+		if err != nil {
+			return false, err
+		}
+		expectedJSON, err := json.Marshal(expectedValue)
+		if err != nil {
+			return false, err
+		}
+		equal, err := mutation.Equivalent(actualJSON, expectedJSON)
+		if err != nil {
+			return false, err
+		}
+		if !equal {
 			return false, nil
 		}
 	}
 	return true, nil
-}
-
-func jsonValuesEqual(left, right any) bool {
-	leftJSON, _ := json.Marshal(left)
-	rightJSON, _ := json.Marshal(right)
-	return string(leftJSON) == string(rightJSON)
 }
 
 func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
