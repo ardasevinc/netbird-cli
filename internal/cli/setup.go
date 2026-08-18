@@ -49,7 +49,7 @@ func setupBootstrapCommand(state *commandState, stdout io.Writer) *cobra.Command
 			if err := profile.Validate(); err != nil {
 				return fail(int(exit.InvalidInput), fmt.Errorf("bootstrap server: %w", err))
 			}
-			clientTransport, err := transport.New(transport.Config{BaseURL: input.URL})
+			clientTransport, err := transport.New(bootstrapTransportConfig(state, input.URL))
 			if err != nil {
 				return fail(int(exit.PreDispatch), err)
 			}

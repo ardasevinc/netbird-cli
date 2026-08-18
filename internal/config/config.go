@@ -21,6 +21,7 @@ type Profile struct {
 	CredentialRef  string `toml:"credential_ref"`
 	CAFile         string `toml:"ca_file"`
 	ServerIdentity string `toml:"server_identity"`
+	Timeout        string `toml:"timeout"`
 	ReadOnly       bool   `toml:"read_only"`
 }
 
@@ -102,6 +103,11 @@ func (p Profile) Validate() error {
 	}
 	if strings.HasPrefix(p.CredentialRef, "file:") && len(strings.TrimPrefix(p.CredentialRef, "file:")) == 0 {
 		return errors.New("credential_ref file path is empty")
+	}
+	if p.Timeout != "" {
+		if _, err := ParseTimeout(p.Timeout); err != nil {
+			return fmt.Errorf("timeout: %w", err)
+		}
 	}
 	return nil
 }

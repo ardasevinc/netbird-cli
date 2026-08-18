@@ -103,6 +103,7 @@ url = "https://netbird.example.com"
 account_id = "account-123"
 server_identity = "https://netbird.example.com"
 credential_ref = "env:NETBIRD_PROD_TOKEN"
+timeout = "30s"
 read_only = true
 ```
 
@@ -111,6 +112,8 @@ Path and profile selectors use this precedence:
 - config path: `--config` > `NB_CONFIG` > XDG/default
 - state path: `--state` > `NB_STATE` > `XDG_STATE_HOME`/default
 - profile name: `--profile` > `NB_PROFILE` > `default`
+- request timeout: `--timeout` > `NB_TIMEOUT` > profile `timeout` > `20s`
+- diagnostic level: `--log-level` > `NB_LOG_LEVEL` > `error`
 
 Connection identity remains profile-bound. `NB_URL`, `NB_ACCOUNT_ID`,
 `NB_SERVER_IDENTITY`, and `NB_CREDENTIAL_REF` are intentionally unsupported,
@@ -119,6 +122,10 @@ resolve only through the selected profile's `env:` or `file:` reference.
 
 Set `read_only = true` on a profile to allow reads, analysis, and stage creation
 while refusing `apply` before credential resolution or network dispatch.
+
+The request timeout must be between `1s` and `5m`. Use `--log-level debug` to
+write request method, path, status, and duration to stderr. `nb` does not write
+authorization headers or request bodies to diagnostics.
 
 `setup bootstrap` is the one-shot first-run boundary for an instance reporting
 `setup_required=true`. It performs an unauthenticated guard request before the

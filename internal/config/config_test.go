@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestLoadAndValidateProfile(t *testing.T) {
@@ -54,6 +55,18 @@ func TestDefaultStatePathUsesNBState(t *testing.T) {
 	t.Setenv("NB_STATE", filepath.Join(t.TempDir(), "ledger.db"))
 	if got, want := DefaultStatePath(), os.Getenv("NB_STATE"); got != want {
 		t.Fatalf("state path=%q, want %q", got, want)
+	}
+}
+
+func TestParseTimeoutRejectsUnboundedValues(t *testing.T) {
+	if _, err := ParseTimeout("500ms"); err == nil {
+		t.Fatal("expected timeout below minimum to fail")
+	}
+	if _, err := ParseTimeout("6m"); err == nil {
+		t.Fatal("expected timeout above maximum to fail")
+	}
+	if got, err := ParseTimeout("15s"); err != nil || got != 15*time.Second {
+		t.Fatalf("timeout=%s err=%v", got, err)
 	}
 }
 

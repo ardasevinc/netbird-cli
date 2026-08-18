@@ -44,7 +44,11 @@ func applyCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			if err != nil {
 				return fail(int(exit.PreDispatch), err)
 			}
-			transportClient, err := transport.New(transport.Config{BaseURL: profile.URL, Token: token, CAFile: profile.CAFile})
+			transportConfig, err := profileTransportConfig(state, profile, token)
+			if err != nil {
+				return fail(int(exit.PreDispatch), err)
+			}
+			transportClient, err := transport.New(transportConfig)
 			if err != nil {
 				return fail(int(exit.PreDispatch), err)
 			}

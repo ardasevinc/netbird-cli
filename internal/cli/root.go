@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ardasevinc/netbird-cli/internal/catalog"
 	"github.com/ardasevinc/netbird-cli/internal/config"
@@ -17,11 +18,17 @@ import (
 )
 
 type commandState struct {
-	json        bool
-	jsonl       bool
-	configPath  string
-	profileName string
-	statePath   string
+	json            bool
+	jsonl           bool
+	configPath      string
+	profileName     string
+	statePath       string
+	timeout         time.Duration
+	logLevel        string
+	logWriter       io.Writer
+	timeoutEnvErr   error
+	logLevelEnvErr  error
+	timeoutExplicit bool
 }
 
 func Execute(ctx context.Context, args []string, stdout, stderr io.Writer, info version.Info) int {
@@ -90,8 +97,49 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	}
 	root.SetOut(stdout)
 	root.SetErr(stderr)
+	state.logWriter = stderr
 	root.PersistentFlags().BoolVar(&state.json, "json", state.json, "emit one machine-readable JSON document")
 	root.PersistentFlags().BoolVar(&state.jsonl, "jsonl", state.jsonl, "emit a bounded machine-readable JSONL stream")
+	if state.timeout == 0 {
+		timeout, _, err := config.TimeoutFromEnvironment()
+		if err != nil {
+			state.timeoutEnvErr = err
+			state.timeout = config.DefaultTimeout
+		} else {
+			state.timeout = timeout
+		}
+	} else {
+		state.timeoutExplicit = true
+	}
+	if state.logLevel == "" {
+		level, _, err := config.LogLevelFromEnvironment()
+		if err != nil {
+			state.logLevelEnvErr = err
+			state.logLevel = config.DefaultLogLevel
+		} else {
+			state.logLevel = level
+		}
+	}
+	root.PersistentPreRunE = func(cmd *cobra.Command, _ []string) error {
+		if cmd.Flags().Changed("timeout") {
+			if _, err := config.ParseTimeout(state.timeout.String()); err != nil {
+				return err
+			}
+			state.timeoutExplicit = true
+		} else if state.timeoutEnvErr != nil {
+			return state.timeoutEnvErr
+		}
+		if cmd.Flags().Changed("log-level") {
+			level, err := config.ParseLogLevel(state.logLevel)
+			if err != nil {
+				return err
+			}
+			state.logLevel = level
+		} else if state.logLevelEnvErr != nil {
+			return state.logLevelEnvErr
+		}
+		return nil
+	}
 	configPath := state.configPath
 	if configPath == "" {
 		configPath = config.DefaultPath()
@@ -113,6 +161,8 @@ func newRoot(state *commandState, stdout, stderr io.Writer, info version.Info) *
 	root.PersistentFlags().StringVar(&state.configPath, "config", configPath, "path to the TOML configuration")
 	root.PersistentFlags().StringVar(&state.profileName, "profile", profileName, "named profile to use")
 	root.PersistentFlags().StringVar(&state.statePath, "state", statePath, "path to the local mutation ledger")
+	root.PersistentFlags().DurationVar(&state.timeout, "timeout", state.timeout, "maximum time to wait for one server request")
+	root.PersistentFlags().StringVar(&state.logLevel, "log-level", state.logLevel, "diagnostic level written to stderr")
 	root.AddCommand(versionCommand(state, stdout, info))
 	root.AddCommand(schemaCommand(state, stdout))
 	root.AddCommand(skillsCommand(state, stdout))

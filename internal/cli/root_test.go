@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ardasevinc/netbird-cli/internal/version"
 )
@@ -47,6 +48,34 @@ func TestRootExplicitStateAndProfileValuesBeatEnvironment(t *testing.T) {
 	}
 	if state.statePath != explicitState {
 		t.Fatalf("state path=%q, want explicit %q", state.statePath, explicitState)
+	}
+}
+
+func TestRootReadsTimeoutAndLogLevelEnvironment(t *testing.T) {
+	t.Setenv("NB_TIMEOUT", "15s")
+	t.Setenv("NB_LOG_LEVEL", "debug")
+	state := &commandState{}
+	root := newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	root.SetArgs([]string{"version"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if state.timeout != 15*time.Second || state.logLevel != "debug" {
+		t.Fatalf("timeout=%s log_level=%q", state.timeout, state.logLevel)
+	}
+}
+
+func TestRootFlagsBeatTimeoutAndLogLevelEnvironment(t *testing.T) {
+	t.Setenv("NB_TIMEOUT", "15s")
+	t.Setenv("NB_LOG_LEVEL", "debug")
+	state := &commandState{}
+	root := newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	root.SetArgs([]string{"--timeout", "5s", "--log-level", "warn", "version"})
+	if err := root.ExecuteContext(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if state.timeout != 5*time.Second || state.logLevel != "warn" {
+		t.Fatalf("timeout=%s log_level=%q", state.timeout, state.logLevel)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -20,12 +21,14 @@ import (
 const defaultMaxBody = 8 << 20
 
 type Config struct {
-	BaseURL string
-	Token   string
-	CAFile  string
-	Timeout time.Duration
-	MaxBody int64
-	HTTP    *http.Client
+	BaseURL   string
+	Token     string
+	CAFile    string
+	Timeout   time.Duration
+	MaxBody   int64
+	HTTP      *http.Client
+	LogLevel  string
+	LogWriter io.Writer
 }
 
 type Client struct {
@@ -33,6 +36,7 @@ type Client struct {
 	token   string
 	maxBody int64
 	http    *http.Client
+	logger  *slog.Logger
 }
 
 // Response is the bounded response envelope returned by a management request.
@@ -80,6 +84,10 @@ func New(cfg Config) (*Client, error) {
 	if cfg.MaxBody <= 0 {
 		cfg.MaxBody = defaultMaxBody
 	}
+	logger, err := newLogger(cfg.LogLevel, cfg.LogWriter)
+	if err != nil {
+		return nil, err
+	}
 	client := cfg.HTTP
 	if client == nil {
 		transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -99,7 +107,7 @@ func New(cfg Config) (*Client, error) {
 			},
 		}
 	}
-	return &Client{baseURL: u, token: cfg.Token, maxBody: cfg.MaxBody, http: client}, nil
+	return &Client{baseURL: u, token: cfg.Token, maxBody: cfg.MaxBody, http: client, logger: logger}, nil
 }
 
 func (c *Client) GetJSON(ctx context.Context, path string, result any) error {
@@ -110,6 +118,8 @@ func (c *Client) GetJSON(ctx context.Context, path string, result any) error {
 // DoJSON performs exactly one bounded request. It never retries. Callers that
 // dispatch consequential mutations must persist their intent before invoking it.
 func (c *Client) DoJSON(ctx context.Context, method, path string, request any, result any) (Response, error) {
+	started := time.Now()
+	c.logDebug("request", "method", method, "path", path)
 	u, err := c.requestURL(path)
 	if err != nil {
 		return Response{}, err
@@ -138,8 +148,10 @@ func (c *Client) DoJSON(ctx context.Context, method, path string, request any, r
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	resp, err := c.http.Do(req)
 	if err != nil {
+		c.logDebug("request failed", "method", method, "path", path, "dispatched", dispatched, "duration_ms", time.Since(started).Milliseconds())
 		return Response{}, &RequestError{Path: path, Dispatched: dispatched, Description: "request failed", Err: err}
 	}
+	c.logDebug("response", "method", method, "path", path, "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 	defer resp.Body.Close()
 	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBody+1))
 	if err != nil {
@@ -158,6 +170,33 @@ func (c *Client) DoJSON(ctx context.Context, method, path string, request any, r
 		}
 	}
 	return response, nil
+}
+
+func newLogger(level string, writer io.Writer) (*slog.Logger, error) {
+	if level == "" {
+		level = "error"
+	}
+	var slogLevel slog.Level
+	switch level {
+	case "debug":
+		slogLevel = slog.LevelDebug
+	case "info":
+		slogLevel = slog.LevelInfo
+	case "warn":
+		slogLevel = slog.LevelWarn
+	case "error":
+		slogLevel = slog.LevelError
+	default:
+		return nil, fmt.Errorf("log level must be one of debug, info, warn, or error")
+	}
+	if writer == nil {
+		return slog.New(slog.NewTextHandler(io.Discard, nil)), nil
+	}
+	return slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slogLevel})), nil
+}
+
+func (c *Client) logDebug(message string, args ...any) {
+	c.logger.Debug(message, args...)
 }
 
 func (c *Client) requestURL(path string) (*url.URL, error) {

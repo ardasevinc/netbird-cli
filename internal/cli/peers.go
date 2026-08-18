@@ -76,7 +76,11 @@ func managementClient(state *commandState) (*netbird.Client, error) {
 	if err != nil {
 		return nil, fail(3, err)
 	}
-	client, err := transport.New(transport.Config{BaseURL: profile.URL, Token: token, CAFile: profile.CAFile})
+	transportConfig, err := profileTransportConfig(state, profile, token)
+	if err != nil {
+		return nil, err
+	}
+	client, err := transport.New(transportConfig)
 	if err != nil {
 		return nil, fail(3, err)
 	}
