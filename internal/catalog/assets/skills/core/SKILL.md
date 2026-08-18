@@ -49,6 +49,26 @@ and never persists it. A requested personal access token is returned once; an
 ambiguous dispatched request is uncertain and must be reconciled before retry.
 # nb core
 
+## Configuration
+
+Profiles bind the server URL, account, server identity, TLS settings, and
+credential reference. Keep these values in the selected TOML profile.
+
+Safe selector order is:
+
+- profile: `--profile` > `NB_PROFILE` > `default`
+- state file: `--state` > `NB_STATE` > XDG/default
+- request timeout: `--timeout` > `NB_TIMEOUT` > profile `timeout` > `20s`
+- diagnostics: `--log-level` > `NB_LOG_LEVEL` > `error`
+
+Do not use `NB_URL`, `NB_ACCOUNT_ID`, `NB_SERVER_IDENTITY`, or
+`NB_CREDENTIAL_REF`. These values cannot change the target of an apply.
+
+A profile with `read_only = true` permits reads, analysis, and stage creation.
+It blocks apply before credential resolution and network dispatch. Timeout values
+must be between `1s` and `5m`. Debug diagnostics go to stderr and do not include
+authorization headers or request bodies.
+
 Use the installed binary as the source of truth for its current machine
 contract. Start with:
 
