@@ -12,8 +12,8 @@ import (
 type PolicyGroup struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
-	PeersCount     int    `json:"peers_count,omitempty"`
-	ResourcesCount int    `json:"resources_count,omitempty"`
+	PeersCount     int    `json:"peers_count"`
+	ResourcesCount int    `json:"resources_count"`
 }
 
 type PolicyResource struct {

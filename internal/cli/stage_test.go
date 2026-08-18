@@ -1223,7 +1223,7 @@ func TestStageCreatePolicyCreateRequiresAcknowledgement(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	root := newRoot(state, &stdout, &stderr, version.Current())
 	root.SetArgs([]string{"stage", "create", "--from-json"})
-	root.SetIn(strings.NewReader(`{"operation":"policies.create","request":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"destinations":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"ports":[],"port_ranges":[]}]},"before":[],"intended_after":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"destinations":[{"id":"all","name":"All","peers_count":0,"resources_count":0}],"ports":[],"port_ranges":[]}]}}`))
+	root.SetIn(strings.NewReader(`{"operation":"policies.create","request":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":["all"],"destinations":["all"],"ports":[],"port_ranges":[]}]},"before":[],"intended_after":{"name":"allow-office","enabled":true,"rules":[{"name":"allow-all","description":"","enabled":true,"action":"accept","protocol":"all","bidirectional":true,"sources":["all"],"destinations":["all"],"ports":[],"port_ranges":[]}]}}`))
 	if err := root.ExecuteContext(context.Background()); err != nil {
 		t.Fatal(err)
 	}

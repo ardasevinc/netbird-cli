@@ -79,3 +79,13 @@ func TestCreatePolicyUsesPOST(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPolicyGroupJSONKeepsZeroCounts(t *testing.T) {
+	encoded, err := json.Marshal(PolicyGroup{ID: "group-1", Name: "All"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"id":"group-1","name":"All","peers_count":0,"resources_count":0}` {
+		t.Fatalf("unexpected policy group JSON: %s", encoded)
+	}
+}
