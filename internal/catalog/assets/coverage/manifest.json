@@ -1673,9 +1673,9 @@
     }
   ],
   "summary": {
-    "implemented": 231,
+    "implemented": 236,
     "classified": 0,
-    "discovered": 5,
+    "discovered": 0,
     "contract_verified": 222,
     "disposable_verified": 0,
     "live_verified": 9,

@@ -15,19 +15,27 @@ type operation struct {
 	Implementation string `json:"implementation"`
 }
 
+type summary struct {
+	Implemented int `json:"implemented"`
+	Classified  int `json:"classified"`
+	Discovered  int `json:"discovered"`
+}
+
 type inventory struct {
 	Operations []operation `json:"operations"`
 }
 
 type manifest struct {
 	Operations []operation `json:"operations"`
+	Summary    summary     `json:"summary"`
 }
 
 func main() {
 	inventoryPath := flag.String("inventory", "coverage/sources/netbird-v0.77.0/openapi-inventory.json", "source inventory")
 	manifestPath := flag.String("manifest", "coverage/manifest.json", "coverage manifest")
 	flag.Parse()
-	var source, declared inventory
+	var source inventory
+	var declared manifest
 	readJSON(*inventoryPath, &source)
 	readJSON(*manifestPath, &declared)
 	want := make(map[string]struct{}, len(source.Operations))
@@ -55,6 +63,20 @@ func main() {
 		if _, ok := want[key]; !ok {
 			fail("coverage manifest contains operation absent from pinned source: %s", key)
 		}
+	}
+	actual := summary{}
+	for _, item := range declared.Operations {
+		switch item.Implementation {
+		case "implemented":
+			actual.Implemented++
+		case "classified":
+			actual.Classified++
+		default:
+			actual.Discovered++
+		}
+	}
+	if actual != declared.Summary {
+		fail("coverage summary does not match operation rows: summary=%+v rows=%+v", declared.Summary, actual)
 	}
 	fmt.Printf("coverage source reconciled: %d operations\n", len(want))
 }
