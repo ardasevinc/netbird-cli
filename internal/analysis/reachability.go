@@ -13,6 +13,7 @@ import (
 // policy matches are explanatory evidence only.
 type Reader interface {
 	GetPeer(context.Context, string) (netbird.Peer, error)
+	ListPeers(context.Context, string, string) ([]netbird.Peer, error)
 	ListAccessiblePeers(context.Context, string) ([]netbird.Peer, error)
 	ListPolicies(context.Context) ([]netbird.Policy, error)
 }
@@ -52,11 +53,16 @@ func Reachability(ctx context.Context, reader Reader, peerID string) (Report, er
 	if err != nil {
 		return Report{}, err
 	}
+	inventory, err := reader.ListPeers(ctx, "", "")
+	if err != nil {
+		return Report{}, err
+	}
 	policies, err := reader.ListPolicies(ctx)
 	if err != nil {
 		return Report{}, err
 	}
 
+	reachable = joinPeerGroups(reachable, inventory)
 	sort.Slice(reachable, func(i, j int) bool { return reachable[i].ID < reachable[j].ID })
 	evidence := policyEvidence(source, reachable, policies)
 	unexplained := unexplainedPeers(reachable, evidence)
@@ -72,6 +78,22 @@ func Reachability(ctx context.Context, reader Reader, peerID string) (Report, er
 		},
 		Completeness: map[string]any{"state": "complete", "reason": nil},
 	}, nil
+}
+
+func joinPeerGroups(reachable, inventory []netbird.Peer) []netbird.Peer {
+	groupsByID := make(map[string][]netbird.PeerGroup, len(inventory))
+	for _, peer := range inventory {
+		groupsByID[peer.ID] = peer.Groups
+	}
+	joined := make([]netbird.Peer, len(reachable))
+	copy(joined, reachable)
+	for i, peer := range joined {
+		if groups, ok := groupsByID[peer.ID]; ok {
+			peer.Groups = groups
+			joined[i] = peer
+		}
+	}
+	return joined
 }
 
 func policyEvidence(source netbird.Peer, reachable []netbird.Peer, policies []netbird.Policy) []PolicyEvidence {

@@ -22,6 +22,8 @@ func TestReachabilityAnalysisJSON(t *testing.T) {
 		case "/api/peers/p1":
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "p1", "name": "source", "groups": []map[string]any{{"id": "source-group"}}})
 		case "/api/peers/p1/accessible-peers":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "p2", "name": "target", "ip": "10.0.0.2", "connected": true, "groups": []map[string]any{}}})
+		case "/api/peers":
 			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "p2", "name": "target", "ip": "10.0.0.2", "connected": true, "groups": []map[string]any{{"id": "target-group"}}}})
 		case "/api/policies":
 			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "policy-1", "name": "allow", "enabled": true, "rules": []map[string]any{{"id": "rule-1", "name": "rule", "action": "accept", "protocol": "all", "enabled": true, "sources": []map[string]any{{"id": "source-group"}}, "destinations": []map[string]any{{"id": "target-group"}}}}}})
@@ -47,14 +49,16 @@ func TestReachabilityAnalysisJSON(t *testing.T) {
 		Schema string `json:"schema"`
 		Data   struct {
 			Summary struct {
-				ReachablePeerCount int `json:"reachable_peer_count"`
+				ReachablePeerCount            int `json:"reachable_peer_count"`
+				PolicyEvidenceCount           int `json:"policy_evidence_count"`
+				UnexplainedReachablePeerCount int `json:"unexplained_reachable_peer_count"`
 			} `json:"summary"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(stdout.Bytes(), &response); err != nil {
 		t.Fatalf("decode response: %v: %s", err, stdout.String())
 	}
-	if response.Schema != "nb/v1/reachability-analysis-result" || response.Data.Summary.ReachablePeerCount != 1 {
+	if response.Schema != "nb/v1/reachability-analysis-result" || response.Data.Summary.ReachablePeerCount != 1 || response.Data.Summary.PolicyEvidenceCount != 1 || response.Data.Summary.UnexplainedReachablePeerCount != 0 {
 		t.Fatalf("unexpected response: %s", stdout.String())
 	}
 }

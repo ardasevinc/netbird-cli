@@ -141,6 +141,7 @@ one `complete` line. `--json` and `--jsonl` are explicit output modes, never
 TTY heuristics.
 
 Reachability analysis reports server-reported accessible peers first, then
+joins the full peer inventory to recover group membership before adding
 policy-group intersections as explanatory evidence. Any reachable peer without
 an enabled `accept` rule match remains listed as unexplained; the analysis does
 not infer data-plane certainty from policy shape alone.

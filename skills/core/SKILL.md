@@ -109,9 +109,10 @@ secret, and user-token inventory omits token values. These values are never part
 of the stable `nb` output contract.
 
 `nb analyze reachability` uses the server-reported accessible-peer inventory as
-the authoritative reachability result and attaches policy-group intersections
-as explanatory evidence. Reachable peers without an enabled accept-rule match
-are surfaced as unexplained rather than silently classified.
+the authoritative reachability result, joins the full peer inventory to recover
+group membership, and attaches policy-group intersections as explanatory
+evidence. Reachable peers without an enabled accept-rule match are surfaced as
+unexplained rather than silently classified.
 
 Request `--json` explicitly when consuming output as an agent. Consequential
 NetBird changes belong under `nb stage`; do not invent a direct-write command.

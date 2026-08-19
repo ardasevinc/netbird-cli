@@ -9,12 +9,17 @@ import (
 
 type fakeReader struct {
 	source    netbird.Peer
+	peers     []netbird.Peer
 	reachable []netbird.Peer
 	policies  []netbird.Policy
 }
 
 func (f fakeReader) GetPeer(context.Context, string) (netbird.Peer, error) {
 	return f.source, nil
+}
+
+func (f fakeReader) ListPeers(context.Context, string, string) ([]netbird.Peer, error) {
+	return f.peers, nil
 }
 
 func (f fakeReader) ListAccessiblePeers(context.Context, string) ([]netbird.Peer, error) {
@@ -31,9 +36,10 @@ func TestReachabilityUsesServerPeersAndAddsPolicyEvidence(t *testing.T) {
 	report, err := Reachability(context.Background(), fakeReader{
 		source: netbird.Peer{ID: "p1", Name: "source", Groups: []netbird.PeerGroup{{ID: "source-group"}}},
 		reachable: []netbird.Peer{
-			{ID: "p2", Name: "target", Groups: []netbird.PeerGroup{{ID: "target-group"}}},
+			{ID: "p2", Name: "target"},
 			{ID: "p3", Name: "unexplained"},
 		},
+		peers: []netbird.Peer{{ID: "p2", Groups: []netbird.PeerGroup{{ID: "target-group"}}}},
 		policies: []netbird.Policy{{
 			ID:      &policyID,
 			Name:    "allow-source-target",
