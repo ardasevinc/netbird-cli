@@ -80,8 +80,8 @@ go run ./cmd/nb locations countries --json
 go run ./cmd/nb users tokens list <user-id> --json
 go run ./cmd/nb peers list --json
 go run ./cmd/nb peers get <peer-id> --json
-go run ./cmd/nb peers accessible <peer-id> --json
-go run ./cmd/nb analyze reachability <peer-id> --json
+go run ./cmd/nb peers network-map <peer-id> --json
+go run ./cmd/nb analyze access <peer-id> --json
 go run ./cmd/nb policies list --json
 go run ./cmd/nb policies get <policy-id> --json
 go run ./cmd/nb stage create --from-json
@@ -140,11 +140,23 @@ Use `--jsonl` for a bounded stream: each line is an independent
 one `complete` line. `--json` and `--jsonl` are explicit output modes, never
 TTY heuristics.
 
-Reachability analysis reports server-reported accessible peers first, then
-joins the full peer inventory to recover group membership before adding
-policy-group intersections as explanatory evidence. Any reachable peer without
-an enabled `accept` rule match remains listed as unexplained; the analysis does
-not infer data-plane certainty from policy shape alone.
+`nb peers network-map` reports the peers present in a selected peer's calculated
+NetBird network map. This is symmetric cryptographic adjacency, not proof that
+the selected peer may initiate traffic toward every returned peer. The upstream
+`accessible-peers` endpoint discards the map's directional firewall rules;
+`nb peers accessible` remains only as a deprecated compatibility command with
+its exact `nb/v1/peers-accessible-result` payload frozen.
+
+`nb analyze access` joins network-map peers with the full peer and policy
+inventory, then reports configured policy flows separately for outbound and
+inbound directions. Flows retain protocol, ports, port ranges, direct-peer or
+group match provenance, bidirectionality, and policy-source posture-check IDs.
+A peer can have different flows in both directions; no peer-level classification
+implies that those flows are symmetric. Network-map peers without proven peer
+policy attribution remain `map_only`. Packet reachability remains unknown until
+a protocol- and port-scoped observation records source, destination, time,
+result, origin, and method. `nb analyze reachability` is deprecated and retains
+its exact legacy v1 JSON shape for compatibility.
 
 The network-traffic and proxy event commands expose one server page at a time.
 Their JSON responses retain the server pagination totals and mark the result

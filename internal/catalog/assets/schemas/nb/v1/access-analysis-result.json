@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "nb/v1/access-analysis-result",
+  "type": "object",
+  "required": ["schema", "ok", "operation", "data"],
+  "properties": {
+    "schema": {"const": "nb/v1/access-analysis-result"},
+    "ok": {"const": true},
+    "operation": {"const": "analyze.access"},
+    "data": {
+      "type": "object",
+      "required": ["subject_peer", "network_map_peers", "relations", "map_only_peer_ids", "configured_peer_missing_from_network_map_ids", "projection_findings", "observations", "summary", "completeness"],
+      "properties": {
+        "subject_peer": {"$ref": "#/$defs/peer"},
+        "network_map_peers": {"type": "array", "items": {"$ref": "#/$defs/peer"}},
+        "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
+        "map_only_peer_ids": {"type": "array", "items": {"type": "string"}},
+        "configured_peer_missing_from_network_map_ids": {"type": "array", "items": {"type": "string"}},
+        "projection_findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+        "observations": {"type": "array", "items": {"$ref": "#/$defs/observation"}},
+        "summary": {"$ref": "#/$defs/summary"},
+        "completeness": {"$ref": "#/$defs/accessCompleteness"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "peer": {
+      "type": "object",
+      "required": ["id", "name", "hostname", "ip", "os", "version", "connected", "ephemeral", "login_expired", "approval_required", "groups", "created_at", "last_seen"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"}, "hostname": {"type": "string"}, "ip": {"type": "string"},
+        "ipv6": {"type": ["string", "null"]}, "os": {"type": "string"}, "version": {"type": "string"}, "connected": {"type": "boolean"},
+        "ephemeral": {"type": "boolean"}, "login_expired": {"type": "boolean"}, "approval_required": {"type": "boolean"},
+        "accessible_peers_count": {"type": "integer"}, "groups": {"type": "array"}, "created_at": {"type": "string"}, "last_seen": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "portRange": {
+      "type": "object", "required": ["start", "end"],
+      "properties": {"start": {"type": "integer"}, "end": {"type": "integer"}}, "additionalProperties": false
+    },
+    "flow": {
+      "type": "object",
+      "required": ["peer_id", "direction", "policy_id", "policy_name", "rule_id", "rule_name", "action", "protocol", "ports", "port_ranges", "bidirectional", "source_match", "destination_match", "policy_source_posture_checks"],
+      "properties": {
+        "peer_id": {"type": "string"}, "direction": {"enum": ["outbound", "inbound"]},
+        "policy_id": {"type": "string"}, "policy_name": {"type": "string"}, "rule_id": {"type": "string"}, "rule_name": {"type": "string"},
+        "action": {"const": "accept"}, "protocol": {"type": "string"}, "ports": {"type": "array", "items": {"type": "string"}},
+        "port_ranges": {"type": "array", "items": {"$ref": "#/$defs/portRange"}}, "bidirectional": {"type": "boolean"},
+        "source_match": {"enum": ["group", "peer_resource"]}, "destination_match": {"enum": ["group", "peer_resource"]},
+        "policy_source_posture_checks": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "required": ["peer", "network_map_adjacent", "outbound_flows", "inbound_flows", "has_outbound_flows", "has_inbound_flows", "directions"],
+      "properties": {
+        "peer": {"$ref": "#/$defs/peer"}, "network_map_adjacent": {"type": "boolean"},
+        "outbound_flows": {"type": "array", "items": {"$ref": "#/$defs/flow"}}, "inbound_flows": {"type": "array", "items": {"$ref": "#/$defs/flow"}},
+        "has_outbound_flows": {"type": "boolean"}, "has_inbound_flows": {"type": "boolean"},
+        "directions": {"type": "array", "uniqueItems": true, "items": {"enum": ["outbound", "inbound"]}}
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object", "required": ["policy_id", "policy_name", "rule_id", "rule_name", "code", "detail"],
+      "properties": {"policy_id": {"type": "string"}, "policy_name": {"type": "string"}, "rule_id": {"type": "string"}, "rule_name": {"type": "string"}, "code": {"const": "unsupported_action"}, "detail": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object", "required": ["source_peer_id", "destination_peer_id", "protocol", "port", "timestamp", "result", "origin", "method"],
+      "properties": {"source_peer_id": {"type": "string"}, "destination_peer_id": {"type": "string"}, "protocol": {"type": "string"}, "port": {"type": ["integer", "null"]}, "timestamp": {"type": "string"}, "result": {"type": "string"}, "origin": {"type": "string"}, "method": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["network_map_peer_count", "relation_count", "outbound_flow_count", "inbound_flow_count", "map_only_peer_count", "configured_peer_missing_from_network_map_count", "observation_count"],
+      "properties": {"network_map_peer_count": {"type": "integer"}, "relation_count": {"type": "integer"}, "outbound_flow_count": {"type": "integer"}, "inbound_flow_count": {"type": "integer"}, "map_only_peer_count": {"type": "integer"}, "configured_peer_missing_from_network_map_count": {"type": "integer"}, "observation_count": {"type": "integer"}},
+      "additionalProperties": false
+    },
+    "completeness": {
+      "type": "object", "required": ["state", "reason"],
+      "properties": {"state": {"enum": ["complete", "partial", "unknown"]}, "reason": {"type": ["string", "null"]}}, "additionalProperties": false
+    },
+    "accessCompleteness": {
+      "type": "object", "required": ["network_map", "policy_projection", "observations"],
+      "properties": {"network_map": {"$ref": "#/$defs/completeness"}, "policy_projection": {"$ref": "#/$defs/completeness"}, "observations": {"$ref": "#/$defs/completeness"}},
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

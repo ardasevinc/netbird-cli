@@ -13,6 +13,7 @@ import (
 func peersCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	command := &cobra.Command{Use: "peers", Short: "inspect NetBird peers"}
 	command.AddCommand(accessiblePeersCommand(state, stdout))
+	command.AddCommand(networkMapPeersCommand(state, stdout))
 	var name, ip string
 	command.AddCommand(&cobra.Command{
 		Use:   "list",

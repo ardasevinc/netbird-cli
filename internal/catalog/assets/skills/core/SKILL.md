@@ -97,8 +97,8 @@ nb networks resources list <network-id> --json
 nb networks routers list <network-id> --json
 nb ingress list --json
 nb ingress-ports list <peer-id> --json
-nb peers accessible <peer-id> --json
-nb analyze reachability <peer-id> --json
+nb peers network-map <peer-id> --json
+nb analyze access <peer-id> --json
 nb users tokens list <user-id> --json
 nb stage create --from-json
 ```
@@ -108,11 +108,13 @@ passwords and invite tokens, setup-key inventory omits the upstream setup-key
 secret, and user-token inventory omits token values. These values are never part
 of the stable `nb` output contract.
 
-`nb analyze reachability` uses the server-reported accessible-peer inventory as
-the authoritative reachability result, joins the full peer inventory to recover
-group membership, and attaches policy-group intersections as explanatory
-evidence. Reachable peers without an enabled accept-rule match are surfaced as
-unexplained rather than silently classified.
+`nb peers network-map` reports symmetric cryptographic map adjacency, not
+directional initiation permission. `nb analyze access` makes configured policy
+flows canonical and keeps outbound and inbound protocol/port scopes separate.
+Network-map peers without proven peer-policy attribution remain `map_only`, and
+packet reachability remains unknown without a scoped observation. The legacy
+`nb peers accessible` and `nb analyze reachability` commands are deprecated;
+their existing v1 JSON shapes remain frozen for compatibility.
 
 Request `--json` explicitly when consuming output as an agent. Consequential
 NetBird changes belong under `nb stage`; do not invent a direct-write command.
