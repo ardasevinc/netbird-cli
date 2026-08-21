@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+on_error() {
+	status=$?
+	echo "self-hosted e2e failed at line ${BASH_LINENO[0]}" >&2
+	return "$status"
+}
+trap on_error ERR
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 upstream_repo="${NB_E2E_NETBIRD_REPO:-/Users/arda/.agents/repo-ref/netbird}"
 upstream_tag="v0.77.0"
 image="${NB_E2E_NETBIRD_IMAGE:-nb-netbird-cli-e2e:v0.77.0}"
+client_image="${NB_E2E_NETBIRD_CLIENT_IMAGE:-nb-netbird-cli-client-e2e:v0.77.0}"
 container="nb-cli-e2e-${RANDOM}-${RANDOM}"
+source_client="${container}-source"
+destination_client="${container}-destination"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/nb-cli-e2e.XXXXXX")"
 fixture_id=""
 pat=""
@@ -16,6 +26,7 @@ cleanup() {
 	if [[ -n "$fixture_id" && -n "$base_url" && -n "$pat" ]]; then
 		curl -fsS -X DELETE -H "Authorization: Bearer $pat" "$base_url/api/groups/$fixture_id" >/dev/null 2>&1
 	fi
+	docker rm -f "$source_client" "$destination_client" >/dev/null 2>&1
 	docker rm -f "$container" >/dev/null 2>&1
 	find "$work_dir" -type f -delete >/dev/null 2>&1
 	find "$work_dir" -depth -type d -empty -delete >/dev/null 2>&1
@@ -36,11 +47,16 @@ else
 fi
 test "$actual_openapi_sha" = "$expected_openapi_sha" || { echo "pinned OpenAPI hash mismatch" >&2; exit 2; }
 
-if [[ -z "${NB_E2E_NETBIRD_IMAGE:-}" ]]; then
+if [[ -z "${NB_E2E_NETBIRD_IMAGE:-}" || -z "${NB_E2E_NETBIRD_CLIENT_IMAGE:-}" ]]; then
 	upstream_context="$work_dir/netbird"
 	mkdir -p "$upstream_context"
 	git -C "$upstream_repo" archive "$upstream_tag" | tar -xf - -C "$upstream_context"
+fi
+if [[ -z "${NB_E2E_NETBIRD_IMAGE:-}" ]]; then
 	docker build --quiet -f "$upstream_context/combined/Dockerfile.multistage" -t "$image" "$upstream_context" >/dev/null
+fi
+if [[ -z "${NB_E2E_NETBIRD_CLIENT_IMAGE:-}" ]]; then
+	docker build --quiet -f "$upstream_context/e2e/harness/Dockerfile.client" -t "$client_image" "$upstream_context" >/dev/null
 fi
 
 mkdir -p "$work_dir/data"
@@ -109,6 +125,78 @@ readback_json="$(nb --json groups get "$fixture_id")"
 test "$(jq -r '.data.group.name' <<<"$readback_json")" = "nb-e2e-fixture-renamed"
 
 all_group_id="$(jq -er '.data.groups[] | select(.name == "All") | .id' <<<"$groups_json")"
+default_policy_id="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/policies" | jq -er '.[] | select(.name == "Default") | .id')"
+curl -fsS -X DELETE -H "Authorization: Bearer $pat" "$base_url/api/policies/$default_policy_id" >/dev/null
+
+# The management endpoint named accessible-peers exposes symmetric network-map
+# adjacency and discards the per-peer firewall direction. Enroll two disposable
+# clients into distinct groups and create one non-bidirectional TCP flow. The
+# new commands must retain both facts: adjacency in both maps, outbound-only at
+# the source, and inbound-only at the destination. No packet probe is performed
+# here, so observations must remain unknown and empty.
+source_group_id="$(curl -fsS -X POST "$base_url/api/groups" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data '{"name":"nb-e2e-source"}' | jq -er '.id')"
+destination_group_id="$(curl -fsS -X POST "$base_url/api/groups" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data '{"name":"nb-e2e-destination"}' | jq -er '.id')"
+source_setup="$(jq -n --arg gid "$source_group_id" '{name:"nb-e2e-source",type:"one-off",expires_in:86400,auto_groups:[$gid],usage_limit:1}')"
+destination_setup="$(jq -n --arg gid "$destination_group_id" '{name:"nb-e2e-destination",type:"one-off",expires_in:86400,auto_groups:[$gid],usage_limit:1}')"
+source_key="$(curl -fsS -X POST "$base_url/api/setup-keys" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data "$source_setup" | jq -er '.key')"
+destination_key="$(curl -fsS -X POST "$base_url/api/setup-keys" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data "$destination_setup" | jq -er '.key')"
+management_url="http://host.docker.internal:$host_port"
+docker run -d --name "$source_client" --cap-add NET_ADMIN --cap-add SYS_ADMIN --cap-add SYS_RESOURCE --device /dev/net/tun \
+	-e NB_SETUP_KEY="$source_key" -e NB_MANAGEMENT_URL="$management_url" -e NB_HOSTNAME=nb-e2e-source \
+	"$client_image" >/dev/null
+docker run -d --name "$destination_client" --cap-add NET_ADMIN --cap-add SYS_ADMIN --cap-add SYS_RESOURCE --device /dev/net/tun \
+	-e NB_SETUP_KEY="$destination_key" -e NB_MANAGEMENT_URL="$management_url" -e NB_HOSTNAME=nb-e2e-destination \
+	"$client_image" >/dev/null
+
+source_peer_id=""
+destination_peer_id=""
+for _ in $(seq 1 60); do
+	peers_live="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/peers")"
+	source_peer_id="$(jq -r '.[] | select(.name == "nb-e2e-source") | .id' <<<"$peers_live")"
+	destination_peer_id="$(jq -r '.[] | select(.name == "nb-e2e-destination") | .id' <<<"$peers_live")"
+	if [[ -n "$source_peer_id" && -n "$destination_peer_id" ]]; then
+		break
+	fi
+	sleep 2
+done
+if [[ -z "$source_peer_id" || -z "$destination_peer_id" ]]; then
+	docker logs "$source_client" >&2
+	docker logs "$destination_client" >&2
+	echo "disposable peers did not enroll" >&2
+	exit 1
+fi
+
+one_way_policy="$(jq -n --arg source "$source_group_id" --arg destination "$destination_group_id" '{name:"nb-e2e-one-way",enabled:true,rules:[{name:"source-to-destination-https",description:"directionality fixture",enabled:true,action:"accept",protocol:"tcp",bidirectional:false,sources:[$source],destinations:[$destination],ports:["443"],port_ranges:[]}]}')"
+curl -fsS -X POST "$base_url/api/policies" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data "$one_way_policy" >/dev/null
+
+source_map=""
+destination_map=""
+for _ in $(seq 1 60); do
+	source_map="$(nb --json peers network-map "$source_peer_id")"
+	destination_map="$(nb --json peers network-map "$destination_peer_id")"
+	if jq -e --arg id "$destination_peer_id" '.data.peers | any(.id == $id)' <<<"$source_map" >/dev/null && \
+		jq -e --arg id "$source_peer_id" '.data.peers | any(.id == $id)' <<<"$destination_map" >/dev/null; then
+		break
+	fi
+	sleep 2
+done
+jq -e --arg id "$destination_peer_id" '.data.peers | any(.id == $id)' <<<"$source_map" >/dev/null
+jq -e --arg id "$source_peer_id" '.data.peers | any(.id == $id)' <<<"$destination_map" >/dev/null
+
+source_access="$(nb --json analyze access "$source_peer_id")"
+destination_access="$(nb --json analyze access "$destination_peer_id")"
+if ! jq -e --arg id "$destination_peer_id" '.data.relations[] | select(.peer.id == $id) | .network_map_adjacent and .has_outbound_flows and (.has_inbound_flows | not) and (.outbound_flows | any(.protocol == "tcp" and (.ports == ["443"]) and (.bidirectional | not)))' <<<"$source_access" >/dev/null; then
+	jq --arg id "$destination_peer_id" '.data.relations[] | select(.peer.id == $id)' <<<"$source_access" >&2
+	echo "source access relation is not outbound-only" >&2
+	exit 1
+fi
+if ! jq -e --arg id "$source_peer_id" '.data.relations[] | select(.peer.id == $id) | .network_map_adjacent and (.has_outbound_flows | not) and .has_inbound_flows and (.inbound_flows | any(.protocol == "tcp" and (.ports == ["443"]) and (.bidirectional | not)))' <<<"$destination_access" >/dev/null; then
+	jq --arg id "$source_peer_id" '.data.relations[] | select(.peer.id == $id)' <<<"$destination_access" >&2
+	echo "destination access relation is not inbound-only" >&2
+	exit 1
+fi
+jq -e '.data.observations == [] and .data.completeness.observations.state == "unknown"' <<<"$source_access" >/dev/null
+jq -e '.data.observations == [] and .data.completeness.observations.state == "unknown"' <<<"$destination_access" >/dev/null
 
 # DNS zone and record lifecycles exercise nested targets and the target-field
 # stripping used by both create and update dispatch.
@@ -209,4 +297,4 @@ posture_delete_apply="$(nb --json apply "$posture_delete_id@$posture_delete_revi
 test "$(jq -r '.data.state' <<<"$posture_delete_apply")" = "confirmed_success"
 test -z "$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/posture-checks" | jq -r '.[] | select(.name == "nb-e2e-posture") | .id')"
 
-printf 'self-hosted e2e passed: pinned %s, account/user/group/route/network reads, staged group update, read-back confirmed\n' "$upstream_tag"
+printf 'self-hosted e2e passed: pinned %s, symmetric map adjacency, asymmetric configured flows, staged mutations, read-back confirmed\n' "$upstream_tag"
