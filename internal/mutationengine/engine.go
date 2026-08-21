@@ -584,7 +584,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 			}
 			return finish(ctx, store, result, mutation.ConfirmedSuccess, "reverse proxy cluster is absent after delete")
 		}
-		if err := confirmDeleted(ctx, remote, stage.Operation, request); err != nil && !isNotFound(err) {
+		if err := confirmDeleted(ctx, remote, stage.Operation, request); !isNotFound(err) {
 			return finish(ctx, store, result, mutation.Unknown, "delete may have applied, but absence could not be confirmed")
 		}
 		return finish(ctx, store, result, mutation.ConfirmedSuccess, "remote "+strings.TrimSuffix(stage.Operation, ".delete")+" is absent after delete")
