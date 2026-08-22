@@ -11,3 +11,13 @@ func TestReadOperationAdmitsGETAndRejectsWrites(t *testing.T) {
 		t.Fatal("write operation was admitted")
 	}
 }
+
+func TestReadOperationMarksIngressAsRuntimeUnverified(t *testing.T) {
+	operation, err := ReadOperation("ingress.peers.list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if operation.Verification != "unverified_live" {
+		t.Fatalf("ingress verification = %q, want unverified_live", operation.Verification)
+	}
+}
