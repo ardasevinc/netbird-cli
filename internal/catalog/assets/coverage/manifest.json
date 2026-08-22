@@ -481,35 +481,35 @@
       "method": "GET",
       "path": "/api/ingress/peers",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "ingress.peers.create",
       "method": "POST",
       "path": "/api/ingress/peers",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "ingress.peers.delete",
       "method": "DELETE",
       "path": "/api/ingress/peers/{ingressPeerId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "ingress.peers.get",
       "method": "GET",
       "path": "/api/ingress/peers/{ingressPeerId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "ingress.peers.update",
       "method": "PUT",
       "path": "/api/ingress/peers/{ingressPeerId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "instance.status",
@@ -1234,35 +1234,35 @@
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "peers.ingress.ports.create",
       "method": "POST",
       "path": "/api/peers/{peerId}/ingress/ports",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "peers.ingress.ports.delete",
       "method": "DELETE",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "peers.ingress.ports.get",
       "method": "GET",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "peers.ingress.ports.update",
       "method": "PUT",
       "path": "/api/peers/{peerId}/ingress/ports/{allocationId}",
       "implementation": "implemented",
-      "verification": "contract_verified"
+      "verification": "unverified_live"
     },
     {
       "id": "get.api.peers.peerId.jobs",
@@ -1676,9 +1676,9 @@
     "implemented": 236,
     "classified": 0,
     "discovered": 0,
-    "contract_verified": 227,
+    "contract_verified": 217,
     "disposable_verified": 0,
     "live_verified": 9,
-    "unverified_live": 0
+    "unverified_live": 10
   }
 }

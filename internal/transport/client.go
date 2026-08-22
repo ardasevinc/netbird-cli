@@ -50,6 +50,7 @@ type Response struct {
 // RequestError preserves the one fact that matters for mutation replay: whether
 // the request may have reached the remote server.
 type RequestError struct {
+	Method      string
 	Path        string
 	StatusCode  int
 	Dispatched  bool
@@ -58,10 +59,30 @@ type RequestError struct {
 }
 
 func (e *RequestError) Error() string {
-	if e.Err != nil {
-		return e.Description + ": " + e.Err.Error()
+	context := ""
+	if e.StatusCode > 0 || e.Method != "" || e.Path != "" {
+		context = " ("
+		if e.StatusCode > 0 {
+			context += fmt.Sprintf("HTTP %d", e.StatusCode)
+		}
+		if e.Method != "" {
+			if len(context) > 2 {
+				context += " "
+			}
+			context += e.Method
+		}
+		if e.Path != "" {
+			if len(context) > 2 {
+				context += " "
+			}
+			context += e.Path
+		}
+		context += ")"
 	}
-	return e.Description
+	if e.Err != nil {
+		return e.Description + context + ": " + e.Err.Error()
+	}
+	return e.Description + context
 }
 
 func (e *RequestError) Unwrap() error { return e.Err }
@@ -149,24 +170,24 @@ func (c *Client) DoJSON(ctx context.Context, method, path string, request any, r
 	resp, err := c.http.Do(req)
 	if err != nil {
 		c.logDebug("request failed", "method", method, "path", path, "dispatched", dispatched, "duration_ms", time.Since(started).Milliseconds())
-		return Response{}, &RequestError{Path: path, Dispatched: dispatched, Description: "request failed", Err: err}
+		return Response{}, &RequestError{Method: method, Path: path, Dispatched: dispatched, Description: "request failed", Err: err}
 	}
 	c.logDebug("response", "method", method, "path", path, "status", resp.StatusCode, "duration_ms", time.Since(started).Milliseconds())
 	defer resp.Body.Close()
 	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, c.maxBody+1))
 	if err != nil {
-		return Response{StatusCode: resp.StatusCode, Status: resp.Status, Body: responseBody}, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "read response failed", Err: err}
+		return Response{StatusCode: resp.StatusCode, Status: resp.Status, Body: responseBody}, &RequestError{Method: method, Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "read response failed", Err: err}
 	}
 	response := Response{StatusCode: resp.StatusCode, Status: resp.Status, Body: responseBody}
 	if int64(len(responseBody)) > c.maxBody {
-		return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: fmt.Sprintf("response exceeds %d-byte limit", c.maxBody)}
+		return response, &RequestError{Method: method, Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: fmt.Sprintf("response exceeds %d-byte limit", c.maxBody)}
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "remote rejected request"}
+		return response, &RequestError{Method: method, Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "remote rejected request"}
 	}
 	if result != nil && len(responseBody) != 0 {
 		if err := json.Unmarshal(responseBody, result); err != nil {
-			return response, &RequestError{Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "decode response failed", Err: err}
+			return response, &RequestError{Method: method, Path: path, StatusCode: resp.StatusCode, Dispatched: true, Description: "decode response failed", Err: err}
 		}
 	}
 	return response, nil

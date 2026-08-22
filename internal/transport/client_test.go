@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -41,6 +42,31 @@ func TestGetJSONRejectsOversizedBody(t *testing.T) {
 	}
 	if err := client.GetJSON(context.Background(), "/api/instance", &json.RawMessage{}); err == nil {
 		t.Fatal("expected oversized response to fail")
+	}
+}
+
+func TestRequestErrorPreservesHTTPContext(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	client, err := New(Config{BaseURL: server.URL, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = client.GetJSON(context.Background(), "/api/ingress/peers", &json.RawMessage{})
+	if err == nil {
+		t.Fatal("expected 404 to fail")
+	}
+	if got, want := err.Error(), "remote rejected request (HTTP 404 GET /api/ingress/peers)"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+	var requestErr *RequestError
+	if !errors.As(err, &requestErr) {
+		t.Fatalf("error does not preserve RequestError: %v", err)
+	}
+	if requestErr.Method != http.MethodGet || requestErr.Path != "/api/ingress/peers" || requestErr.StatusCode != http.StatusNotFound {
+		t.Fatalf("request context = %+v", requestErr)
 	}
 }
 

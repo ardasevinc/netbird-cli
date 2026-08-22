@@ -124,6 +124,19 @@ test "$(jq -r '.data.state' <<<"$user_apply_json")" = "confirmed_success"
 user_readback="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/users" | jq -ce --arg id "$user_id" 'map(select(.id == $id)) | .[0]')"
 test "$(jq -r '.role' <<<"$user_readback")" = "admin"
 
+# NetBird v0.77.0 publishes ingress routes in OpenAPI but the disposable OSS
+# management server does not register them. Keep the absence explicit and
+# prove nb preserves the safe HTTP context instead of calling it generic
+# rejection.
+ingress_status="$(curl -sS -o "$work_dir/ingress-body" -w '%{http_code}' -H "Authorization: Bearer $pat" "$base_url/api/ingress/peers")"
+test "$ingress_status" = "404"
+if nb --json ingress list >"$work_dir/ingress-stdout" 2>"$work_dir/ingress-stderr"; then
+	echo "expected nb ingress list to report the unavailable pinned endpoint" >&2
+	exit 1
+fi
+grep -Fq 'HTTP 404 GET /api/ingress/peers' "$work_dir/ingress-stdout"
+grep -Fq 'HTTP 404 GET /api/ingress/peers' "$work_dir/ingress-stderr"
+
 groups_json="$(nb --json groups list)"
 test "$(jq -r '.data.groups | length' <<<"$groups_json")" -ge 1
 routes_json="$(nb --json routes list)"
