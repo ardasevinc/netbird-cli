@@ -18,6 +18,7 @@ source_client="${container}-source"
 destination_client="${container}-destination"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/nb-cli-e2e.XXXXXX")"
 fixture_id=""
+user_id=""
 pat=""
 base_url=""
 
@@ -25,6 +26,9 @@ cleanup() {
 	set +e
 	if [[ -n "$fixture_id" && -n "$base_url" && -n "$pat" ]]; then
 		curl -fsS -X DELETE -H "Authorization: Bearer $pat" "$base_url/api/groups/$fixture_id" >/dev/null 2>&1
+	fi
+	if [[ -n "$user_id" && -n "$base_url" && -n "$pat" ]]; then
+		curl -fsS -X DELETE -H "Authorization: Bearer $pat" "$base_url/api/users/$user_id" >/dev/null 2>&1
 	fi
 	docker rm -f "$source_client" "$destination_client" >/dev/null 2>&1
 	docker rm -f "$container" >/dev/null 2>&1
@@ -102,6 +106,24 @@ test "$(jq -r '.operation' <<<"$accounts_json")" = "accounts.list"
 test "$(jq -r '.data.accounts[0].id' <<<"$accounts_json")" = "$account_id"
 users_json="$(nb --json users list)"
 test "$(jq -r '.operation' <<<"$users_json")" = "users.list"
+
+# Prove the user mutation preimage/read-back path against the live pinned
+# server. NetBird exposes user reads through the collection endpoint, not
+# GET /api/users/{userId}. Create a disposable service user, update its role
+# through nb stage/apply, then remove it directly during cleanup.
+user_id="$(curl -fsS -X POST "$base_url/api/users" -H "Authorization: Bearer $pat" -H 'content-type: application/json' --data '{"email":"nb-e2e-user@netbird.test","name":"NB E2E User","role":"user","auto_groups":[],"is_service_user":true}' | jq -er '.id')"
+user_before="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/users" | jq -ce --arg id "$user_id" 'map(select(.id == $id)) | .[0]')"
+user_after="$(jq '.role = "admin"' <<<"$user_before")"
+user_request="$(jq -n --arg id "$user_id" --argjson after "$user_after" '{id:$id,role:$after.role,auto_groups:$after.auto_groups,is_blocked:$after.is_blocked}')"
+user_plan="$(jq -n --arg id "$user_id" --argjson request "$user_request" --argjson before "$user_before" --argjson after "$user_after" '{operation:"users.update",request:$request,before:$before,intended_after:$after,findings:[]}')"
+user_stage_json="$(printf '%s' "$user_plan" | nb --json stage create --from-json)"
+user_stage_id="$(jq -er '.data.stage_id' <<<"$user_stage_json")"
+user_revision="$(jq -er '.data.revision' <<<"$user_stage_json")"
+user_apply_json="$(nb --json apply "$user_stage_id@$user_revision" --ack-all-blocking)"
+test "$(jq -r '.data.state' <<<"$user_apply_json")" = "confirmed_success"
+user_readback="$(curl -fsS -H "Authorization: Bearer $pat" "$base_url/api/users" | jq -ce --arg id "$user_id" 'map(select(.id == $id)) | .[0]')"
+test "$(jq -r '.role' <<<"$user_readback")" = "admin"
+
 groups_json="$(nb --json groups list)"
 test "$(jq -r '.data.groups | length' <<<"$groups_json")" -ge 1
 routes_json="$(nb --json routes list)"

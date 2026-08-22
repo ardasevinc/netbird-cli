@@ -274,8 +274,10 @@ cross-builds, and diff cleanliness.
 The opt-in self-hosted lane pins NetBird `v0.77.0`, boots a disposable combined
 server, bootstraps a throwaway admin PAT, exercises account/user/group,
 route/network, and DNS reads,
-and proves a staged group update through remote read-back. It never targets a
-production profile.
+and proves staged group and user updates through remote read-back. The user
+mutation specifically validates the collection-based `GET /api/users` read
+path used for preimage and confirmation. It never targets a production
+profile.
 
 Release tags use the checked-in `.goreleaser.yaml` contract. It builds macOS and
 Linux archives with injected version provenance, SHA-256 checksums, archive
