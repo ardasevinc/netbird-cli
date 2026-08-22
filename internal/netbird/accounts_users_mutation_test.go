@@ -16,8 +16,6 @@ func TestUserMutationMethodsUseDeclaredRoutes(t *testing.T) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/users":
 			_ = json.NewEncoder(w).Encode([]map[string]any{{"id": "user-1"}})
-		case r.Method == http.MethodGet && r.URL.EscapedPath() == "/api/users/user%2Fone":
-			_ = json.NewEncoder(w).Encode(map[string]any{"id": "user/one"})
 		case r.Method == http.MethodPost && r.URL.Path == "/api/users":
 			_ = json.NewEncoder(w).Encode(map[string]any{"id": "user-1"})
 		case r.Method == http.MethodPut && r.URL.EscapedPath() == "/api/users/user%2Fone":
@@ -44,9 +42,6 @@ func TestUserMutationMethodsUseDeclaredRoutes(t *testing.T) {
 	client := NewClient(transportClient)
 	ctx := context.Background()
 	if _, err := client.ListUsersRaw(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := client.GetUserRaw(ctx, "user/one"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := client.CreateUser(ctx, json.RawMessage(`{"email":"a@example.com"}`)); err != nil {

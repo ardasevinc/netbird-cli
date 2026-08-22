@@ -557,16 +557,12 @@ func (f *fakeRemote) DeleteAgentNetworkProvider(_ context.Context, _ string) (js
 
 func (f *fakeRemote) ListUsersRaw(_ context.Context) (json.RawMessage, error) {
 	if f.userCollection == nil {
+		if f.userBefore != nil {
+			return json.RawMessage("[" + string(f.userBefore) + "]"), nil
+		}
 		return json.RawMessage(`[]`), nil
 	}
 	return append(json.RawMessage(nil), f.userCollection...), nil
-}
-
-func (f *fakeRemote) GetUserRaw(_ context.Context, _ string) (json.RawMessage, error) {
-	if f.userBefore == nil {
-		return nil, &transport.RequestError{Dispatched: true, StatusCode: 404, Description: "not found"}
-	}
-	return append(json.RawMessage(nil), f.userBefore...), nil
 }
 
 func (f *fakeRemote) CreateUser(_ context.Context, _ json.RawMessage) (json.RawMessage, error) {
@@ -577,6 +573,7 @@ func (f *fakeRemote) CreateUser(_ context.Context, _ json.RawMessage) (json.RawM
 	if f.userAfter == nil {
 		return nil, errors.New("missing created user")
 	}
+	f.userBefore = append(json.RawMessage(nil), f.userAfter...)
 	f.userCollection = json.RawMessage("[" + string(f.userAfter) + "]")
 	return append(json.RawMessage(nil), f.userAfter...), nil
 }
@@ -587,6 +584,7 @@ func (f *fakeRemote) UpdateUser(_ context.Context, _ string, _ json.RawMessage) 
 		return nil, f.updateErr
 	}
 	f.userBefore = append(json.RawMessage(nil), f.userAfter...)
+	f.userCollection = json.RawMessage("[" + string(f.userAfter) + "]")
 	return append(json.RawMessage(nil), f.userAfter...), nil
 }
 
@@ -596,6 +594,7 @@ func (f *fakeRemote) DeleteUser(_ context.Context, _ string) (json.RawMessage, e
 		return nil, f.updateErr
 	}
 	f.userBefore = nil
+	f.userCollection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -605,6 +604,7 @@ func (f *fakeRemote) ApproveUser(_ context.Context, _ string) (json.RawMessage, 
 		return nil, f.updateErr
 	}
 	f.userBefore = append(json.RawMessage(nil), f.userAfter...)
+	f.userCollection = json.RawMessage("[" + string(f.userAfter) + "]")
 	return append(json.RawMessage(nil), f.userAfter...), nil
 }
 
@@ -614,6 +614,7 @@ func (f *fakeRemote) RejectUser(_ context.Context, _ string) (json.RawMessage, e
 		return nil, f.updateErr
 	}
 	f.userBefore = nil
+	f.userCollection = json.RawMessage(`[]`)
 	return nil, nil
 }
 
@@ -3052,6 +3053,34 @@ func TestApplyDispatchesUserCreateAndConfirmsReadBack(t *testing.T) {
 	}
 }
 
+func TestApplyDispatchesUserUpdateThroughUserCollection(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"user-1","email":"a@example.com","role":"user","auto_groups":[],"is_blocked":false,"pending_approval":false}`
+	after := `{"id":"user-1","email":"a@example.com","role":"admin","auto_groups":[],"is_blocked":false,"pending_approval":false}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.update",
+		Request: json.RawMessage(`{"id":"user-1","role":"admin","auto_groups":[],"is_blocked":false}`),
+		Before:  json.RawMessage(before), IntendedAfter: json.RawMessage(after),
+		Impact:   json.RawMessage(`{}`),
+		Findings: []ledger.Finding{{Code: "impact.user_change", Severity: "blocking", Message: "changing the user may alter account access and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userCollection: []byte("[" + before + "]"), userBefore: []byte(before), userAfter: []byte(after)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected user update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
 func TestApplyDispatchesUserRejectAndConfirmsAbsence(t *testing.T) {
 	store, err := ledger.Open(t.TempDir() + "/ledger.db")
 	if err != nil {
@@ -3308,6 +3337,48 @@ func TestApplyDispatchesSetupKeyUpdateAndConfirmsReadBack(t *testing.T) {
 	}
 	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 || body["revoked"] != true || body["auto_groups"] == nil {
 		t.Fatalf("unexpected setup key update result: %+v updates=%d body=%s", result, remote.updates, remote.setupKeyBody)
+	}
+}
+
+func TestApplySetupKeyUpdateIgnoresServerOwnedUpdatedAt(t *testing.T) {
+	store, err := ledger.Open(t.TempDir() + "/ledger.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	before := `{"id":"key-1","name":"bootstrap","revoked":false,"auto_groups":[],"updated_at":"2026-08-22T10:00:00Z"}`
+	intendedAfter := `{"id":"key-1","name":"bootstrap","revoked":true,"auto_groups":[],"updated_at":"2026-08-22T10:00:00Z"}`
+	liveAfter := `{"id":"key-1","name":"bootstrap","revoked":true,"auto_groups":[],"updated_at":"2026-08-22T10:00:01Z"}`
+	stage, err := store.Create(context.Background(), ledger.StageInput{
+		Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "setup_keys.update",
+		Request: json.RawMessage(`{"id":"key-1","revoked":true,"auto_groups":[]}`),
+		Before:  json.RawMessage(before), IntendedAfter: json.RawMessage(intendedAfter),
+		Impact:   json.RawMessage(`{}`),
+		Findings: []ledger.Finding{{Code: "impact.setup_key_change", Severity: "blocking", Message: "changing the setup key may alter peer enrollment authority and requires exact acknowledgement"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", setupKeyBefore: []byte(before), setupKeyAfter: []byte(liveAfter)}
+	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != mutation.ConfirmedSuccess || remote.updates != 1 {
+		t.Fatalf("unexpected setup key update result: %+v updates=%d", result, remote.updates)
+	}
+}
+
+func TestEquivalentSetupKeyUpdateStillRequiresOperatorFieldEquality(t *testing.T) {
+	equal, err := equivalentSetupKeyUpdate(
+		json.RawMessage(`{"id":"key-1","revoked":false,"updated_at":"new"}`),
+		json.RawMessage(`{"id":"key-1","revoked":true,"updated_at":"old"}`),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if equal {
+		t.Fatal("setup key confirmation ignored an operator-controlled field")
 	}
 }
 

@@ -116,7 +116,6 @@ type Remote interface {
 	UpdateAgentNetworkProvider(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteAgentNetworkProvider(context.Context, string) (json.RawMessage, error)
 	ListUsersRaw(context.Context) (json.RawMessage, error)
-	GetUserRaw(context.Context, string) (json.RawMessage, error)
 	CreateUser(context.Context, json.RawMessage) (json.RawMessage, error)
 	UpdateUser(context.Context, string, json.RawMessage) (json.RawMessage, error)
 	DeleteUser(context.Context, string) (json.RawMessage, error)
@@ -615,7 +614,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err != nil {
 		return finish(ctx, store, result, mutation.Unknown, "update may have applied, but read-back was inconclusive")
 	}
-	equal, err := mutation.Equivalent(liveAfter, stage.IntendedAfter)
+	equal, err := equivalentPostcondition(stage.Operation, liveAfter, stage.IntendedAfter)
 	if err != nil {
 		return finish(ctx, store, result, mutation.Unknown, "update response could not be compared with intended state")
 	}
@@ -719,7 +718,7 @@ func readPreimage(ctx context.Context, remote Remote, operation string, target r
 	case "users.create":
 		return remote.ListUsersRaw(ctx)
 	case "users.update", "users.delete", "users.approve", "users.reject", "users.password.update", "users.invite.resend":
-		return remote.GetUserRaw(ctx, target.ID)
+		return readUserPreimage(ctx, remote, target.ID)
 	case "users.tokens.delete":
 		return remote.GetPersonalAccessTokenRaw(ctx, target.UserID, target.TokenID)
 	case "users.tokens.create":
@@ -1484,7 +1483,19 @@ func collectionFindID(collection json.RawMessage, id string) (json.RawMessage, e
 			return object, nil
 		}
 	}
-	return nil, errors.New("created id is absent from collection")
+	return nil, errors.New("id is absent from collection")
+}
+
+func readUserPreimage(ctx context.Context, remote Remote, id string) (json.RawMessage, error) {
+	collection, err := remote.ListUsersRaw(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, err := collectionFindID(collection, id)
+	if err != nil {
+		return nil, fmt.Errorf("user %q is absent from user collection: %w", id, err)
+	}
+	return user, nil
 }
 
 func collectionContainsID(collection json.RawMessage, id string) (bool, error) {
@@ -1556,6 +1567,36 @@ func objectContains(actual, expected json.RawMessage) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func equivalentPostcondition(operation string, actual, intended json.RawMessage) (bool, error) {
+	if operation != "setup_keys.update" {
+		return mutation.Equivalent(actual, intended)
+	}
+	return equivalentSetupKeyUpdate(actual, intended)
+}
+
+func equivalentSetupKeyUpdate(actual, intended json.RawMessage) (bool, error) {
+	var actualObject, intendedObject map[string]any
+	if err := json.Unmarshal(actual, &actualObject); err != nil {
+		return false, err
+	}
+	if err := json.Unmarshal(intended, &intendedObject); err != nil {
+		return false, err
+	}
+	// updated_at is server-owned and changes as a side effect of a successful
+	// setup-key update. Every other field remains part of the confirmation.
+	delete(actualObject, "updated_at")
+	delete(intendedObject, "updated_at")
+	actualJSON, err := json.Marshal(actualObject)
+	if err != nil {
+		return false, err
+	}
+	intendedJSON, err := json.Marshal(intendedObject)
+	if err != nil {
+		return false, err
+	}
+	return mutation.Equivalent(actualJSON, intendedJSON)
 }
 
 func stripTargetFields(request json.RawMessage) (json.RawMessage, error) {
@@ -2143,11 +2184,37 @@ func mutationImpact(operation string, before, intendedAfter json.RawMessage) (an
 }
 
 func confirmDeleted(ctx context.Context, remote Remote, operation string, target requestTarget) error {
+	if operation == "users.delete" || operation == "users.reject" {
+		collection, err := remote.ListUsersRaw(ctx)
+		if err != nil {
+			return err
+		}
+		present, err := collectionContainsID(collection, target.ID)
+		if err != nil {
+			return err
+		}
+		if present {
+			return errors.New("user still exists after delete")
+		}
+		return resourceNotFoundError{resource: "user"}
+	}
 	_, err := readPreimage(ctx, remote, operation, target)
 	if err == nil {
 		return errors.New("resource still exists after delete")
 	}
 	return err
+}
+
+type resourceNotFoundError struct {
+	resource string
+}
+
+func (e resourceNotFoundError) Error() string {
+	return e.resource + " is absent"
+}
+
+func (resourceNotFoundError) StatusCodeState() int {
+	return 404
 }
 
 func isNotFound(err error) bool {
