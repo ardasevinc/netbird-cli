@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 )
 
 func CanonicalJSON(data []byte) ([]byte, error) {
@@ -53,6 +54,67 @@ func Equivalent(left, right []byte) (bool, error) {
 		return false, err
 	}
 	return equivalentValue(leftValue, rightValue), nil
+}
+
+// EquivalentUnorderedCollection compares top-level JSON collections without
+// assigning meaning to server response order. Objects and nested arrays keep
+// the normal canonical comparison rules, and duplicate items are preserved.
+func EquivalentUnorderedCollection(left, right []byte) (bool, error) {
+	leftValue, err := decodeCanonicalValue(left)
+	if err != nil {
+		return false, err
+	}
+	rightValue, err := decodeCanonicalValue(right)
+	if err != nil {
+		return false, err
+	}
+
+	leftCollection, leftOK := topLevelCollection(leftValue)
+	rightCollection, rightOK := topLevelCollection(rightValue)
+	if !leftOK || !rightOK {
+		return Equivalent(left, right)
+	}
+	if len(leftCollection) != len(rightCollection) {
+		return false, nil
+	}
+
+	leftItems, err := canonicalCollectionItems(leftCollection)
+	if err != nil {
+		return false, err
+	}
+	rightItems, err := canonicalCollectionItems(rightCollection)
+	if err != nil {
+		return false, err
+	}
+	for i := range leftItems {
+		if !bytes.Equal(leftItems[i], rightItems[i]) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func topLevelCollection(value any) ([]any, bool) {
+	if value == nil {
+		return []any{}, true
+	}
+	collection, ok := value.([]any)
+	return collection, ok
+}
+
+func canonicalCollectionItems(collection []any) ([][]byte, error) {
+	items := make([][]byte, 0, len(collection))
+	for _, item := range collection {
+		encoded, err := json.Marshal(item)
+		if err != nil {
+			return nil, fmt.Errorf("encode collection item: %w", err)
+		}
+		items = append(items, encoded)
+	}
+	sort.Slice(items, func(i, j int) bool {
+		return bytes.Compare(items[i], items[j]) < 0
+	})
+	return items, nil
 }
 
 func decodeCanonicalValue(data []byte) (any, error) {

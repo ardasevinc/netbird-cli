@@ -3037,13 +3037,13 @@ func TestApplyDispatchesUserCreateAndConfirmsReadBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	before := `[]`
+	before := `[{"id":"user-0","email":"zero@example.com","role":"user"},{"id":"user-1","email":"one@example.com","role":"user"}]`
 	after := `{"id":"user-1","email":"a@example.com","role":"user","auto_groups":[],"is_blocked":false,"pending_approval":false}`
 	stage, err := store.Create(context.Background(), ledger.StageInput{Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", Operation: "users.create", Request: json.RawMessage(`{"email":"a@example.com","role":"user","auto_groups":[],"is_service_user":false}`), Before: json.RawMessage(before), IntendedAfter: json.RawMessage(after), Impact: json.RawMessage(`{"classification":"user_create","reachability":"potentially_changed","affected_peer_ids":[],"affected_resource_ids":[],"confidence":"medium","evidence":["creating a user can grant account access and assign automatic peer groups; affected peers and account resources require capability-aware live analysis"],"completeness":{"state":"unknown","reason":"user_create_requires_capability_analysis"}}`), Findings: []ledger.Finding{{Code: "impact.user_create", Severity: "blocking", Message: "creating the user may grant account access and requires exact acknowledgement"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userCollection: []byte(before), userAfter: []byte(after)}
+	remote := &fakeRemote{identity: "https://nb.test", account: "account-1", userCollection: []byte(`[{"id":"user-1","email":"one@example.com","role":"user"},{"id":"user-0","email":"zero@example.com","role":"user"}]`), userAfter: []byte(after)}
 	result, err := Apply(context.Background(), store, remote, ApplyInput{StageID: stage.ID, Revision: 1, Profile: "default", ServerIdentity: "https://nb.test", AccountID: "account-1", AckAllBlocking: true})
 	if err != nil {
 		t.Fatal(err)

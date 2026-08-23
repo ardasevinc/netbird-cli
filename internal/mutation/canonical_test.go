@@ -29,3 +29,43 @@ func TestEquivalentDoesNotTreatNullAndNonEmptyArrayAsSame(t *testing.T) {
 		t.Fatalf("equivalent=%t err=%v", equivalent, err)
 	}
 }
+
+func TestEquivalentUnorderedCollectionIgnoresTopLevelOrder(t *testing.T) {
+	equivalent, err := EquivalentUnorderedCollection(
+		[]byte(`[{"id":"user-1","groups":["a","b"]},{"id":"user-2"}]`),
+		[]byte(`[{"id":"user-2"},{"groups":["a","b"],"id":"user-1"}]`),
+	)
+	if err != nil || !equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}
+
+func TestEquivalentUnorderedCollectionPreservesNestedArrayOrder(t *testing.T) {
+	equivalent, err := EquivalentUnorderedCollection(
+		[]byte(`[{"id":"user-1","groups":["a","b"]}]`),
+		[]byte(`[{"id":"user-1","groups":["b","a"]}]`),
+	)
+	if err != nil || equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}
+
+func TestEquivalentUnorderedCollectionPreservesDuplicateItems(t *testing.T) {
+	equivalent, err := EquivalentUnorderedCollection(
+		[]byte(`[{"id":"user-1"},{"id":"user-1"}]`),
+		[]byte(`[{"id":"user-1"}]`),
+	)
+	if err != nil || equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}
+
+func TestEquivalentUnorderedCollectionRejectsChangedItem(t *testing.T) {
+	equivalent, err := EquivalentUnorderedCollection(
+		[]byte(`[{"id":"user-1","role":"admin"}]`),
+		[]byte(`[{"id":"user-1","role":"auditor"}]`),
+	)
+	if err != nil || equivalent {
+		t.Fatalf("equivalent=%t err=%v", equivalent, err)
+	}
+}

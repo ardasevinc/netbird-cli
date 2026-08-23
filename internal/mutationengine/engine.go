@@ -344,7 +344,7 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 		}
 		preimage = mutation.PreimageMatches
 	} else if isCreateOperation(stage.Operation) {
-		equal, err := mutation.Equivalent(stage.Before, liveBefore)
+		equal, err := mutation.EquivalentUnorderedCollection(stage.Before, liveBefore)
 		if err != nil {
 			return result, &ApplyError{Result: result, Err: fmt.Errorf("classify %s collection preimage: %w", stage.Operation, err)}
 		}
