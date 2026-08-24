@@ -275,7 +275,10 @@ func stagePreimageCommand(state *commandState, stdout io.Writer) *cobra.Command 
 
 func validateExactPreimage(operation string, before json.RawMessage) error {
 	schema, normalized, err := mutation.NormalizedResultSchema(before)
-	if err != nil || !normalized {
+	if err != nil {
+		return fmt.Errorf("decode %s preimage: %w", operation, err)
+	}
+	if !normalized {
 		return nil
 	}
 	return fmt.Errorf("%s before is normalized result %q, not an exact raw preimage; use nb stage preimage with the operation's read endpoint", operation, schema)
