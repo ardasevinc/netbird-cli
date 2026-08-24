@@ -108,8 +108,12 @@ func NormalizedResultSchema(value []byte) (string, bool, error) {
 		return "", false, err
 	}
 	var schema string
-	if err := json.Unmarshal(object["schema"], &schema); err != nil {
+	rawSchema, hasSchema := object["schema"]
+	if !hasSchema {
 		return "", false, nil
+	}
+	if err := json.Unmarshal(rawSchema, &schema); err != nil {
+		return "", false, fmt.Errorf("decode result schema: %w", err)
 	}
 	if !strings.HasPrefix(schema, "nb/v1/") || len(object["data"]) == 0 {
 		return "", false, nil
