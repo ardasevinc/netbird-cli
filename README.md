@@ -84,12 +84,18 @@ go run ./cmd/nb peers network-map <peer-id> --json
 go run ./cmd/nb analyze access <peer-id> --json
 go run ./cmd/nb policies list --json
 go run ./cmd/nb policies get <policy-id> --json
+go run ./cmd/nb stage preimage groups.list
 go run ./cmd/nb stage create --from-json
 go run ./cmd/nb apply <stage-id>@<revision>
 ```
 
 Use `--json` explicitly for machine consumption. Core commands never silently
 switch output modes based on whether stdout is a TTY.
+
+Mutation stages must carry the exact upstream preimage. Use
+`nb stage preimage <read-operation-id> [path-value ...]` to capture the raw
+payload required by a stage. Normalized `nb/v1` inventory results are for
+inspection only and are rejected when supplied as `before`.
 
 ## Configuration
 

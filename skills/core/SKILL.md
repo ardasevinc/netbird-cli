@@ -100,6 +100,7 @@ nb ingress-ports list <peer-id> --json
 nb peers network-map <peer-id> --json
 nb analyze access <peer-id> --json
 nb users tokens list <user-id> --json
+nb stage preimage groups.list
 nb stage create --from-json
 ```
 
@@ -125,6 +126,11 @@ changes and policy metadata changes are reachability-neutral; unknown group
 impact, policy rule changes, and route behavior changes are blocking findings.
 Peer access or connectivity changes are also blocking findings.
 Network topology changes are also blocking findings.
+Mutation stages require an exact upstream preimage, not the normalized result of
+an inventory command. Use `nb stage preimage <read-operation-id> [path-value ...]`
+to capture the raw payload for a stage. `nb stage create --from-json` rejects
+wrapped `nb/v1` result documents in `before`; do not strip fields from a raw
+payload or substitute a stable list result.
 Peer deletion is blocking and requires the same absence proof.
 Policy deletion is blocking and requires read-back confirmation of absence.
 Policy creation is blocking and requires collection preimage and read-back proof.
