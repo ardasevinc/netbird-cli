@@ -329,6 +329,9 @@ func Apply(ctx context.Context, store Ledger, remote Remote, input ApplyInput) (
 	if err := mutation.ValidateAcknowledgements(findings, input.Acknowledgements, input.AckAllBlocking); err != nil {
 		return result, &ApplyError{Result: result, Err: err}
 	}
+	if schema, normalized, err := mutation.NormalizedResultSchema(stage.Before); err == nil && normalized {
+		return result, &ApplyError{Result: result, Err: fmt.Errorf("staged %s preimage is normalized result %q, not an exact raw payload; recreate the stage with nb stage preimage", stage.Operation, schema)}
+	}
 	liveBefore, err := readPreimage(ctx, remote, stage.Operation, request)
 	if err != nil {
 		return result, &ApplyError{Result: result, Err: fmt.Errorf("re-read %s preimage: %w", stage.Operation, err)}

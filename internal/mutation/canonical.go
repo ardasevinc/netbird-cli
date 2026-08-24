@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 )
 
 func CanonicalJSON(data []byte) ([]byte, error) {
@@ -92,6 +93,24 @@ func EquivalentUnorderedCollection(left, right []byte) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// NormalizedResultSchema reports the stable nb result schema when value is a
+// wrapped command result rather than an exact upstream payload. Such results
+// are useful for display, but cannot serve as mutation preimages because the
+// normalized model may omit upstream fields.
+func NormalizedResultSchema(value []byte) (string, bool, error) {
+	var envelope struct {
+		Schema string          `json:"schema"`
+		Data   json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(value, &envelope); err != nil {
+		return "", false, err
+	}
+	if !strings.HasPrefix(envelope.Schema, "nb/v1/") || len(envelope.Data) == 0 {
+		return "", false, nil
+	}
+	return envelope.Schema, true, nil
 }
 
 func topLevelCollection(value any) ([]any, bool) {

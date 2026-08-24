@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +10,10 @@ import (
 	"strings"
 
 	"github.com/ardasevinc/netbird-cli/internal/analysis"
+	"github.com/ardasevinc/netbird-cli/internal/catalog"
 	"github.com/ardasevinc/netbird-cli/internal/config"
 	"github.com/ardasevinc/netbird-cli/internal/ledger"
+	"github.com/ardasevinc/netbird-cli/internal/mutation"
 	"github.com/ardasevinc/netbird-cli/internal/operations"
 	"github.com/spf13/cobra"
 )
@@ -217,10 +220,65 @@ func validateDNSZoneUpdate(before, intendedAfter json.RawMessage) error {
 
 func stageCommand(state *commandState, stdout io.Writer) *cobra.Command {
 	command := &cobra.Command{Use: "stage", Short: "create and inspect local mutation plans"}
+	command.AddCommand(stagePreimageCommand(state, stdout))
 	command.AddCommand(stageCreateCommand(state, stdout))
 	command.AddCommand(stageShowCommand(state, stdout))
 	command.AddCommand(stageCancelCommand(state, stdout))
 	return command
+}
+
+func stagePreimageCommand(state *commandState, stdout io.Writer) *cobra.Command {
+	return &cobra.Command{
+		Use:   "preimage <read-operation-id> [path-value ...]",
+		Short: "read the exact raw payload for a mutation preimage",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			operation, err := catalog.ReadOperation(args[0])
+			if err != nil {
+				return fail(2, err)
+			}
+			path, err := resolveOperationPath(operation.Path, args[1:])
+			if err != nil {
+				return fail(2, err)
+			}
+			client, err := managementClient(state)
+			if err != nil {
+				return err
+			}
+			payload, err := client.GetRaw(cmd.Context(), path)
+			if err != nil {
+				return fail(3, err)
+			}
+			if state.json {
+				return writeJSON(stdout, map[string]any{
+					"schema":    "nb/v1/stage-preimage-result",
+					"ok":        true,
+					"operation": "stage.preimage",
+					"data": map[string]any{
+						"operation_id": operation.ID,
+						"path":         path,
+						"payload":      json.RawMessage(payload),
+						"completeness": map[string]any{"state": "unknown", "reason": "raw_preimage"},
+					},
+				})
+			}
+			var pretty bytes.Buffer
+			if err := json.Indent(&pretty, payload, "", "  "); err != nil {
+				_, err = fmt.Fprintln(stdout, string(payload))
+				return err
+			}
+			_, err = fmt.Fprintln(stdout, pretty.String())
+			return err
+		},
+	}
+}
+
+func validateExactPreimage(operation string, before json.RawMessage) error {
+	schema, normalized, err := mutation.NormalizedResultSchema(before)
+	if err != nil || !normalized {
+		return nil
+	}
+	return fmt.Errorf("%s before is normalized result %q, not an exact raw preimage; use nb stage preimage with the operation's read endpoint", operation, schema)
 }
 
 func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
@@ -248,6 +306,9 @@ func stageCreateCommand(state *commandState, stdout io.Writer) *cobra.Command {
 			}
 			if plan.Operation == "" {
 				return fail(2, fmt.Errorf("stage plan operation is required"))
+			}
+			if err := validateExactPreimage(plan.Operation, plan.Before); err != nil {
+				return fail(2, err)
 			}
 			if err := validatePersistedSecretSafety(plan.Operation, plan.Request); err != nil {
 				return fail(2, err)

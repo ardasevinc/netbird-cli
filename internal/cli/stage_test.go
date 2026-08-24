@@ -58,6 +58,23 @@ func TestStageCreateShowAndCancel(t *testing.T) {
 	}
 }
 
+func TestStageCreateRejectsNormalizedPreimage(t *testing.T) {
+	temp := t.TempDir()
+	configPath := filepath.Join(temp, "config.toml")
+	statePath := filepath.Join(temp, "ledger.db")
+	if err := os.WriteFile(configPath, []byte("[profiles.default]\nurl = \"https://netbird.example.test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	state := &commandState{json: true, configPath: configPath, profileName: "default", statePath: statePath}
+	root := newRoot(state, &bytes.Buffer{}, &bytes.Buffer{}, version.Current())
+	root.SetArgs([]string{"stage", "create", "--from-json"})
+	root.SetIn(strings.NewReader(`{"operation":"groups.create","request":{"name":"new"},"before":{"schema":"nb/v1/groups-list-result","ok":true,"operation":"groups.list","data":{"groups":[]}},"intended_after":{"name":"new"}}`))
+	err := root.ExecuteContext(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "not an exact raw preimage") {
+		t.Fatalf("expected normalized preimage rejection, got %v", err)
+	}
+}
+
 func TestStageCreatePolicyRuleChangeRequiresAcknowledgement(t *testing.T) {
 	temp := t.TempDir()
 	configPath := filepath.Join(temp, "config.toml")

@@ -69,3 +69,10 @@ func TestEquivalentUnorderedCollectionRejectsChangedItem(t *testing.T) {
 		t.Fatalf("equivalent=%t err=%v", equivalent, err)
 	}
 }
+
+func TestNormalizedResultSchemaRecognizesWrappedStableResult(t *testing.T) {
+	schema, normalized, err := NormalizedResultSchema([]byte(`{"schema":"nb/v1/groups-list-result","data":{"groups":[]}}`))
+	if err != nil || !normalized || schema != "nb/v1/groups-list-result" {
+		t.Fatalf("schema=%q normalized=%t err=%v", schema, normalized, err)
+	}
+}
